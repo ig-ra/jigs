@@ -68,7 +68,7 @@ method** — a disabled/absent dep otherwise surfaces as a mid-run failure:
 
 **Detect** (presence on disk = installed): superpowers → `ls -d ~/.claude/plugins/cache/*/superpowers/*/ 2>/dev/null`; codex companion → `ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null`. **If a needed one is empty → STOP** and tell the user the exact line to run: `/plugin install superpowers` or `/plugin install codex` (then re-run the method). Do not silently degrade or reimplement the skill inline.
 
-*(`/simplify` is built-in and `/igr:code-review-skip-simplify` now ships with this plugin (`workflows/`); the `feedback-codex-review-loops` memory is handled separately — none is an external-plugin dep.)*
+*(`/simplify` is built-in and `/igr:code-review-skip-simplify` now ships with this plugin (`workflows/`) — neither is an external-plugin dep.)*
 
 ## Boundaries (what igr-dev is NOT)
 
@@ -104,9 +104,8 @@ The angle text you pass as `--focus` MUST (this is what makes the method work):
 
 ## Hard invariants (inherited by every method)
 
-These come from `feedback-codex-review-loops` and are already encoded in the
-`/igr:codex-adversarial-loop` command — **igr-dev drives that command, it does not reimplement the
-mechanics.** Restated so every method honors them:
+These are encoded in the `/igr:codex-adversarial-loop` command — **igr-dev drives that command, it
+does not reimplement the mechanics.** Restated so every method honors them:
 
 1. **Companion only.** Reviews go through the Codex companion via `/igr:codex-adversarial-loop`
    (`Bash(run_in_background:true)`). **NEVER** spawn the `codex:codex-rescue` Agent for a review —
@@ -150,5 +149,5 @@ it is **the broad full-plan pass returning `PLAN-SOUND`** after the mechanical p
 judgment angle is SOLID (every task executable, zero orphaned requirement, census fully covered).
 Per-method details in the reference files.
 
-**REQUIRED BACKGROUND:** the review discipline lives in the `/igr:codex-adversarial-loop` command and
-the `feedback-codex-review-loops` memory — read them if any invariant above is unclear.
+**REQUIRED BACKGROUND:** the review discipline lives in the `/igr:codex-adversarial-loop` command —
+read it if any invariant above is unclear.
