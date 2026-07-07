@@ -29,16 +29,15 @@ each one, calls the matching `/igr-dev` method instead of any inline logic. It o
 
 ## Preflight — required environment (verify BEFORE spawning the first worker)
 
-igr-workflow composes an external **binary** (`herdr`) + two **loose skills** (`herdr-pr-orchestration`,
-`herdr`). None is a Claude Code *plugin*, so **none can be declared in `plugin.json` `dependencies`**
-(that field is plugins-only) — they are gated here at runtime. A missing one otherwise fails
-mid-ladder. Check, and STOP with the exact fix if any is absent:
+igr-workflow composes the **herdr session** it runs inside + two **loose skills** (`herdr-pr-orchestration`,
+`herdr`). Neither the herdr environment nor a loose skill is a Claude Code *plugin*, so **none can be
+declared in `plugin.json` `dependencies`** (that field is plugins-only) — they are gated here at
+runtime. A missing one otherwise fails mid-ladder. Check, and STOP with the exact fix if any is absent:
 
-1. **`herdr` binary** — `command -v herdr`. Missing → STOP: install herdr (e.g. `brew install herdr`).
-2. **Inside a herdr session** — `HERDR_ENV` must equal `1` (igr-workflow drives herdr panes). Unset → STOP: start this from inside herdr.
-3. **`herdr-pr-orchestration` + `herdr` skills** — confirm both are in your available skills (loose skills, typically `~/.claude/skills/<name>/SKILL.md`; best-effort `ls ~/.claude/skills/herdr-pr-orchestration/SKILL.md 2>/dev/null`). Absent → STOP: install the herdr skills; do **not** reimplement the pane/git mechanics inline.
+1. **Inside a herdr pane** — both `HERDR_ENV` (=`1`) and `HERDR_PANE_ID` must be set (`[ "$HERDR_ENV" = 1 ] && [ -n "$HERDR_PANE_ID" ]`). igr-workflow drives herdr panes, so a real pane — not just inherited env — is required. Unset → STOP: start this from inside a herdr pane. (Being in a pane implies the `herdr` CLI is present — no separate binary check.)
+2. **`herdr-pr-orchestration` + `herdr` skills** — confirm both are in your available skills (loose skills, typically `~/.claude/skills/<name>/SKILL.md`; best-effort `ls ~/.claude/skills/herdr-pr-orchestration/SKILL.md 2>/dev/null`). Absent → STOP: install the herdr skills; do **not** reimplement the pane/git mechanics inline.
 
-`igr-dev` ships in this same plugin — always present, no check. (If herdr is ever packaged as a plugin, add it to `plugin.json` `dependencies` and drop checks 1+3.)
+`igr-dev` ships in this same plugin — always present, no check. (If herdr is ever packaged as a plugin, add it to `plugin.json` `dependencies` and drop check 2.)
 
 ## Where igr-dev replaces herdr's inline steps
 
