@@ -52,6 +52,24 @@ chain them, and does not touch PR / branch / merge. Sequencing the methods into 
 **Dispatch:** read `references/<method>.md` for the invoked method's full recipe and follow it.
 Each method is self-contained — it does not hand off to or assume another method ran first.
 
+## Preflight — required plugins
+
+igr-dev **produces** artifacts with `superpowers` skills and **reviews** them with the Codex
+companion (`codex` plugin). Both are external and declared in `plugin.json` `dependencies`
+(Claude Code auto-installs declared deps at install/enable). **Verify before the first use in a
+method** — a disabled/absent dep otherwise surfaces as a mid-run failure:
+
+| method | external plugins needed |
+|--------|-------------------------|
+| `brainstorm` | `superpowers` (`brainstorming`) · `codex` (companion) |
+| `plan` | `superpowers` (`writing-plans`) · `codex` (companion) |
+| `impl` | `superpowers` (`executing-plans`, `subagent-driven-development`) · a `codex` session |
+| `review` | `superpowers` (`receiving-code-review`) — **no** Codex companion |
+
+**Detect** (presence on disk = installed): superpowers → `ls -d ~/.claude/plugins/cache/*/superpowers/*/ 2>/dev/null`; codex companion → `ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null`. **If a needed one is empty → STOP** and tell the user the exact line to run: `/plugin install superpowers` or `/plugin install codex` (then re-run the method). Do not silently degrade or reimplement the skill inline.
+
+*(`/simplify`, `/code-review-skip-simplify`, and the `feedback-codex-review-loops` memory are handled separately — not external-plugin deps; out of scope for this preflight.)*
+
 ## Boundaries (what igr-dev is NOT)
 
 igr-dev sits between a mechanism it drives and a workflow that drives it:

@@ -6,6 +6,8 @@ clean-rewrite forces fresh reading. This profile was derived by hardening a real
 Codex rounds; the angle-driven + clean-rewrite approach caught real bugs that generic looping
 missed (see **Why these steps**).
 
+**Preflight:** needs the `superpowers` and `codex` plugins — verify per SKILL.md §Preflight; if absent, STOP with the `/plugin install` line.
+
 ## Producer
 
 Use **`superpowers:brainstorming`** to turn the idea into a spec (Q&A → design → spec doc). If the

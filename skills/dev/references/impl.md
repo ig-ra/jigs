@@ -2,6 +2,8 @@
 
 This method **defines how implementation is done**. It is production, not review.
 
+**Preflight:** needs the `superpowers` plugin (`executing-plans`, `subagent-driven-development`) and a `codex` session — verify per SKILL.md §Preflight; if absent, STOP with the `/plugin install` line.
+
 ## Session (default)
 
 Default is a **codex session** (codex default settings, `xhigh` reasoning). **Ensure you are in a

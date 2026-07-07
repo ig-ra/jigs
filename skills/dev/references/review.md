@@ -4,6 +4,8 @@ This method **defines how code review is done**, and FIXES what it finds. It is 
 review — it does **not** use the Codex companion, so the companion invariants (SKILL.md invariants
 1–4, 8) do not apply here; verify-before-fold, park-vs-apply, and never-commit-docs (5–7) do.
 
+**Preflight:** needs the `superpowers` plugin (`receiving-code-review`) — verify per SKILL.md §Preflight; if absent, STOP with the `/plugin install` line. (No Codex companion here.)
+
 ## Session
 
 **Ensure you are in a claude session.** This method reviews and fixes the diff — it does **not**
