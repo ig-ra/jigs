@@ -1,6 +1,6 @@
 ---
 name: dev
-description: Use when doing one specific piece of dev work — hardening an idea into a spec, hardening a spec into a plan, implementing a plan, or reviewing an implementation diff — and you want the angle-driven method (census for specs, fixed checklist for plans, /simplify + /code-review-skip-simplify for diffs) instead of a generic one-pass review. Invoked as /igr:<method> <target>.
+description: Use when doing one specific piece of dev work — hardening an idea into a spec, hardening a spec into a plan, implementing a plan, or reviewing an implementation diff — and you want the angle-driven method (census for specs, fixed checklist for plans, /simplify + /igr:code-review-skip-simplify for diffs) instead of a generic one-pass review. Invoked as /igr:<method> <target>.
 ---
 
 # igr-dev
@@ -11,7 +11,7 @@ description: Use when doing one specific piece of dev work — hardening an idea
 defines *how that one piece of work is done*: how to harden a spec, how to harden a plan, how to
 implement, how to review. It **produces** artifacts with `superpowers` skills and **reviews** them
 adversarially — driving `/igr:codex-adversarial-loop` for the spec and plan, and `/simplify` +
-`/code-review-skip-simplify` for the code diff.
+`/igr:code-review-skip-simplify` for the code diff.
 
 **igr-dev knows nothing about ordering.** It does not know these methods can be sequenced, does not
 chain them, and does not touch PR / branch / merge. Sequencing the methods into a per-PR pipeline is
@@ -38,7 +38,7 @@ chain them, and does not touch PR / branch / merge. Sequencing the methods into 
 - **extra args** (method-specific): `brainstorm`/`plan` — text after `--` = owner-settled decisions
   to protect from re-litigation, passed to `/igr:codex-adversarial-loop`. `impl` — free-form execution
   tweaks + extra plan context (e.g. "do not run the full gate after each task; squash then gate
-  once"). `review` — the `/code-review-skip-simplify` effort level (default `xhigh`).
+  once"). `review` — the `/igr:code-review-skip-simplify` effort level (default `xhigh`).
 
 ## Methods
 
@@ -47,7 +47,7 @@ chain them, and does not touch PR / branch / merge. Sequencing the methods into 
 | `brainstorm` | idea → spec | `brainstorming` | **EXPLORATORY** (census + clean-rewrite) | `references/brainstorm.md` |
 | `plan` | spec → plan | `writing-plans` (+ code census) | **code census → mechanical diffs + judgment angles-till-SOLID + broad pass** | `references/plan.md` |
 | `impl` | plan → code | `executing-plans` + `subagent-driven-development` | **codex session**, tunable gate/squash — production | `references/impl.md` |
-| `review` | diff → fixed code | `receiving-code-review` | **claude session** — `/simplify` + `/code-review-skip-simplify`, then FIX | `references/review.md` |
+| `review` | diff → fixed code | `receiving-code-review` | **claude session** — `/simplify` + `/igr:code-review-skip-simplify`, then FIX | `references/review.md` |
 
 **Dispatch:** read `references/<method>.md` for the invoked method's full recipe and follow it.
 Each method is self-contained — it does not hand off to or assume another method ran first.
@@ -68,7 +68,7 @@ method** — a disabled/absent dep otherwise surfaces as a mid-run failure:
 
 **Detect** (presence on disk = installed): superpowers → `ls -d ~/.claude/plugins/cache/*/superpowers/*/ 2>/dev/null`; codex companion → `ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null`. **If a needed one is empty → STOP** and tell the user the exact line to run: `/plugin install superpowers` or `/plugin install codex` (then re-run the method). Do not silently degrade or reimplement the skill inline.
 
-*(`/simplify`, `/code-review-skip-simplify`, and the `feedback-codex-review-loops` memory are handled separately — not external-plugin deps; out of scope for this preflight.)*
+*(`/simplify` is built-in and `/igr:code-review-skip-simplify` now ships with this plugin (`workflows/`); the `feedback-codex-review-loops` memory is handled separately — none is an external-plugin dep.)*
 
 ## Boundaries (what igr-dev is NOT)
 
@@ -88,7 +88,7 @@ merge / rebase — those are `igr-workflow`. The **focus string** is the seam to
 ## How igr-dev drives the reviewer
 
 *Applies to the methods that use `/igr:codex-adversarial-loop` — `brainstorm` and `plan`. `impl`
-implements in a codex session; `review` uses `/simplify` + `/code-review-skip-simplify` in a claude
+implements in a codex session; `review` uses `/simplify` + `/igr:code-review-skip-simplify` in a claude
 session — see their references.*
 
 For each angle: build the angle text → invoke `/igr:codex-adversarial-loop <target> --focus "<angle>"`
@@ -128,7 +128,7 @@ mechanics.** Restated so every method honors them:
 **Scope:** invariants 1–4 and 8 govern the methods that drive `/igr:codex-adversarial-loop`
 (`brainstorm`, `plan`). Invariants 5–7 (verify-before-fold, park-vs-apply, never-commit-docs) apply
 to **every** method — including `impl` (codex) and `review` (`/simplify` +
-`/code-review-skip-simplify`), which do not touch the Codex companion.
+`/igr:code-review-skip-simplify`), which do not touch the Codex companion.
 
 ## Red flags — STOP, you are breaking discipline or leaking into the workflow
 

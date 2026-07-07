@@ -21,7 +21,7 @@ The committed diff. The tree is committed, so scope the review to the diff — e
 1. **`/simplify`** scoped to the diff — the code-simplifier pass (reuse / simplification /
    efficiency / altitude). E.g. `/simplify the changes in git diff HEAD~1..HEAD` (no preserve-X
    essays).
-2. **`/code-review-skip-simplify <effort>`** — correctness angles + conventions, skipping the
+2. **`/igr:code-review-skip-simplify <effort>`** — correctness angles + conventions, skipping the
    cleanup angles `/simplify` already covered. **Default effort `xhigh`** (tunable: `high` |
    `xhigh` | `max`; a trivially-mechanical rung MAY be downgraded to `/code-review high`, but
    `xhigh` is the default).

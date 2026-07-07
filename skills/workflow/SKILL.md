@@ -14,7 +14,7 @@ description: Use when shipping a change as a ladder of small worktree-isolated P
   session-UUID hand-off, squash, rebase, the test gate, push, PR create, check-watching, merge.
 - **`igr-dev`** supplies the per-artifact **methods**: how to produce and harden a spec, a plan, an
   implementation, and a review (census for specs, checklist for plans, `/simplify` +
-  `/code-review-skip-simplify` for the diff). igr-dev knows nothing about the pipeline —
+  `/igr:code-review-skip-simplify` for the diff). igr-dev knows nothing about the pipeline —
   **igr-workflow is what arranges its independent methods into an ordered sequence of phases.**
 
 igr-workflow's only job is the **pipeline** — it moves a unit of work through the phases and, at
@@ -48,7 +48,7 @@ through the matching `/igr-dev` method (each defines how that work is done):
 |---|---|---|
 | Phase I steps 2–4 (inline `writing-plans` + `/igr:codex-adversarial-loop` on the plan) | **`/igr:plan <spec>`** | the plan method (fixed-checklist review) |
 | Phase II steps 7–11 (codex implement + squash + gate) | **`/igr:impl`** | the implement method (codex session; tunable gate/squash) |
-| Phase III step 13 (inline `/simplify` + `/code-review-skip-simplify`) | **`/igr:review`** | the review method (`/simplify` + `/code-review-skip-simplify` + fix) |
+| Phase III step 13 (inline `/simplify` + `/igr:code-review-skip-simplify`) | **`/igr:review`** | the review method (`/simplify` + `/igr:code-review-skip-simplify` + fix) |
 
 Everything else stays **herdr's orchestration**: spawn, worktree/branch/stacking, pane-swap
 (claude→codex→claude-resume), UUID capture + Phase-III resume, rebase-onto-`main`, amend, push,
@@ -75,7 +75,7 @@ rung would be wasteful — a plan's surface is closed).
    use the plan → implement → squash → **full gate once**; pass any tweaks, e.g. "gate once after
    squash, not per task") → herdr rebases onto `main` for stacking.
 5. **Phase III — REVIEW + SHIP** (claude, resume the Phase-I session): `/igr:review`
-   (`/simplify` + `/code-review-skip-simplify`, apply confirmed fixes) → amend → push → open PR (if
+   (`/simplify` + `/igr:code-review-skip-simplify`, apply confirmed fixes) → amend → push → open PR (if
    delegated) → watch checks (herdr mechanics for amend/push/PR/watch).
 
 ## Seam / boundaries (do not leak)
