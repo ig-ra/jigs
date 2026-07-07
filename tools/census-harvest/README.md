@@ -4,6 +4,7 @@ One CLI (`census`) that produces a code census's **mechanical spine** determinis
 
 ## Subcommands (the deterministic rails)
 ```
+census doctor       preflight : check venv/protobuf/scip_pb2 (exit 2) + the indexer for --lang (exit 1)
 census scaffold     P0 assist : Scope template + candidate entry symbols + boundary preview
 census harvest      P1        : symbols/signatures/edges/boundary-coupling/test-flag → skeleton.json
 census merge        assemble  : skeleton.json + model's judgment.json → census.md
@@ -32,9 +33,14 @@ Same engine (rust-analyzer), batch dump not per-symbol calls: one `index.scip` h
 Consumes SCIP. Swap the indexer per language: Rust `rust-analyzer scip`, Go `scip-go`, TS `scip-typescript`. Per-language test-detector via `--lang` (rust = `#[cfg(test)]` spans).
 
 ## Setup
-- `rust-analyzer` on PATH.
-- Tool-local venv with `protobuf` (created once): `python3 -m venv venv && venv/bin/pip install protobuf`. The `census` wrapper uses it.
-- `scip_pb2.py` is vendored (compiled from `scip.proto`); regenerate only if the proto changes:
+Run the preflight — it tells you exactly what (if anything) is missing:
+```
+./census doctor --lang rust      # rust | go | ts | none
+```
+- **Python ≥ 3.12** on PATH as `python3` — census.py uses 3.12 f-string syntax; the wrapper refuses to build the venv with an older interpreter (clear message, not a `SyntaxError`).
+- **venv + protobuf** — **auto-built on first `census` call** (the wrapper creates a tool-local `venv/` from `requirements.txt`, one time; gitignored, rebuilt per plugin version). No manual step. Opt out with `CENSUS_NO_BOOTSTRAP=1`, then build it yourself: `python3 -m venv venv && venv/bin/pip install -r requirements.txt`.
+- **indexer on PATH** — you must install this (external, per-language; the tool can't): `rust-analyzer` (rust), `scip-go` (go), `scip-typescript` (ts). `doctor` exit **1** = missing → the agent's live-LSP **Path B**. Exit **2** = venv/protobuf/scip_pb2 broken → tool fault, fix before use.
+- `scip_pb2.py` is vendored (compiled from `scip.proto`); regenerate only if the proto changes (keep `requirements.txt` protobuf pin in sync):
   `venv/bin/pip install grpcio-tools && venv/bin/python -m grpc_tools.protoc -I. --python_out=. scip.proto`
 
 ## Usage

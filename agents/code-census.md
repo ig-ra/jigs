@@ -17,11 +17,13 @@ There are two paths. **Prefer Path A (SCIP harvest)** — it produces the whole 
 
 A script harvests the mechanical skeleton from a SCIP index; **your only job is judgment** (scope + behavior-sensitivity + disposition). This eliminates the failure modes of live-LSP-per-symbol (positioning landmines, overload confusion, flaky availability, ~25-min runtimes).
 
+0. **Preflight** the tool + indexer BEFORE spending tokens (single gate — do not skip):
+   `<tool>/census doctor --lang rust`  (`<tool>` = `${CLAUDE_PLUGIN_ROOT}/tools/census-harvest`; if that variable is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/tools/census-harvest | sort -V | tail -1`.) The wrapper **auto-builds its tool-local venv + protobuf on first call** (one time; a "bootstrapping…" line on stderr is expected). Act on the exit code: **0** → proceed to step 1. **1** → no indexer on PATH for this lang → go straight to **Path B (live-LSP fallback)**; do NOT attempt to index. **2** → tool broken (venv/protobuf/scip_pb2) → this is an **environment fault, not a missing indexer**: report the `doctor` output verbatim and STOP (do NOT silently fall to Path B).
 1. **Index** the workspace (~seconds, whole repo, reflects current HEAD):
    `rust-analyzer scip <repo-root> --output /tmp/census-index.scip`  (Go: `scip-go`; TS: `scip-typescript` — same format.)
 2. **Harvest** the skeleton to **JSON** (`census` CLI, `harvest` subcommand):
    `<tool>/census harvest --index /tmp/census-index.scip --repo <repo-root> --file <target.rs> [--file ...] --boundary-struct <GodStruct> [--boundary-struct <GodStruct2>] --grep-token <receiver_var> [--grep-token <receiver_var2>] --lang rust --json <prefix>-census-skeleton.json --out <prefix>-census-evidence.md`
-   (`<tool>` = `/Users/igorr/work/dev-skills/igr/tools/census-harvest`.) `--boundary-struct` is the **god-struct TYPE NAME** you decouple from (from the Scope — e.g. `Store`, `StreamState`); the tool matches `/X#` (fields+inherent methods) **and** `[X]` (trait/impl methods), so ONE type name yields the complete boundary — **no trait enumeration, repo-agnostic**. `--grep-token` is the receiver variable name (e.g. `store`, `stream`) for a textual cross-check. Emits per symbol: **kind / exact anchor / full signature / visibility / edges_in / edges_out / boundary-members / test-flag**, plus a **boundary-coupling coverage floor** (member accesses only; bare type-mentions excluded; `#[cfg(test)]`-span detection catches inline test islands) and a **SCIP↔grep reconciliation** (grep-only flags = SCIP misses or textual FPs — review these few; do NOT re-grep by hand). Non-decoupling task → omit `--boundary-struct`. See `README.md`.
+   (`<tool>` = `${CLAUDE_PLUGIN_ROOT}/tools/census-harvest`; if that variable is unset/unsubstituted in your context, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/tools/census-harvest | sort -V | tail -1`.) `--boundary-struct` is the **god-struct TYPE NAME** you decouple from (from the Scope — e.g. `Store`, `StreamState`); the tool matches `/X#` (fields+inherent methods) **and** `[X]` (trait/impl methods), so ONE type name yields the complete boundary — **no trait enumeration, repo-agnostic**. `--grep-token` is the receiver variable name (e.g. `store`, `stream`) for a textual cross-check. Emits per symbol: **kind / exact anchor / full signature / visibility / edges_in / edges_out / boundary-members / test-flag**, plus a **boundary-coupling coverage floor** (member accesses only; bare type-mentions excluded; `#[cfg(test)]`-span detection catches inline test islands) and a **SCIP↔grep reconciliation** (grep-only flags = SCIP misses or textual FPs — review these few; do NOT re-grep by hand). Non-decoupling task → omit `--boundary-struct`. See `README.md`.
 3. **Judgment — write a COMPACT `judgment.json` (this is your ONLY generated output; do NOT re-type rows):**
    Read the skeleton. Emit `judgment.json` keyed by `"file:line"` anchor — **presence = in-scope**:
    `{ "src/…:718": {"behavior": "branches/ordering/side-effects…", "disposition": ""}, "src/…:702": {"disposition": ""}, … }`
@@ -50,7 +52,7 @@ Re-running your own `store\.`/`stream\.` sweeps re-does, *less precisely*, work 
 
 The same `--boundary-struct` values feed BOTH `scaffold` and `harvest` — decided once at P0 from the spec's boundary, not re-derived.
 
-**If the indexer is absent or errors** (no `rust-analyzer`/`scip-*`, index build fails), say so and fall to Path B.
+**If the indexer is absent or errors** (`census doctor` exit 1, or the index build itself fails despite the binary being present), say so and fall to Path B. (Exit 2 — venv/protobuf broken — is NOT this case: report and stop, per step 0.)
 
 ---
 

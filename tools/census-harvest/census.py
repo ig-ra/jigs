@@ -3,6 +3,7 @@
 census — SCIP-driven code-census tool for the igr:dev plan method.
 
 Subcommands (the deterministic rails; the model fills the two judgment gaps between them):
+  doctor    preflight  : check venv/protobuf/scip_pb2 (exit 2) + the indexer for --lang (exit 1)
   scaffold  P0 assist  : Scope template + candidate entry symbols + boundary preview
   harvest   P1 skeleton: symbols/signatures/edges/boundary-coupling/test-flag  -> skeleton.json
   merge     assemble   : skeleton.json + model's judgment.json -> census.md
@@ -15,7 +16,7 @@ e.g. a module.) A --grep-token receiver cross-check catches anything SCIP misses
 Language-neutral core (consumes SCIP). Per-language: the indexer (rust-analyzer scip / scip-go)
 and the test-detector (--lang).
 """
-import argparse, sys, os, json, re, bisect
+import argparse, sys, os, json, re, bisect, shutil
 from collections import defaultdict
 
 DEF_ROLE = 0x1
@@ -477,6 +478,77 @@ def cmd_verify_plan(args):
     sys.stderr.write(f"verify-plan: {len(dangling)} dangling, {len(cite_gap)} cite-not-in-census, "
                      f"{len(fallib)} FALLIBILITY, {len(typ)} type-diff, {len(argm)} arg-mismatch, {len(ambig)} ambiguous\n")
 
+# ---------- subcommand: doctor (preflight) ----------
+
+INDEXERS = {"rust": "rust-analyzer", "go": "scip-go", "ts": "scip-typescript", "none": None}
+INDEXER_HINT = {
+    "rust": "rustup component add rust-analyzer   (or: brew install rust-analyzer)",
+    "go":   "go install github.com/sourcegraph/scip-go/cmd/scip-go@latest",
+    "ts":   "npm i -g @sourcegraph/scip-typescript",
+}
+MARK = {"OK": "✓", "FAIL": "✗", "MISSING": "✗", "SKIP": "·"}
+
+def cmd_doctor(args):
+    """Single preflight source of truth. Checks the tool's own deps (venv/protobuf/scip_pb2 —
+    exit 2 if broken) AND the external indexer for --lang (exit 1 if missing = Path B trigger).
+    Run under the `census` wrapper so the interpreter is the tool-local venv python."""
+    tool_dir = os.path.dirname(os.path.abspath(__file__))
+    venv_py = os.path.join(tool_dir, "venv", "bin", "python")
+    ok_marker = os.path.join(tool_dir, "venv", ".deps-ok")
+    rows, hard_fail, indexer_fail = [], False, False
+
+    if sys.version_info[:2] >= (3, 12):
+        rows.append(("python3", "OK", f"{sys.version.split()[0]}  {sys.executable}"))
+    else:
+        rows.append(("python3", "FAIL", f"{sys.version.split()[0]} — census.py needs >= 3.12 (f-string syntax); "
+                                        "rebuild the venv with a 3.12+ interpreter"))
+        hard_fail = True
+
+    if os.path.exists(venv_py):
+        rows.append(("venv", "OK", venv_py + ("  (deps-ok)" if os.path.exists(ok_marker) else "  (NO deps-ok marker — build incomplete)")))
+    else:
+        rows.append(("venv", "FAIL", f"missing {venv_py} — run any census command once to bootstrap, or: "
+                                     "python3 -m venv venv && venv/bin/pip install -r requirements.txt"))
+        hard_fail = True
+
+    try:
+        import google.protobuf as _pb
+        rows.append(("protobuf", "OK", getattr(_pb, "__version__", "?")))
+    except Exception as e:
+        rows.append(("protobuf", "FAIL", f"import google.protobuf failed ({e.__class__.__name__}) — "
+                                         "fix: venv/bin/pip install -r requirements.txt"))
+        hard_fail = True
+
+    sys.path.insert(0, tool_dir)
+    try:
+        import scip_pb2  # noqa: F401
+        rows.append(("scip_pb2", "OK", "vendored, importable"))
+    except Exception as e:
+        rows.append(("scip_pb2", "FAIL", f"{e.__class__.__name__}: {e} — regenerate: "
+                                         "venv/bin/pip install grpcio-tools && venv/bin/python -m grpc_tools.protoc -I. --python_out=. scip.proto"))
+        hard_fail = True
+
+    lang = args.lang
+    idx_bin = INDEXERS.get(lang)
+    if idx_bin is None:
+        rows.append(("indexer", "SKIP", f"lang={lang} needs no external indexer"))
+    else:
+        path = shutil.which(idx_bin)
+        if path:
+            rows.append((f"indexer:{lang}", "OK", f"{idx_bin}  {path}"))
+        else:
+            rows.append((f"indexer:{lang}", "MISSING", f"{idx_bin} not on PATH — {INDEXER_HINT[lang]}"))
+            indexer_fail = True
+
+    w = max(len(r[0]) for r in rows)
+    for name, st, detail in rows:
+        sys.stderr.write(f"  {MARK.get(st, '?')} {name.ljust(w)}  {st:8} {detail}\n")
+    if hard_fail:
+        sys.stderr.write("census doctor: TOOL BROKEN (venv/protobuf/scip_pb2) — exit 2\n"); sys.exit(2)
+    if indexer_fail:
+        sys.stderr.write("census doctor: no indexer for this lang -> Path B (live-LSP fallback) — exit 1\n"); sys.exit(1)
+    sys.stderr.write("census doctor: all checks passed — exit 0\n")
+
 # ---------- CLI ----------
 
 def main():
@@ -513,6 +585,10 @@ def main():
     v.add_argument("--index", required=True); v.add_argument("--deps", default=DEPS)
     v.add_argument("--out")
     v.set_defaults(func=cmd_verify_plan)
+
+    dc = sub.add_parser("doctor", help="preflight: check venv/protobuf/scip_pb2 (exit 2 if broken) + the indexer for --lang (exit 1 if missing)")
+    dc.add_argument("--lang", default="rust", choices=["rust", "go", "ts", "none"])
+    dc.set_defaults(func=cmd_doctor)
 
     args = ap.parse_args()
     args.func(args)

@@ -1,3 +1,33 @@
 #!/usr/bin/env bash
+# census wrapper — runs census.py under a tool-local venv (protobuf runtime).
+#
+# The venv is gitignored (platform-specific, rebuilt per plugin version), so a fresh
+# install has none. This bootstraps it lazily on first use — idempotent, near-zero cost
+# once the `.deps-ok` marker exists. Set CENSUS_NO_BOOTSTRAP=1 to skip auto-build
+# (then create the venv yourself: python3 -m venv venv && venv/bin/pip install -r requirements.txt).
+set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$DIR/venv/bin/python" "$DIR/census.py" "$@"
+VENV="$DIR/venv"; PY="$VENV/bin/python"; OK="$VENV/.deps-ok"
+
+if [[ ! -f "$OK" && "${CENSUS_NO_BOOTSTRAP:-}" != "1" ]]; then
+  command -v python3 >/dev/null 2>&1 || { echo "census: python3 not found on PATH — install Python 3.12+, or run 'census doctor' after setting up the venv manually" >&2; exit 127; }
+  if ! python3 -c 'import sys; sys.exit(0 if sys.version_info[:2] >= (3,12) else 1)'; then
+    echo "census: python3 is $(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])') but census.py needs >= 3.12 (f-string syntax). Install 3.12+ and make it the 'python3' on PATH." >&2
+    exit 1
+  fi
+  echo "census: bootstrapping tool-local venv + protobuf (one time; set CENSUS_NO_BOOTSTRAP=1 to skip)…" >&2
+  python3 -m venv "$VENV" >&2
+  "$PY" -m pip install -q --disable-pip-version-check -r "$DIR/requirements.txt" >&2
+  if "$PY" -c 'import google.protobuf' 2>/dev/null; then
+    touch "$OK"
+  else
+    echo "census: protobuf install verification failed (see errors above). Try: rm -rf \"$VENV\" && rerun." >&2
+    exit 1
+  fi
+fi
+
+if [[ ! -x "$PY" ]]; then
+  echo "census: venv python missing at $PY (CENSUS_NO_BOOTSTRAP set?). Create it: python3 -m venv \"$VENV\" && \"$PY\" -m pip install -r \"$DIR/requirements.txt\"" >&2
+  exit 1
+fi
+exec "$PY" "$DIR/census.py" "$@"

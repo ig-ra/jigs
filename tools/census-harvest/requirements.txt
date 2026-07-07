@@ -1,0 +1,3 @@
+# Runtime deps for the census tool's local venv (built lazily by the `census` wrapper).
+# Pinned to match the vendored scip_pb2.py generation. Bump together with scip_pb2.py.
+protobuf==7.35.1
