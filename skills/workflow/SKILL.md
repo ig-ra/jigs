@@ -48,14 +48,12 @@ invisible background shell**. Background *waits/polls* are fine.
 
 ## Preflight (verify BEFORE spawn-worker)
 
-The pipeline is orchestrator-agnostic, but the **active backend** has its own environment needs. For
-the default **herdr** backend:
-
-1. **Inside a herdr pane** — both `HERDR_ENV` (=`1`) and `HERDR_PANE_ID` set (`[ "$HERDR_ENV" = 1 ] && [ -n "$HERDR_PANE_ID" ]`); a real pane, not just inherited env. Unset → STOP: start from inside a herdr pane. (In a pane ⇒ the `herdr` CLI is present — no binary check.)
-2. **`herdr` raw-CLI skill** available (external loose skill, typically `~/.claude/skills/herdr/SKILL.md`). Absent → STOP: install it; do not reimplement the CLI inline.
-
-`igr:herdr-pr-orchestration` and `igr-dev` ship in this plugin — no check. A **different** backend
-brings its own preflight instead of 1–2.
+The pipeline is orchestrator-agnostic — its only prerequisite is that the **active backend is usable**,
+so **run the backend's own preflight**. Default **herdr** backend (`igr:herdr-pr-orchestration`): the
+single gate is *"inside a herdr pane"* (`HERDR_ENV=1` + `HERDR_PANE_ID`) — which brings the herdr
+binary **and** its bundled `herdr` skill; see that skill's **§Preflight** for the exact check. A
+**different** backend brings its own. `igr:herdr-pr-orchestration` and `igr-dev` ship in this plugin —
+no check.
 
 ## The pipeline (agnostic — phases, methods, gates)
 

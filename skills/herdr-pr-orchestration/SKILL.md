@@ -17,7 +17,13 @@ is not defined here.
 **Core principle:** every *agent* runs in a pane the human can watch — never an invisible background
 shell (`codex exec`/`claude -p`/background bash). Background *waits/polls* are fine.
 
-Requires `HERDR_ENV=1`. Read the `herdr` skill for the raw CLI.
+## Preflight (single gate — verify before any operation)
+
+Run inside a **herdr pane**: `[ "$HERDR_ENV" = 1 ] && [ -n "$HERDR_PANE_ID" ]`. Unset → STOP: start from a herdr pane. **Being in a pane implies both herdr prerequisites** — so this is ONE check, not two:
+- the **`herdr` CLI/binary** — you are running under it; and
+- its bundled **`herdr` skill** (the raw-CLI reference) — ships *with* herdr (`github.com/ogulcancelik/herdr`, `SKILL.md`), so it rides along with the install. **Read it for the CLI verbs.**
+
+(Edge case: if the `herdr` skill is not in your available skills despite being in a pane, install it from the herdr repo into your skills dir — do not reimplement the CLI inline. Don't vendor it — it's versioned with herdr.)
 
 The spawn helper (referred to below as `scripts/herdr-spawn-worker.sh`) ships with this skill — run it by absolute path: `${CLAUDE_PLUGIN_ROOT}/skills/herdr-pr-orchestration/scripts/herdr-spawn-worker.sh`. If `${CLAUDE_PLUGIN_ROOT}` is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/skills/herdr-pr-orchestration/scripts/herdr-spawn-worker.sh | sort -V | tail -1`.
 
