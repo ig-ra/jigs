@@ -1,6 +1,6 @@
 ---
 description: Loop Codex adversarial-review on a target (spec / plan / code diff) until clean or max rounds, folding minimal fixes and parking over-engineering/breaking findings as Open Questions. Can be driven by a caller (igr-dev) with a single supplied focus/angle.
-argument-hint: "[target-file] [max=15] [--focus \"angle\"] [-- settled decisions to protect]"
+argument-hint: "[target-file] [max=10; 3 when --focus] [--focus \"angle\"] [-- settled decisions to protect]"
 allowed-tools: Bash, Read, Edit
 ---
 
@@ -17,7 +17,10 @@ substitution:
 
 - **target** (first token, optional): path to the artifact to review — a spec, a plan, or a
   doc. If omitted, review the working-tree **diff / branch** (the companion's default).
-- **max** (second token, optional): max rounds. **Default 15.**
+- **max** (second token, optional): max rounds. **Default 10** (self-directed whole-target
+  mode); **default 3 when `--focus` is supplied** (single-focus mode — one narrow angle should
+  converge fast; the caller owns the cross-angle budget and overrides explicitly when an angle
+  warrants more, e.g. the brainstorm method passes 7).
 - **--focus "\<text\>"** (optional flag, anywhere in `$ARGUMENTS`): a caller-supplied angle /
   framing for this run — typically ONE review dimension from a larger census. Strip it out
   before positional parsing, then use `\<text\>` as the core of every round's focus instead of

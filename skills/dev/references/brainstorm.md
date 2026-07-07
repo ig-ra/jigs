@@ -24,7 +24,7 @@ docs themselves.
 One companion call whose job is to *list the review angles*, not to review. Focus text shape (no
 backticks, no `$`):
 
-> Enumerate every review angle for the spec at PATH as a checklist. For each angle give: the
+> Enumerate every review angle for the spec at SPEC_PATH as a checklist. For each angle give: the
 > specific claim the spec makes, and the exact code location (file colon line) to verify it
 > against. Do NOT review or fix anything yet — output only the angle backlog. Do NOT run codegraph
 > (it hangs); use rg and sed only.
@@ -36,11 +36,17 @@ exists to surface **doc-specific** angles you would not have listed — keep tho
 
 For each angle in the backlog, drive L1 in single-focus mode:
 
-`/igr:codex-adversarial-loop PATH --focus "<angle text>"`
+`/igr:codex-adversarial-loop SPEC_PATH 7 --focus "<angle text>"`
 
 where `<angle text>` names the one failure-class + the code location + the standard framing
 (verify against actual code; no codegraph; flag over-engineering; no backticks/`$`). L1 loops that
 angle to clean and returns a per-focus verdict.
+
+The `7` is the **per-angle cap**, passed as L1's `max` arg (overriding its single-focus default of
+3 — spec angles run without census grounding, so they get more headroom than the plan method's 3).
+An angle not `SPEC-SOUND` at 7 → **STOP and ASK the owner**, same diagnostic as the plan method:
+are the remaining findings NEW failure-classes (legit progress — the owner may grant another
+batch) or re-raises/churn (a stall — fix the process, don't spend rounds)?
 
 - **Verify** each finding against the cited code before folding (Codex is a lead-generator).
 - **Fold minimal, park scope** (invariant 6). Faithfulness/ref/guard/narrow-correctness → apply;
@@ -67,12 +73,31 @@ Stop when **every census angle is cleared** AND a **completeness-critic** pass r
 `COVERAGE-COMPLETE`. The completeness critic is one call that asks: *what failure-class has NOT
 been probed?* — and finds nothing new. Focus shape:
 
-> For the spec at PATH, do not re-review cleared angles. Ask only: what failure-class has NOT yet
+> For the spec at SPEC_PATH, do not re-review cleared angles. Ask only: what failure-class has NOT yet
 > been probed at all? List any unprobed class with the code location to check, or say
 > COVERAGE-COMPLETE if none remain. No codegraph; rg and sed only. No backticks or dollar signs.
 
 This is **NOT** "one clean pass." Convergence signal in practice: angles return `SPEC-SOUND`
 first-try and findings degrade to consistency-of-your-own-edits rather than code gaps.
+
+## Budget & checkpoints (stage-separate)
+
+This stage owns its **own** budget — separate from the plan method's (which has a 10-round stage
+budget of its own). Three tiers:
+
+- **Per-angle cap = 7** (§2 above — passed as L1's `max`; STOP-and-ASK on a capped angle).
+- **Checkpoint every ~10 cumulative codex rounds** — count EVERY companion call: the census,
+  per-angle rounds, the re-census, the completeness critic. Report the scoreboard — angles
+  cleared / remaining / added-on-discovery, FIXED count, PARKED count, rounds spent — and ASK the
+  owner: continue / narrow / stop. A checkpoint is a **human gate, not a kill**: append-on-discovery
+  grows the backlog legitimately; this is where the owner sees why.
+- **Hard backstop ~30 rounds total** — stop regardless, dump the state + the remaining backlog.
+  The safety net for unattended runs.
+
+**The counter lives in the artifact, not the conversation:** keep a `rounds-spent: N` line in the
+spec's revision log, updated at each fold (the log already bumps per round — free; survives
+compaction / session resume). L1 reports rounds-run per invocation in its final report — sum those;
+do not recount from memory.
 
 ## Spec angle taxonomy (seed the census)
 

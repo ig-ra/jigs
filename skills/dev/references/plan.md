@@ -9,6 +9,8 @@ diffs** (checked against the census / LSP, no model needed) + a few **judgment a
 adversarially with an external model. Target: ≤ ~7 codex rounds, provably ≥ the old broad loop
 (which survives as the final pass).
 
+**Preflight:** needs the `superpowers` and `codex` plugins — verify per SKILL.md §Preflight; if absent, STOP with the `/plugin install` line.
+
 > **census here = code ground-truth (facts the plan depends on)** — NOT the spec method's
 > exploratory *angle*-census. Plan angles stay a fixed list; only the facts are discovered.
 
@@ -36,7 +38,7 @@ section — entry symbols / boundary / coverage checklist. This is the P1 subage
 symbols exist*, which is not a judgment). For a decoupling task:
 1. From the spec, decide the **boundary god-struct(s)** + **target file(s)** — judgment; precedes scaffold.
 2. Build the SCIP index once: `rust-analyzer scip <repo> --output /tmp/<prefix>-index.scip` — **reused by P1**.
-3. `census scaffold --index <idx> --repo <repo> --file <target> [--file …] --boundary-struct <X> [--boundary-struct <Y>] --out <prefix>-census.md` → writes the `## Scope` template with a **deterministic candidate-entry list** (pub/pub(crate) fns in the targets + boundary-touch counts) + a **boundary preview**.
+3. `<tool>/census scaffold --index <idx> --repo <repo> --file <target> [--file …] --boundary-struct <X> [--boundary-struct <Y>] --out <prefix>-census.md` → writes the `## Scope` template with a **deterministic candidate-entry list** (pub/pub(crate) fns in the targets + boundary-touch counts) + a **boundary preview**. (`<tool>` — here and everywhere below — = the igr plugin's census CLI dir: `${CLAUDE_PLUGIN_ROOT}/tools/census-harvest`; if that variable is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/tools/census-harvest | sort -V | tail -1`.)
 4. Judgment on top: **prune candidates to the real entry frontier**, write the **coverage checklist**, flag behavior-sensitive symbols + explicit exclusions.
 
 Enumeration is now identical across runs; only the prune + checklist (the actual scope decision) is judgment — where it belongs. (Non-decoupling task, no god-struct → skip scaffold, enumerate inline.)
@@ -51,7 +53,7 @@ Extract every fact the plan will depend on, from code **at the plan's HEAD**, in
 table. **Default: the `igr:code-census` agent, model `sonnet`** (Opus wasteful; Haiku too weak — it
 satisfices judgment, ~13 rows vs ~330). The agent has **two paths (full detail in its def):**
 - **PRIMARY — SCIP harvest.** `rust-analyzer scip <repo>` → the `census-harvest` tool
-  (`igr/tools/census-harvest/`) emits the mechanical skeleton — every symbol + exact signature +
+  (`<tool>` — defined in P0 step 3) emits the mechanical skeleton — every symbol + exact signature +
   edges_in/edges_out + a deterministic **boundary-coupling coverage floor** (more precise than a
   `store.`/`stream.` grep: resolved, no false positives) — in **~seconds**. The agent then does **only
   judgment**: scope + behavior-sensitivity (whole-body read) + disposition. No per-symbol LSP, no
@@ -216,9 +218,11 @@ call vs captured once; a scoped source read as a global one). Pin the evaluation
 the signature. This class is **cross-cutting** — it slips past a narrow read of any single lens (it
 repeatedly surfaced only in the broad pass), so probe it explicitly here.
 
-For each: `/igr:codex-adversarial-loop PLAN_PATH --focus "<one angle, exhaustive-in-lens>"`, loop
+For each: `/igr:codex-adversarial-loop PLAN_PATH 3 --focus "<one angle, exhaustive-in-lens>"`, loop
 that angle until a pass returns **zero new findings** (ANGLE-SOLID; remaining = parked) **OR a hard
-cap of 3 rounds** — whichever first. Different model from the plan's author (codex) is the point —
+cap of 3 rounds** — whichever first. **The cap travels as L1's `max` arg** (`3` — matches L1's
+single-focus default; pass it anyway, intent explicit). When L1 returns capped, **YOU** run the
+STOP-and-ASK triage below — L1 only reports; the caller owns the ASK. Different model from the plan's author (codex) is the point —
 external adversary. Feed each pass the census + FIXED + PARKED; fold minimal inline (main), park
 scope/breaking (invariants 5–6). Focus-string rules: **no backticks, no `$`, no codegraph** (it
 hangs — rg/sed only); tell it to **enumerate EVERY instance in the lens, not the top one**, and verify
@@ -245,7 +249,7 @@ This is what keeps rounds within the cap. Template:
 
 **The 3-round cap is a uniform diagnostic tripwire, not a work budget.** With front-loading (census +
 P3a verify-plan) an angle should converge in **~1–2** rounds. **If an angle is not SOLID at 3 rounds,
-STOP and ASK the owner** — never silently grind toward the old 15, never silently kill. Report which
+STOP and ASK the owner** — never silently grind on, never silently kill. Report which
 case it is: the remaining findings are **NEW defect classes** (legit progress — the owner may grant
 another batch) or **re-raises / churn** (a stall — fix the *process*, e.g. a class the pre-pass should
 have caught, don't spend rounds). Hitting the cap is a **checkpoint, not a failure**. Uniform across
@@ -277,7 +281,9 @@ holds. Until then: flat cap-3 + ASK.
 ### (c) Codex full-plan pass — broad, looped **till SOLID**
 
 After all angles are SOLID, run the **broad** loop over the whole plan (this is the old method —
-`/igr:codex-adversarial-loop PLAN_PATH` with the full fixed checklist). It is the **convergence
+`/igr:codex-adversarial-loop PLAN_PATH <remaining>` with the full fixed checklist, where
+`<remaining>` = **10 − rounds spent in P3b**; if that is < 3, STOP and ASK before starting —
+don't launch the closer with no budget). It is the **convergence
 net**: per-angle folds interact (an angle-B fix can reopen A), and a bug fitting no single lens
 surfaces here. This pass being present is why the method is **provably ≥ the old broad loop** — worst
 case equals it. If it finds anything: fold → re-run the FULL pass till clean (don't re-cycle angles —
@@ -289,9 +295,11 @@ Stop when the **full-plan pass returns `PLAN-SOUND`** (zero new; a full clean pa
 Two nested budgets:
 - **Per-angle cap = 3 rounds, then STOP and ASK** (the uniform tripwire, §(b)) — not a silent grind, not
   a silent kill. This is the primary control; it catches a runaway angle at the source.
-- **Global backstop ~12 total codex rounds** (≈ 3 angles × 3 + P3c) — the mechanical pre-pass + census
-  + `verify-plan` pre-strip the bulk, so convergence should land in **~5–8 total**; if the global budget
-  hits before full-solid, stop and report the open findings.
+- **Global stage budget = 10 total codex rounds** (P3b + P3c combined; this stage's own budget —
+  separate from the brainstorm method's) — the mechanical pre-pass + census + `verify-plan` pre-strip
+  the bulk, so convergence should land in **~5–8 total**. P3c's `max` = the remainder (10 − P3b rounds
+  spent); a remainder < 3 → STOP and ASK before P3c. If the budget hits before full-solid, stop and
+  report the open findings.
 
 Per-angle passes needn't be perfect — the final full pass mops residual.
 
