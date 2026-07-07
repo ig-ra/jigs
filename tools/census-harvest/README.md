@@ -1,0 +1,69 @@
+# census — SCIP-driven code census
+
+One CLI (`census`) that produces a code census's **mechanical spine** deterministically from a [SCIP](https://github.com/sourcegraph/scip) index, so a model only fills the two **judgment** gaps. The P1 accelerator for the `igr:dev` **plan** method: instead of a model driving LSP/grep per symbol (~25 min, positioning landmines, flaky LSP), the tool harvests the complete substrate in seconds.
+
+## Subcommands (the deterministic rails)
+```
+census scaffold     P0 assist : Scope template + candidate entry symbols + boundary preview
+census harvest      P1        : symbols/signatures/edges/boundary-coupling/test-flag → skeleton.json
+census merge        assemble  : skeleton.json + model's judgment.json → census.md
+census verify-plan  P3a       : diff the plan's factual claims (sigs/return-types/cites) vs SCIP → divergences
+```
+The model fills the gaps between them: **scope** (which candidates are in the change surface) and **behavior/disposition** (a compact `judgment.json` — never re-typed rows).
+
+## `verify-plan` — mechanical P3a pre-pass
+After the plan is written, this diffs its **structured factual claims** against ground truth so the model only **fixes** flagged lines instead of hand-sweeping the plan. Parses the plan's **code-fenced `fn` signatures** and **`[C:name]` citations**; resolves each against the **full SCIP index** (all symbols — incl. TO-side seam files not in the 3-file skeleton) + the skeleton (census rows). Reports:
+- **dangling citations** (`[C:x]` not in code) and **cited-but-not-in-census** (in code, missing from census rows);
+- **FALLIBILITY mismatches** — `Result` invented/dropped vs the real method (highest-signal — this is the class that otherwise leaks into codex review);
+- **return-type diffs** — candidates (a port returning `dyn`/re-keyed type may be *intended* abstraction — verify);
+- **arg-count mismatches**; **ambiguous pins** (name → several real defs, verify by hand).
+
+Deferred pins (empty `->`, or a `/*… at HEAD */` standing in for omitted args/type) are **not** flagged. Multi-line sigs + `/* */` block comments are handled. Prose ("returns X") and behavior/branch semantics are **out of scope** — those stay for the model + P3b codex.
+
+## Boundary — repo-agnostic
+Name the **god-struct type** you decouple from: `--boundary-struct Store`. The tool matches SCIP symbols `/Store#` (fields + inherent methods) **and** `[Store]` (trait/impl methods) — so **one type name yields the complete boundary, no trait enumeration**. Works on any Rust repo (pass that repo's god-struct). `--boundary-type` is a raw-substring fallback (e.g. a module). Omit both for non-decoupling tasks.
+
+`--grep-token store` adds a textual receiver cross-check: the harvest reports **grep-only flags** (lines grep finds but SCIP didn't resolve to a boundary member = SCIP misses or textual FPs) so the model reviews a bounded list instead of re-grepping. Comment-aware; `#[cfg(test)]` spans excluded.
+
+## Why SCIP (not live LSP)
+Same engine (rust-analyzer), batch dump not per-symbol calls: one `index.scip` has every symbol + signature + resolved reference. No positioning (pre-resolved), no per-call model cost, no server flakiness. The sibling `code-census` agent has the live-LSP fallback for when no indexer exists.
+
+## Language-neutral core
+Consumes SCIP. Swap the indexer per language: Rust `rust-analyzer scip`, Go `scip-go`, TS `scip-typescript`. Per-language test-detector via `--lang` (rust = `#[cfg(test)]` spans).
+
+## Setup
+- `rust-analyzer` on PATH.
+- Tool-local venv with `protobuf` (created once): `python3 -m venv venv && venv/bin/pip install protobuf`. The `census` wrapper uses it.
+- `scip_pb2.py` is vendored (compiled from `scip.proto`); regenerate only if the proto changes:
+  `venv/bin/pip install grpcio-tools && venv/bin/python -m grpc_tools.protoc -I. --python_out=. scip.proto`
+
+## Usage
+```
+# 1. index (seconds; current HEAD)
+rust-analyzer scip /path/to/repo --output /tmp/index.scip
+
+# 2. (optional) scaffold the P0 Scope
+census scaffold --index /tmp/index.scip --repo /path/to/repo \
+    --file src/store/tiered_compaction.rs --boundary-struct Store --boundary-struct StreamState \
+    --out prefix-census.md
+
+# 3. harvest the skeleton
+census harvest --index /tmp/index.scip --repo /path/to/repo \
+    --file src/store/tiered_compaction.rs [--file src/store.rs] \
+    --boundary-struct Store --boundary-struct StreamState \
+    --grep-token store --grep-token stream --lang rust \
+    --json skeleton.json --out skeleton.md
+
+# 4. model writes judgment.json  { "file:line": {"behavior": "...", "disposition": ""}, ... }
+
+# 5. render
+census merge --skeleton skeleton.json --judgment judgment.json --out census-body.md
+
+# 6. (P3a) after the plan is written, verify its claims vs code
+census verify-plan --plan prefix-plan.md --skeleton skeleton.json --index /tmp/index.scip
+```
+
+## What it does NOT do (judgment — the model's job)
+- **scope** — which harvested symbols are in the change surface.
+- **behavior?** — read the body, flag branches/ordering/side-effects.
+- **disposition** — stays / moves / seam / rename.

@@ -54,7 +54,11 @@ rung would be wasteful — a plan's surface is closed).
 1. **Upstream once:** `/igr:brainstorm <idea>` → hardened, SPEC-SOUND spec.
 2. **Spawn** the worker (herdr `scripts/herdr-spawn-worker.sh`); own the branch name (`saw-XXXX`).
 3. **Phase I — PLAN** (claude opus): `/igr:plan <spec>`. Human resolves Open Questions
-   (**STOP, do not proceed on any unresolved OQ**). Capture the session UUID (herdr hand-off).
+   (**STOP, do not proceed on any unresolved OQ**). Then surface the plan's **`## Appendix: Possible
+   spec updates`** (spec fold-back — findings that belong in the *spec*, not the plan): **OFFER to
+   apply them to the canonical spec; ASK, never auto-update** — the canonical spec may live elsewhere
+   (another repo / doc) and is owner-owned, so the owner decides whether/where. Capture the session
+   UUID (herdr hand-off).
 4. **Phase II — IMPLEMENT** (codex xhigh): herdr swaps the pane to codex → `/igr:impl` (find /
    use the plan → implement → squash → **full gate once**; pass any tweaks, e.g. "gate once after
    squash, not per task") → herdr rebases onto `main` for stacking.
@@ -77,5 +81,8 @@ rung would be wasteful — a plan's surface is closed).
 ## Gates (STOP and escalate)
 
 - Any Open Question unresolved after `/igr:plan` → STOP; the human resolves before implement.
+- Plan produced **spec fold-back** items (`## Appendix: Possible spec updates`) → **OFFER to update the
+  canonical spec; ASK, never auto** (the canonical spec may live elsewhere; the owner decides
+  whether/where to apply).
 - A plan `/igr:codex-adversarial-loop` that hit max rounds without converging → STOP; escalate.
 - A failing check after PR → surface it; do not silently retry-merge.
