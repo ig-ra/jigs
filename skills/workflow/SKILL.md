@@ -10,7 +10,7 @@ description: Use when shipping a change as a ladder of small worktree-isolated P
 `igr-workflow` is the **orchestration** layer (L3). It ships a change as a ladder of small PRs by
 **composing two existing skills — it reimplements neither**:
 
-- **`herdr-pr-orchestration`** supplies all *mechanics*: worker panes, worktrees, the
+- **`igr:herdr-pr-orchestration`** supplies all *mechanics*: worker panes, worktrees, the
   session-UUID hand-off, squash, rebase, the test gate, push, PR create, check-watching, merge.
 - **`igr-dev`** supplies the per-artifact **methods**: how to produce and harden a spec, a plan, an
   implementation, and a review (census for specs, checklist for plans, `/simplify` +
@@ -19,29 +19,30 @@ description: Use when shipping a change as a ladder of small worktree-isolated P
 
 igr-workflow's only job is the **pipeline** — it moves a unit of work through the phases and, at
 each one, calls the matching `/igr-dev` method instead of any inline logic. It owns no review angles
-(those live in `igr-dev`) and no git mechanics (those live in `herdr-pr-orchestration`).
+(those live in `igr-dev`) and no git mechanics (those live in `igr:herdr-pr-orchestration`).
 
 **REQUIRED SUB-SKILLS:**
-- **`herdr-pr-orchestration`** — read it for the full per-unit pipeline, the spawn helper, the
+- **`igr:herdr-pr-orchestration`** — read it for the full per-unit pipeline, the spawn helper, the
   UUID hand-off, and every herdr gotcha (ghost-suggestion, finish-watch poll, worktree dialog).
+  **Ships in this plugin** (`skills/herdr-pr-orchestration/`) — vendored, not external.
 - **`igr-dev`** — read it for the per-method recipes and the §1 review invariants.
-- **`herdr`** — the raw CLI (requires `HERDR_ENV=1`).
+- **`herdr`** — the raw CLI reference skill (requires `HERDR_ENV=1`); still an external loose skill.
 
 ## Preflight — required environment (verify BEFORE spawning the first worker)
 
-igr-workflow composes the **herdr session** it runs inside + two **loose skills** (`herdr-pr-orchestration`,
-`herdr`). Neither the herdr environment nor a loose skill is a Claude Code *plugin*, so **none can be
-declared in `plugin.json` `dependencies`** (that field is plugins-only) — they are gated here at
-runtime. A missing one otherwise fails mid-ladder. Check, and STOP with the exact fix if any is absent:
+igr-workflow runs inside a **herdr session** and reads the raw-CLI **`herdr` skill** (still external —
+a herdr session and a loose skill are not plugins, so neither can be declared in `plugin.json`
+`dependencies`). `igr:herdr-pr-orchestration` and `igr-dev` now ship *in* this plugin, so they need no
+check. Verify the external bits before spawning; a missing one fails mid-ladder:
 
 1. **Inside a herdr pane** — both `HERDR_ENV` (=`1`) and `HERDR_PANE_ID` must be set (`[ "$HERDR_ENV" = 1 ] && [ -n "$HERDR_PANE_ID" ]`). igr-workflow drives herdr panes, so a real pane — not just inherited env — is required. Unset → STOP: start this from inside a herdr pane. (Being in a pane implies the `herdr` CLI is present — no separate binary check.)
-2. **`herdr-pr-orchestration` + `herdr` skills** — confirm both are in your available skills (loose skills, typically `~/.claude/skills/<name>/SKILL.md`; best-effort `ls ~/.claude/skills/herdr-pr-orchestration/SKILL.md 2>/dev/null`). Absent → STOP: install the herdr skills; do **not** reimplement the pane/git mechanics inline.
+2. **`herdr` skill** (raw CLI reference) — confirm it is in your available skills (loose skill, typically `~/.claude/skills/herdr/SKILL.md`). Absent → STOP: install the `herdr` skill; do **not** reimplement the CLI mechanics inline.
 
-`igr-dev` ships in this same plugin — always present, no check. (If herdr is ever packaged as a plugin, add it to `plugin.json` `dependencies` and drop check 2.)
+(If herdr is ever packaged as a plugin, add it to `plugin.json` `dependencies` and drop check 2.)
 
 ## Where igr-dev replaces herdr's inline steps
 
-Run the `herdr-pr-orchestration` pipeline exactly as written, but drive each phase's **work**
+Run the `igr:herdr-pr-orchestration` pipeline exactly as written, but drive each phase's **work**
 through the matching `/igr-dev` method (each defines how that work is done):
 
 | herdr step | drive with | igr-dev defines |
@@ -81,12 +82,12 @@ rung would be wasteful — a plan's surface is closed).
 ## Seam / boundaries (do not leak)
 
 - igr-workflow **transitions phases + delegates**; it does not review (that is `igr-dev`) and does
-  not do raw git/pane mechanics (that is `herdr-pr-orchestration`).
+  not do raw git/pane mechanics (that is `igr:herdr-pr-orchestration`).
 - The **§1 review invariants** (companion-only, no-codegraph, verify-before-fold, park-vs-apply,
   never-commit-docs) are inherited through `igr-dev` — do not re-litigate them here.
 - The **herdr gotchas** (poll-don't-`--status done`, ghost-suggestion detection, `Space`+`C-c C-c`
   exit, pre-create worktree, verify cwd before codex) are inherited through
-  `herdr-pr-orchestration` — do not duplicate them here.
+  `igr:herdr-pr-orchestration` — do not duplicate them here.
 - **Human-in-the-loop:** the human resolves Open Questions, opens/merges PRs, and often drives
   panes directly. If you see activity you did not initiate, **ASK — do not assume or auto-revert.**
 
