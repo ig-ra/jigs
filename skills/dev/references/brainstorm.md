@@ -32,6 +32,13 @@ backticks, no `$`):
 This yields an **angle backlog**. Seed your reading of it with the taxonomy below, but the census
 exists to surface **doc-specific** angles you would not have listed — keep those.
 
+**Cluster, rank, cap at 5.** The raw census often emits 12–15 fine-grained angles — do NOT loop
+them one-by-one. Cluster near-duplicates into ONE focus each (e.g. error-path + fallibility over
+the same surface = one loop); rank the clusters by risk — data-loss / isolation / correctness
+first, mechanics / wiring last; **run at most 5 angle-clusters**. Whatever doesn't fit: fold into
+the nearest cluster's focus text, or list it in the backlog as `UNPROBED` for the owner to see at
+the next checkpoint — **never silently drop it, never silently run a 6th**.
+
 ### 2. Per-angle loop
 
 For each angle in the backlog, drive L1 in single-focus mode:
@@ -52,8 +59,10 @@ batch) or re-raises/churn (a stall — fix the process, don't spend rounds)?
 - **Fold minimal, park scope** (invariant 6). Faithfulness/ref/guard/narrow-correctness → apply;
   new abstraction/knob/module or broadened scope → park to Open Questions, keep going.
 - Mark an angle **cleared** when it returns `SPEC-SOUND`.
-- **Append-on-discovery:** a finding that reveals a new failure-class **adds an angle** to the
-  backlog. The backlog grows as you learn.
+- **Append-on-discovery (within the cap):** a finding that reveals a new failure-class → **fold it
+  into the nearest of the 5 clusters** (widen that cluster's focus text). If it fits none, do NOT
+  silently add a 6th angle — list it as `UNPROBED`; the owner decides at the next checkpoint
+  whether to grant it a slot.
 
 ### 3. Clean-rewrite pass (LOAD-BEARING — not cosmetic)
 
@@ -64,8 +73,8 @@ fresh read that exposes bugs the annotated doc hid — several real bugs surface
 
 ### 4. Re-census + per-angle on the clean doc
 
-New angles appear post-rewrite (the doc reads differently). Re-run the census on the clean doc and
-loop the fresh angles.
+New angles appear post-rewrite (the doc reads differently). Re-run the census on the clean doc,
+**re-cluster to ≤ 5** (same cap + ranking as §1), and loop the fresh angles.
 
 ### 5. Stop condition (the STRONG stop)
 
@@ -77,6 +86,9 @@ been probed?* — and finds nothing new. Focus shape:
 > been probed at all? List any unprobed class with the code location to check, or say
 > COVERAGE-COMPLETE if none remain. No codegraph; rg and sed only. No backticks or dollar signs.
 
+If the critic (or the `UNPROBED` list) names an unprobed class, **ASK the owner**: grant it an
+angle slot or explicitly accept the gap — never silently drop it, never silently exceed the cap.
+
 This is **NOT** "one clean pass." Convergence signal in practice: angles return `SPEC-SOUND`
 first-try and findings degrade to consistency-of-your-own-edits rather than code gaps.
 
@@ -85,6 +97,8 @@ first-try and findings degrade to consistency-of-your-own-edits rather than code
 This stage owns its **own** budget — separate from the plan method's (which has a 10-round stage
 budget of its own). Three tiers:
 
+- **Angle cap = 5 clusters** per census pass (§1 — cluster + rank; overflow → `UNPROBED`,
+  owner-gated at checkpoints).
 - **Per-angle cap = 7** (§2 above — passed as L1's `max`; STOP-and-ASK on a capped angle).
 - **Checkpoint every ~10 cumulative codex rounds** — count EVERY companion call: the census,
   per-angle rounds, the re-census, the completeness critic. Report the scoreboard — angles
