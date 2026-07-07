@@ -1,59 +1,83 @@
 ---
 name: herdr-pr-orchestration
-description: Use when shipping a hard change as a ladder of small, worktree-isolated PRs by driving herdr worker panes from an orchestrator pane — one claude pane per unit to author spec/plan, codex to implement — across one or more sessions; or any time you orchestrate multiple long-running claude/codex agents in separate herdr panes and git worktrees.
+description: The herdr mechanics BACKEND for igr:workflow — implements the workflow backend operations (spawn-worker, dispatch, watch-finish, swap-agent, resume-session, shape-git, ship) with herdr panes + git worktrees. Use when igr:workflow (or any orchestrator) needs the how of driving long-running claude/codex agents in watchable herdr panes. The pipeline itself (phases, methods, gates) lives in igr:workflow — this skill is the HOW, not the what.
 ---
 
-# herdr PR Orchestration
+# herdr PR Orchestration — mechanics backend
 
-## Overview
-Drive a hard change as a **ladder of small PRs**, one **herdr worker pane per unit** in its own git worktree.
-From the orchestrator pane you spawn workers, dispatch one-line prompts, and watch them via the `herdr` CLI.
-Each unit runs **three phases, one agent each**: **Phase I — PLAN** (claude `--model opus`: write the plan, human resolves OQs, harden via `/codex-adversarial-loop`, **remember the session UUID**) → **Phase II — IMPLEMENT** (codex xhigh: implement → squash → rebase → gate → `/review`) → **Phase III — SIMPLIFY + SHIP** (claude, **resuming the Phase-I session**: `/simplify` + `/igr:code-review-skip-simplify xhigh` → push → PR → watch checks). The human watches, decides Open Questions, and opens/merges PRs.
+## What this is
 
-**Core principle:** every agent runs in a pane the human can watch; nothing runs in an invisible background
-shell. The orchestrator's job is dispatch + watch + report + gate — not to do the work itself.
+This skill is the **herdr implementation** of `igr:workflow`'s **backend interface**. igr:workflow owns
+the *pipeline* (phase order, which `/igr` method runs each phase, gates, hand-off); **this skill owns
+only the mechanics** — how to drive herdr panes + git worktrees to execute the backend operations.
+It contains **no pipeline narrative and no work-step method choices** (those are the caller's
+`/igr:plan|impl|review`). Standalone use: you can drive these mechanics directly, but the *what/when*
+is not defined here.
 
-## When to use
-- A multi-PR refactor/extraction/migration where each rung is a small behavior-preserving PR.
-- Any task where you drive ≥1 long-running claude/codex agent in herdr worktree panes.
-- NOT for a single quick edit (just do it), and NOT without explicit human opt-in to multi-agent orchestration.
+**Core principle:** every *agent* runs in a pane the human can watch — never an invisible background
+shell (`codex exec`/`claude -p`/background bash). Background *waits/polls* are fine.
 
 Requires `HERDR_ENV=1`. Read the `herdr` skill for the raw CLI.
 
 The spawn helper (referred to below as `scripts/herdr-spawn-worker.sh`) ships with this skill — run it by absolute path: `${CLAUDE_PLUGIN_ROOT}/skills/herdr-pr-orchestration/scripts/herdr-spawn-worker.sh`. If `${CLAUDE_PLUGIN_ROOT}` is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/skills/herdr-pr-orchestration/scripts/herdr-spawn-worker.sh | sort -V | tail -1`.
 
-## The pipeline (per unit of work)
-**Three phases, each owned by ONE agent. The hand-off currency is the claude session UUID** — Phase I captures it; Phase III resumes the SAME session. Phase II is a different agent (codex) entirely.
+## Backend operations (herdr implementation)
 
-**Setup.** `git -C <repo-root> fetch && git pull --ff-only origin main`. Spawn with `scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` → it **pre-creates the worktree+branch** (`git worktree add -b <branch> .worktrees/<dir> <base>`, default base `origin/main`), then launches **plain `claude --model opus`** (NOT `claude --worktree`) and renames. You OWN the branch name — match the human's Linear `gitBranchName` form (e.g. `igor/saw-8194-needle-storage`), include the `saw-XXXX` id so the PR auto-links. Stack by passing a parent branch as `[base-ref]`.
+Each maps a `igr:workflow` backend operation to concrete herdr mechanics. Read the matching **Gotcha**
+before running any of them — the gotchas are where the real failures live.
 
-### Phase I — PLAN  (agent: **claude `--model opus`**)
-1. **SPEC** (only if no spec exists) — claude writes/refines it → `/codex-adversarial-loop` on the SPEC until SPEC-SOUND. If a spec already exists, skip straight to step 2.
-2. **`superpowers:writing-plans`** — claude first reconciles spec-drift (copy canonical spec in, re-grep cited sites vs HEAD, report drift), then writes the plan (plan-ONLY, scope-locked).
-3. **Human resolves the Open Questions** the plan surfaced. **STOP and escalate — do NOT proceed with any OQ unresolved.**
-4. **`/codex-adversarial-loop` on the PLAN, `max=15`** → until **PLAN-SOUND**. **GATE:** watch each loop; report sound + any new OQs. **Escalate + STOP if (a) it hit max-15 without converging, OR (b) any OQ remains.** Clean-converge + 0 OQs → proceed.
-5. **Remember the claude session UUID.** `/rename` it on launch; record the UUID — **Phase III resumes THIS session.** This is the hand-off; do not lose it.
+### spawn-worker
+`git -C <repo-root> fetch && git pull --ff-only origin main`, then
+`scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` → it **pre-creates the
+worktree+branch** (`git worktree add -b <branch> .worktrees/<dir> <base>`, default base `origin/main`),
+launches **plain `claude --model opus`** (NOT `claude --worktree`) cd'd in the worktree, `/rename`s,
+and prints the pane id, worktree path, branch, and the **claude session UUID** (the session handle).
+You OWN the branch name — match the tracker's `gitBranchName` form (e.g. `igor/saw-8194-needle-storage`),
+include the `saw-XXXX` id so the PR auto-links. **Stack** by passing a parent branch as `[base-ref]`.
 
-### Phase II — IMPLEMENT  (agent: **codex `-c model_reasoning_effort=xhigh`**)
-6. **Close claude, switch the pane to codex.** Clear the line w/ `Escape` first, then `C-c C-c`; if a **Keep/Remove-worktree dialog** appears, `Enter` = Keep, never Remove. **Verify `foreground_cwd` and `cd <worktree>` as its OWN command** before launching codex — claude may leave the shell at repo root. `direnv allow && codex -c model_reasoning_effort=xhigh`.
-7. **Implement via `superpowers:implement-plans`, subagent-driven**, scope-locked (focused per-task checks; diff-only reviewer subagents).
-8. **Squash** all work to ONE commit.
-9. **Pull + rebase onto latest `origin/main`** (`git fetch` first; resolve conflicts preserving both behaviors — a sibling rung may have landed and touched the same files).
-10. **Test gate, ONCE, on the rebased commit:** `cargo clippy --workspace --all-targets --all-features -- -D warnings` + `cargo fmt --all --check` + `cargo test --workspace --all-features` + `make net` + `cargo build -p <crate>` standalone; explain counters must not move. Never commit docs/generated dirs.
-11. **`/review` — PR-style, vs `main`, orchestrator-driven, IN the codex pane.** The in-TUI `/review` (clean pr-style) — **NOT** the raw `codex review --base main` shell-subcommand whose terminal diff-dump the human dislikes. Watch; read the verdict. **Fix only simple + needed; park complex/risky findings and escalate.** Then STOP before push/PR.
+### dispatch
+`herdr pane run <pane> '<ONE-LINE prompt>'` then `herdr pane send-keys <pane> Enter` (bracketed-paste
+often swallows the Enter). One line only — embedded newlines submit partial. Single-quote the arg;
+avoid apostrophes/backticks/`$`/double-quotes inside.
 
-### Phase III — SIMPLIFY + SHIP  (agent: **claude, RESUME the Phase-I session**)
-12. **`claude --resume <uuid>`** (fresh pane if gone; verify cwd). **FIRST notify it: codex implemented the plan (give the commit SHA) AND already ran the full gate green → go STRAIGHT to the reviews, do NOT re-gate** (re-running `--workspace` test + net wastes ~30 min; re-gate only the touched crate IF a fix changes code). It's the planning session — it has no memory of codex's work.
-13. **`/simplify` + `/igr:code-review-skip-simplify xhigh`.** `/simplify` = the `code-simplifier` agent (auto-scopes to recently-modified code, but the tree is committed → scope it to the diff: `/simplify the changes in git diff HEAD~1..HEAD`, no preserve-X essays). **Fix only simple + needed; park complex.** (A trivially-mechanical rung MAY be downgraded by the human to a lighter `/code-review high` — but this chain is the DEFAULT.)
-14. **Amend** the simplify/review fixes into the single commit (PR stays one clean commit; `git add` only tracked files, never the untracked `docs/`).
-15. **Push + open the PR** (if the human delegated it) → `git push -u origin <branch>` + `gh pr create --base main` (body: scope + verification + the `SAW-XXXX` link; end with the Claude Code line). The human opens PRs by default but often delegates.
-16. **Watch the PR pass all checks** — poll `gh pr checks <branch>` until green; report the URL + check status. If a check fails, surface it. The human also drives panes directly — if you see something you didn't initiate, ASK, don't assume; don't auto-revert.
+### watch-finish
+Background **POLL for status ≠ `working`** (never `herdr wait agent-status --status done`), then
+**verify on fire** — see the Gotchas (the codex loop / `/review` / subagent implement all flicker
+working↔idle, so watch the pane FOOTER and re-poll). Never trust a scrollback text marker.
 
-## Stacking PRs
-When the parent PR isn't merged yet, stack the next on it: pass the **parent branch as the `[base-ref]` arg** to
-the helper → `git worktree add -b <child-branch> .worktrees/<dir> <parent-branch>` bases the new branch directly
-on the parent's tip (no `reset --hard` needed). After the parent merges, `git rebase origin/main` drops the
-now-duplicate parent commits, leaving only the child's commits.
+### swap-agent  (claude → codex, and back)
+Close the current agent, then launch the next in the SAME pane. Close: clear the line FIRST
+(`send-keys <pane> Escape`), THEN `C-c C-c`; a ghost fights you — see the Gotcha for the
+`Space`+`C-c C-c` burst. If a **Keep/Remove-worktree dialog** appears, `Enter` = Keep, never Remove.
+**Verify `foreground_cwd` and `cd <worktree>` as its OWN command** before launching (the shell may be
+at repo root). codex: `direnv allow && codex -c model_reasoning_effort=xhigh`.
+
+### resume-session  (the Phase I→III hand-off)
+`claude --resume <uuid|"name">` (fresh pane if the old one is gone; **verify cwd**). The resumed
+session has **no memory** of what a different agent (codex) did in between — **first notify it**
+(e.g. "codex implemented the plan at SHA X and already ran the full gate green → go straight to the
+reviews, do NOT re-gate"; re-gate only the touched crate if a fix changes code). `codex resume <uuid>`
+for codex.
+
+### shape-git  (squash / rebase / stack / amend / gate)
+- **Squash** all work to ONE commit.
+- **Pull + rebase onto latest `origin/main`** (`git fetch` first; resolve conflicts preserving BOTH
+  behaviors — a sibling rung may have landed on the same files).
+- **Test gate, ONCE, on the rebased commit** (repo-specific — e.g. sawmills:
+  `cargo clippy --workspace --all-targets --all-features -- -D warnings` + `cargo fmt --all --check`
+  + `cargo test --workspace --all-features` + `make net` + `cargo build -p <crate>` standalone;
+  explain-counters must not move). Never commit docs/generated dirs.
+- **Amend** review/simplify fixes into the single commit (`git add` only tracked files, never untracked
+  `docs/`) — the PR stays one clean commit.
+- **Stack:** pass the **parent branch as `[base-ref]`** to spawn-worker → the child branch bases
+  directly on the parent's tip (no `reset --hard`). After the parent merges, `git rebase origin/main`
+  drops the now-duplicate parent commits, leaving only the child's.
+
+### ship
+`git push -u origin <branch>` + `gh pr create --base main --body-file <f>` (body: scope + verification
++ the `SAW-XXXX` link; end with the Claude Code line). The human opens PRs by default but often
+delegates. Then **watch checks**: poll `gh pr checks <branch>` until green; report URL + status;
+surface any failure.
 
 ## Quick reference
 | Need | Do |
@@ -89,10 +113,10 @@ now-duplicate parent commits, leaving only the child's commits.
 - Never commit the human's gitignored docs dir or generated indexes. Worker stops before push/PR; the human opens PRs (but often drives finalize/review themselves — varies).
 
 ## Common mistakes
-- Auto-proceeding to implement when an Open Question remains, or after a max-N (non-converged) loop → STOP, escalate.
-- Closing/typing in a pane the human is actively driving → collision. Verify, then act; ask if unsure.
 - Trusting a `--status done` wait or an output-text marker for a loop/finish → use the verify-on-fire poll.
 - Running a review/agent in invisible background bash → run it in the pane.
+- Closing/typing in a pane the human is actively driving → collision. Verify, then act; ask if unsure.
+- Reimplementing the pipeline here (phase order, which method to run, gates) → that is `igr:workflow`. This skill is mechanics only.
 
 ## Helper script
-`scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` encapsulates step 0 (fetch, `git worktree add -b <branch> .worktrees/<dir> <base>`, tab-create, launch plain `claude --model opus` cd'd in the worktree, `/rename`, capture session UUID). Stack by passing a parent branch as `<base>`. Run it instead of hand-typing. See its `--help`.
+`scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` encapsulates spawn-worker (fetch, `git worktree add -b <branch> .worktrees/<dir> <base>`, tab-create, launch plain `claude --model opus` cd'd in the worktree, `/rename`, capture session UUID). Stack by passing a parent branch as `<base>`. Run it instead of hand-typing. See its `--help`.
