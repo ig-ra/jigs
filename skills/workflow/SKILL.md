@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Use when shipping a change as a ladder of small worktree-isolated PRs with each PR's plan and post-implement review driven by the igr-dev methods. The orchestrator-agnostic pipeline layer above igr-dev; it drives a pluggable orchestration backend (default igr:herdr-pr-orchestration) for the pane/worktree/PR mechanics.
+description: Use when shipping a change as a ladder of small worktree-isolated PRs with each PR's plan and post-implement review driven by the igr-dev methods. The orchestrator-agnostic pipeline layer above igr-dev; it drives a pluggable orchestration backend (default igr:herdr-workflow) for the pane/worktree/PR mechanics.
 ---
 
 # igr-workflow
@@ -16,7 +16,7 @@ calling the matching `/igr-dev` method. It composes two things and **reimplement
   for the diff). igr-dev knows nothing about sequencing.
 - **an orchestration BACKEND** — the **mechanics** of driving real agents: spawn an isolated worker,
   dispatch a prompt, watch it finish, swap the agent (claude↔codex), resume a session, shape git
-  (squash/rebase/stack), push/PR/watch-checks. Default backend = **`igr:herdr-pr-orchestration`**
+  (squash/rebase/stack), push/PR/watch-checks. Default backend = **`igr:herdr-workflow`**
   (herdr panes + worktrees). igr-workflow names only the **backend operations** below — **never a
   specific CLI** — so the backend is swappable (tmux, plain terminal, a CI runner…).
 
@@ -31,7 +31,7 @@ human opt-in to multi-agent orchestration (the pipeline spawns and drives long-r
 ## Backend interface (what igr-workflow requires of any orchestrator)
 
 The pipeline calls these **abstract operations**; the backend skill implements each (herdr's
-implementation: `igr:herdr-pr-orchestration`). A new backend is "supported" once it provides all of:
+implementation: `igr:herdr-workflow`). A new backend is "supported" once it provides all of:
 
 | operation | contract |
 |---|---|
@@ -49,10 +49,10 @@ invisible background shell**. Background *waits/polls* are fine.
 ## Preflight (verify BEFORE spawn-worker)
 
 The pipeline is orchestrator-agnostic — its only prerequisite is that the **active backend is usable**,
-so **run the backend's own preflight**. Default **herdr** backend (`igr:herdr-pr-orchestration`): the
+so **run the backend's own preflight**. Default **herdr** backend (`igr:herdr-workflow`): the
 single gate is *"inside a herdr pane"* (`HERDR_ENV=1` + `HERDR_PANE_ID`) — which brings the herdr
 binary **and** its bundled `herdr` skill; see that skill's **§Preflight** for the exact check. A
-**different** backend brings its own. `igr:herdr-pr-orchestration` and `igr-dev` ship in this plugin —
+**different** backend brings its own. `igr:herdr-workflow` and `igr-dev` ship in this plugin —
 no check.
 
 ## The pipeline (agnostic — phases, methods, gates)
@@ -97,4 +97,4 @@ handle**: Phase I captures it, Phase III resumes it; Phase II is a different age
 - The **§1 review invariants** (companion-only, no-codegraph, verify-before-fold, park-vs-apply,
   never-commit-docs) are inherited through `igr-dev` — do not re-litigate here.
 - The **backend mechanics + gotchas** (spawn/CLI/pane/worktree/finish-watch/exit) live in the backend
-  skill (`igr:herdr-pr-orchestration` for herdr) — do not duplicate or reimplement them here.
+  skill (`igr:herdr-workflow` for herdr) — do not duplicate or reimplement them here.

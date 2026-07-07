@@ -1,18 +1,22 @@
 ---
-name: herdr-pr-orchestration
-description: The herdr mechanics BACKEND for igr:workflow — implements the workflow backend operations (spawn-worker, dispatch, watch-finish, swap-agent, resume-session, shape-git, ship) with herdr panes + git worktrees. Use when igr:workflow (or any orchestrator) needs the how of driving long-running claude/codex agents in watchable herdr panes. The pipeline itself (phases, methods, gates) lives in igr:workflow — this skill is the HOW, not the what.
+name: herdr-workflow
+description: The herdr layer on top of the agnostic igr:workflow — runs igr:workflow's PR-ladder pipeline on herdr, implementing its backend operations (spawn-worker, dispatch, watch-finish, swap-agent, resume-session, shape-git, ship) with herdr panes + git worktrees. Use to ship a change as a ladder of worktree-isolated PRs when you are inside herdr. Owns the herdr mechanics + gotchas; the pipeline itself (phases, methods, gates) lives in igr:workflow.
 ---
 
-# herdr PR Orchestration — mechanics backend
+# herdr-workflow — the herdr layer for igr:workflow
 
 ## What this is
 
-This skill is the **herdr implementation** of `igr:workflow`'s **backend interface**. igr:workflow owns
-the *pipeline* (phase order, which `/igr` method runs each phase, gates, hand-off); **this skill owns
-only the mechanics** — how to drive herdr panes + git worktrees to execute the backend operations.
-It contains **no pipeline narrative and no work-step method choices** (those are the caller's
-`/igr:plan|impl|review`). Standalone use: you can drive these mechanics directly, but the *what/when*
-is not defined here.
+A **thin herdr specialization on top of the generic `igr:workflow`**. `igr:workflow` is the
+orchestrator-agnostic **core** — it owns the *pipeline* (phase order, which `/igr` method runs each
+phase, gates, hand-off) and defines a **backend interface**. This skill is the **herdr binding**: it
+runs that pipeline on herdr, implementing each backend operation with herdr panes + git worktrees, and
+owns the herdr **mechanics + gotchas**. It contains **no pipeline narrative and no work-step method
+choices** (those live in `igr:workflow` + the caller's `/igr:plan|impl|review`).
+
+**To run a herdr PR ladder:** read `igr:workflow` for the pipeline (phases/gates/hand-off), and use
+the operations below whenever it calls a backend op. Standalone use: you can drive these mechanics
+directly, but the *what/when* is not defined here.
 
 **Core principle:** every *agent* runs in a pane the human can watch — never an invisible background
 shell (`codex exec`/`claude -p`/background bash). Background *waits/polls* are fine.
@@ -25,7 +29,7 @@ Run inside a **herdr pane**: `[ "$HERDR_ENV" = 1 ] && [ -n "$HERDR_PANE_ID" ]`. 
 
 (Edge case: if the `herdr` skill is not in your available skills despite being in a pane, install it from the herdr repo into your skills dir — do not reimplement the CLI inline. Don't vendor it — it's versioned with herdr.)
 
-The spawn helper (referred to below as `scripts/herdr-spawn-worker.sh`) ships with this skill — run it by absolute path: `${CLAUDE_PLUGIN_ROOT}/skills/herdr-pr-orchestration/scripts/herdr-spawn-worker.sh`. If `${CLAUDE_PLUGIN_ROOT}` is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/skills/herdr-pr-orchestration/scripts/herdr-spawn-worker.sh | sort -V | tail -1`.
+The spawn helper (referred to below as `scripts/herdr-spawn-worker.sh`) ships with this skill — run it by absolute path: `${CLAUDE_PLUGIN_ROOT}/skills/herdr-workflow/scripts/herdr-spawn-worker.sh`. If `${CLAUDE_PLUGIN_ROOT}` is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/skills/herdr-workflow/scripts/herdr-spawn-worker.sh | sort -V | tail -1`.
 
 ## Backend operations (herdr implementation)
 
