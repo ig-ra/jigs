@@ -46,7 +46,7 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
    `ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs | sort -V | tail -1`
    then `node "<path>" adversarial-review "<focus>"`. **If that glob is empty → the `codex` plugin is
    not installed: STOP and tell the user to run `/plugin install codex`** (do not fall back to the
-   `codex:codex-rescue` Agent). `codex` is declared in the igr `plugin.json` `dependencies`.
+   `codex:codex-rescue` Agent). `codex` is an external plugin (install from the `openai-codex` marketplace) — not a hard `plugin.json` dependency, so igr stays marketplace-agnostic.
 2. **zsh eval gotcha — strip ALL backticks and `$` from the focus string**, or the companion
    crashes (`(eval): parse error`). Refer to code as `file colon line` plainly; no backticks.
 3. **Launch exactly once per round**, redirected to a **unique** output file

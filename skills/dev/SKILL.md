@@ -55,9 +55,11 @@ Each method is self-contained — it does not hand off to or assume another meth
 ## Preflight — required plugins
 
 igr-dev **produces** artifacts with `superpowers` skills and **reviews** them with the Codex
-companion (`codex` plugin). Both are external and declared in `plugin.json` `dependencies`
-(Claude Code auto-installs declared deps at install/enable). **Verify before the first use in a
-method** — a disabled/absent dep otherwise surfaces as a mid-run failure:
+companion (`codex` plugin). Both are external plugins — **not** declared as `plugin.json`
+dependencies on purpose: `superpowers` ships from more than one marketplace (obra's
+`superpowers-marketplace` and Anthropic's `claude-plugins-official`), and a hard dependency can only
+pin ONE marketplace, so igr stays marketplace-agnostic and gates them here at runtime instead.
+**Verify before the first use in a method** — an absent/disabled one otherwise fails mid-run:
 
 | method | external plugins needed |
 |--------|-------------------------|

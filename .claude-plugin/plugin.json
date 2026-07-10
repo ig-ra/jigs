@@ -3,9 +3,5 @@
   "name": "igr",
   "description": "Angle-driven dev methods: harden idea->spec (census + clean-rewrite), spec->plan (code census + mechanical diffs + judgment angles-till-SOLID + broad pass), implement, review. Plus igr-workflow orchestration and the codex adversarial-review loop.",
   "version": "0.1.1",
-  "author": { "name": "Igor Rayak" },
-  "dependencies": [
-    "superpowers",
-    "codex"
-  ]
+  "author": { "name": "Igor Rayak" }
 }
