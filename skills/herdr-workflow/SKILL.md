@@ -60,7 +60,7 @@ Close the current agent, then launch the next in the SAME pane. Close: clear the
 (`send-keys <pane> Escape`), THEN `C-c C-c`; a ghost fights you — see the Gotcha for the
 `Space`+`C-c C-c` burst. If a **Keep/Remove-worktree dialog** appears, `Enter` = Keep, never Remove.
 **Verify `foreground_cwd` and `cd <worktree>` as its OWN command** before launching (the shell may be
-at repo root). codex: `direnv allow && codex -c model_reasoning_effort=xhigh`.
+at repo root). codex: `direnv allow && codex ${IGR_IMPL_MODEL:+--model "$IGR_IMPL_MODEL"} -c model_reasoning_effort="${IGR_IMPL_EFFORT:-xhigh}"` (model+effort from the `IGR_IMPL_*` env — see `/igr:impl`; independent of the review model).
 
 ### resume-session  (the Phase I→III hand-off)
 `claude --resume <uuid|"name">` (fresh pane if the old one is gone; **verify cwd**). The resumed

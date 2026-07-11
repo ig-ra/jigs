@@ -6,8 +6,18 @@ This method **defines how implementation is done**. It is production, not review
 
 ## Session (default)
 
-Default is a **codex session** (codex default settings, `xhigh` reasoning). **Ensure you are in a
-codex session** before implementing.
+Default is a **codex session** (`xhigh` reasoning). **Ensure you are in a codex session** before
+implementing. Model + effort are settable at launch (codex CLI: `-m/--model` + `-c model_reasoning_effort=`):
+
+```
+codex ${IGR_IMPL_MODEL:+--model "$IGR_IMPL_MODEL"} -c model_reasoning_effort="${IGR_IMPL_EFFORT:-xhigh}"
+```
+
+- **`IGR_IMPL_MODEL`** — impl session model (e.g. `gpt-5.6-terra`); unset = codex's `config.toml` default.
+- **`IGR_IMPL_EFFORT`** — reasoning effort (default `xhigh`; e.g. `high`).
+
+Set once in `~/.claude/settings.json` `"env": { "IGR_IMPL_MODEL": "gpt-5.6-terra", "IGR_IMPL_EFFORT": "high" }`.
+These are **independent of the review knobs** (`IGR_REVIEW_MODEL`, `/igr:codex-adversarial-loop`) — different flow, different model/effort.
 
 ## Plan source
 

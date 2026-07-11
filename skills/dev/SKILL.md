@@ -72,6 +72,17 @@ pin ONE marketplace, so igr stays marketplace-agnostic and gates them here at ru
 
 *(`/simplify` is built-in and `/igr:code-review-skip-simplify` now ships with this plugin (`workflows/`) — neither is an external-plugin dep.)*
 
+## Codex model + effort (two independent flows)
+
+`impl` and the codex-adversarial review use **separate** codex model/effort knobs — set them in `~/.claude/settings.json` `env` (or the shell):
+
+| flow | model | effort | how it's applied |
+|---|---|---|---|
+| **`impl`** (codex session) | `IGR_IMPL_MODEL` (e.g. `gpt-5.6-terra`; unset = codex default) | `IGR_IMPL_EFFORT` (default `xhigh`; e.g. `high`) | launch: `codex --model … -c model_reasoning_effort=…` (both CLI-settable) |
+| **review** (`/igr:codex-adversarial-loop`) | `IGR_REVIEW_MODEL` (e.g. `gpt-5.6-sol`) or the `--model` arg | `IGR_REVIEW_EFFORT` — **not honored yet** (companion's `adversarial-review` has no `--effort`; upstream) | companion: `adversarial-review --model …` |
+
+So e.g. `"env": { "IGR_IMPL_MODEL": "gpt-5.6-terra", "IGR_IMPL_EFFORT": "high", "IGR_REVIEW_MODEL": "gpt-5.6-sol" }`. Review effort is the one gap — escalate to the `openai-codex` companion for a review `--effort` flag.
+
 ## Boundaries (what igr-dev is NOT)
 
 igr-dev sits between a mechanism it drives and a workflow that drives it:

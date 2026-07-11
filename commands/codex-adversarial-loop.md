@@ -29,9 +29,14 @@ substitution:
 - **--model \<name\>** (optional flag, anywhere in `$ARGUMENTS`): the Codex **review model** to pass to
   the companion (`adversarial-review --model <name>`). Use it when the default is wrong for your account
   — e.g. a ChatGPT-account login cannot use `gpt-5.3-codex`. **Precedence for the review model `<M>`:**
-  this `--model` flag → `$CODEX_REVIEW_MODEL` env → the `model = "…"` line in `${CODEX_HOME:-~/.codex}/config.toml`
+  this `--model` flag → `$IGR_REVIEW_MODEL` env → the `model = "…"` line in `${CODEX_HOME:-~/.codex}/config.toml`
   → `gpt-5.5`. To set it once for **every** run (incl. when driven by `/igr:plan` / `/igr:brainstorm`),
-  export `CODEX_REVIEW_MODEL` — e.g. in `~/.claude/settings.json` `"env": { "CODEX_REVIEW_MODEL": "gpt-5.5" }`.
+  export `IGR_REVIEW_MODEL` — e.g. in `~/.claude/settings.json` `"env": { "IGR_REVIEW_MODEL": "gpt-5.6-sol" }`.
+  **Review reasoning-effort is NOT settable** here — the companion's `adversarial-review` exposes
+  `--model` but no `--effort` (only its `task` command does). Best-effort: set `model_reasoning_effort`
+  in `${CODEX_HOME:-~/.codex}/config.toml` (may be ignored, like config `model` is). `IGR_REVIEW_EFFORT`
+  is reserved for when the companion adds a review `--effort` flag (upstream). Impl effort IS settable
+  (see `/igr:impl`).
 - **settled** (everything after a literal `--`, optional): owner-settled decisions to protect
   from re-litigation this run, in addition to any the target already marks as settled.
 
@@ -53,7 +58,7 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
    then `node "<path>" adversarial-review --model "<M>" "<focus>"`. **If that glob is empty → the `codex` plugin is
    not installed: STOP and tell the user to run `/plugin install codex`** (do not fall back to the
    `codex:codex-rescue` Agent). `codex` is an external plugin (install from the `openai-codex` marketplace) — not a hard `plugin.json` dependency, so igr stays marketplace-agnostic.
-   **Always pass `--model "<M>"`** — the codex `review` feature ignores `config.toml model` and falls back to a built-in default (`gpt-5.3-codex`) that a **ChatGPT-account** login cannot use (HTTP 400). Resolve **<M>** by precedence: the `--model` arg (Arguments) → `$CODEX_REVIEW_MODEL` → the `model = "…"` line from `${CODEX_HOME:-~/.codex}/config.toml` → `gpt-5.5`. Never rely on the binary's review default.
+   **Always pass `--model "<M>"`** — the codex `review` feature ignores `config.toml model` and falls back to a built-in default (`gpt-5.3-codex`) that a **ChatGPT-account** login cannot use (HTTP 400). Resolve **<M>** by precedence: the `--model` arg (Arguments) → `$IGR_REVIEW_MODEL` → the `model = "…"` line from `${CODEX_HOME:-~/.codex}/config.toml` → `gpt-5.5`. Never rely on the binary's review default.
 2. **zsh eval gotcha — strip ALL backticks and `$` from the focus string**, or the companion
    crashes (`(eval): parse error`). Refer to code as `file colon line` plainly; no backticks.
 3. **Launch exactly once per round**, redirected to a **unique** output file
@@ -78,7 +83,7 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
      this error, keep it `0600`, clean it up.**
    - **`invalid_request_error` + `model is not supported`** → the review model is unavailable to this
      account. Retry the round **ONCE** with `--model` = the `config.toml model` (or another supported model);
-     still failing → STOP and tell the user: *"Codex account cannot use review model &lt;X&gt; — set `CODEX_REVIEW_MODEL` to a supported one (e.g. gpt-5.5)."*
+     still failing → STOP and tell the user: *"Codex account cannot use review model &lt;X&gt; — set `IGR_REVIEW_MODEL` to a supported one (e.g. gpt-5.5)."*
    - Neither shape matched → the existing malformed-run path (rule 3: one foreground diagnostic, retry once).
 
 ## Setup (before round 1)
