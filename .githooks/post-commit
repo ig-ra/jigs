@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# post-commit — auto-bump .claude-plugin/plugin.json from the conventional-commit type,
+# then amend the bump into HEAD (a commit-msg/pre-commit hook cannot: content staged in
+# commit-msg lands in the NEXT commit — verified).
+#   feat!: / BREAKING CHANGE  -> major
+#   feat:                     -> minor
+#   anything else             -> patch
+# Bumps only when HEAD ships plugin content (commands/skills/agents/workflows/tools).
+# Skips: version already moved in HEAD (manual bump — and the recursion guard for the
+# amend below); rebase/cherry-pick/merge replays; uncommitted plugin.json edits.
+# Bypass: IGR_NO_BUMP=1 git commit …
+# One-time setup after clone: git config core.hooksPath .githooks
+set -euo pipefail
+PLUGIN=.claude-plugin/plugin.json
+
+if [[ "${IGR_NO_BUMP:-}" == "1" ]]; then exit 0; fi
+if ! git rev-parse -q --verify HEAD^ >/dev/null 2>&1; then exit 0; fi   # initial commit
+
+g=$(git rev-parse --git-dir)
+if [[ -d $g/rebase-merge || -d $g/rebase-apply || -f $g/CHERRY_PICK_HEAD || -f $g/MERGE_HEAD ]]; then
+  exit 0   # replayed commits carry their own bumps
+fi
+
+if ! git diff-tree --no-commit-id --name-only -r HEAD | grep -qE '^(commands|skills|agents|workflows|tools)/'; then
+  exit 0   # no shipped plugin content in this commit
+fi
+
+json_v() { python3 -c 'import json,sys;print(json.load(sys.stdin)["version"])' 2>/dev/null || true; }
+head_v=$(git show HEAD:"$PLUGIN" 2>/dev/null | json_v)
+parent_v=$(git show HEAD^:"$PLUGIN" 2>/dev/null | json_v)
+if [[ -z $head_v || -z $parent_v || $head_v != "$parent_v" ]]; then
+  exit 0   # manual bump in this commit, or re-entry after our own amend
+fi
+
+if ! git diff --quiet HEAD -- "$PLUGIN"; then
+  echo "hook: $PLUGIN has uncommitted edits — skipping auto-bump (bump manually)" >&2
+  exit 0
+fi
+
+subject=$(git log -1 --format=%s)
+body=$(git log -1 --format=%B)
+bump=patch
+if grep -qE '^[a-zA-Z]+(\([^)]*\))?!:' <<<"$subject" || grep -q 'BREAKING CHANGE' <<<"$body"; then
+  bump=major
+elif grep -qE '^feat(\([^)]*\))?:' <<<"$subject"; then
+  bump=minor
+fi
+
+BUMP=$bump python3 - <<'EOF'
+import json, os
+p = ".claude-plugin/plugin.json"
+d = json.load(open(p))
+ma, mi, pa = (int(x) for x in d["version"].split("."))
+b = os.environ["BUMP"]
+if b == "major": ma, mi, pa = ma + 1, 0, 0
+elif b == "minor": mi, pa = mi + 1, 0
+else: pa += 1
+d["version"] = f"{ma}.{mi}.{pa}"
+with open(p, "w") as f:
+    json.dump(d, f, indent=2)
+    f.write("\n")
+print(f"hook: plugin version -> {d['version']} ({b}), amended into HEAD")
+EOF
+git commit --amend --no-edit --no-verify --only "$PLUGIN" --quiet
