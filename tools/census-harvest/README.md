@@ -35,11 +35,11 @@ Consumes SCIP; swap the indexer per language, and `--lang` selects a per-languag
 | lang | indexer | test-flag | visibility | signature | boundary (`--boundary-struct`) | verify-plan sig-diff |
 |---|---|---|---|---|---|---|
 | **rust** | `rust-analyzer scip` | `#[cfg(test)]` spans | `pub`/`pub(crate)` | `signature_documentation` | `/X#` + `[Trait]impl` | ✓ (`Result` fallibility) |
-| **go** | `scip-go` | `*_test.go` files | exported = Name capitalized | doc-fence | `/X#` (struct+methods) | ✓ (`error` fallibility) |
+| **go** | `scip-go` (or `go run github.com/scip-code/scip-go/cmd/scip-go@latest`) | `*_test.go` files | exported = Name capitalized | doc-fence | `/X#` (struct+methods) | ✓ (`error` fallibility) |
 | **ts** | `scip-typescript` (or `bunx @sourcegraph/scip-typescript`) | `*.test/.spec.ts(x)`, `__tests__/` | `export`/`private` from source line | `documentation` code-fence; kind inferred from descriptor | `/X#` (class+members) | — (citations only) |
 | **none** | any SCIP | — | `?` | best-effort | `/X#` | — |
 
-Notes: Go/TS drop Rust's `[Trait]impl` boundary dimension (they have no such encoding). TS visibility is read from the **source line** (scip-typescript's hover omits `export`/`private`). verify-plan's signature diffing runs for rust+go (keyword+fallibility model); ts gets citation checks only. Go paths are wired but not yet end-to-end validated here (no local `scip-go`).
+Notes: Go/TS drop Rust's `[Trait]impl` boundary dimension (they have no such encoding). TS visibility is read from the **source line** (scip-typescript's hover omits `export`/`private`); Go visibility is the name-capitalization rule. verify-plan's signature diffing runs for rust+go (keyword+fallibility model); ts gets citation checks only. All three validated end-to-end (rust-analyzer / `bunx scip-typescript` / `go run scip-go`).
 
 ## Setup
 Run the preflight — it tells you exactly what (if anything) is missing:
@@ -57,6 +57,7 @@ Run the preflight — it tells you exactly what (if anything) is missing:
 # 1. index (seconds; current HEAD) — pick the indexer for the language
 rust-analyzer scip /path/to/repo --output /tmp/index.scip          # rust
 scip-go --output /tmp/index.scip                                    # go   (run in the module)
+go run github.com/scip-code/scip-go/cmd/scip-go@latest --output /tmp/index.scip   # go, no perm-install (needs go toolchain)
 scip-typescript index --output /tmp/index.scip                      # ts   (run in the project; reads tsconfig)
 bunx @sourcegraph/scip-typescript index --output /tmp/index.scip    # ts, zero-install (needs bun) — bin first, else bunx
 # then pass --lang rust|go|ts to harvest/scaffold below

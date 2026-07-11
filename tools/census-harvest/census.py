@@ -582,7 +582,7 @@ def cmd_verify_plan(args):
 INDEXERS = {"rust": "rust-analyzer", "go": "scip-go", "ts": "scip-typescript", "none": None}
 INDEXER_HINT = {
     "rust": "rustup component add rust-analyzer   (or: brew install rust-analyzer)",
-    "go":   "go install github.com/sourcegraph/scip-go/cmd/scip-go@latest",
+    "go":   "install `go`, or: go install github.com/scip-code/scip-go/cmd/scip-go@latest",
     "ts":   "install `bun` (for `bunx @sourcegraph/scip-typescript`) — or `npm i -g @sourcegraph/scip-typescript`",
 }
 MARK = {"OK": "✓", "FAIL": "✗", "MISSING": "✗", "SKIP": "·"}
@@ -635,8 +635,10 @@ def cmd_doctor(args):
         path = shutil.which(idx_bin)
         if path:
             rows.append((f"indexer:{lang}", "OK", f"{idx_bin}  {path}"))
-        elif lang == "ts" and shutil.which("bunx"):        # zero-install fallback: bunx @sourcegraph/scip-typescript
+        elif lang == "ts" and shutil.which("bunx"):        # zero-install: bunx @sourcegraph/scip-typescript
             rows.append((f"indexer:{lang}", "OK", f"{idx_bin} via `bunx @sourcegraph/scip-typescript`  ({shutil.which('bunx')})"))
+        elif lang == "go" and shutil.which("go"):           # zero-install: go run github.com/scip-code/scip-go@latest
+            rows.append((f"indexer:{lang}", "OK", f"{idx_bin} via `go run github.com/scip-code/scip-go/cmd/scip-go@latest`  ({shutil.which('go')})"))
         else:
             rows.append((f"indexer:{lang}", "MISSING", f"{idx_bin} not on PATH — {INDEXER_HINT[lang]}"))
             indexer_fail = True

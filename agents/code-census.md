@@ -21,7 +21,7 @@ A script harvests the mechanical skeleton from a SCIP index; **your only job is 
    `<tool>/census doctor --lang <rust|go|ts>`  (`<tool>` = `${CLAUDE_PLUGIN_ROOT}/tools/census-harvest`; if that variable is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/tools/census-harvest | sort -V | tail -1`.) The wrapper **auto-builds its tool-local venv + protobuf on first call** (one time; a "bootstrapping…" line on stderr is expected). Act on the exit code: **0** → proceed to step 1. **1** → no indexer on PATH for this lang → go straight to **Path B (live-LSP fallback)**; do NOT attempt to index. **2** → tool broken (venv/protobuf/scip_pb2) → this is an **environment fault, not a missing indexer**: report the `doctor` output verbatim and STOP (do NOT silently fall to Path B).
 1. **Index** the workspace (~seconds, whole repo, reflects current HEAD), by language:
    - rust: `rust-analyzer scip <repo-root> --output /tmp/census-index.scip`
-   - go: `scip-go --output /tmp/census-index.scip` (run in the module)
+   - go: `scip-go --output /tmp/census-index.scip` (run in the module); if that bin isn't on PATH, `go run github.com/scip-code/scip-go/cmd/scip-go@latest --output /tmp/census-index.scip` (zero-install; needs the go toolchain)
    - ts: `scip-typescript index --output /tmp/census-index.scip` — if that bin isn't on PATH, `bunx @sourcegraph/scip-typescript index --output /tmp/census-index.scip` (zero-install; run in the project, reads tsconfig)
    Then pass the matching **`--lang rust|go|ts`** to harvest/scaffold (selects the per-language adapter: test-flag / visibility / signature).
 2. **Harvest** the skeleton to **JSON** (`census` CLI, `harvest` subcommand):
