@@ -44,9 +44,10 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
    **NEVER** spawn the `codex:codex-rescue` Agent for a review — it has edit/commit tools and
    will auto-commit during a "review only". Resolve the companion path with the latest version:
    `ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs | sort -V | tail -1`
-   then `node "<path>" adversarial-review "<focus>"`. **If that glob is empty → the `codex` plugin is
+   then `node "<path>" adversarial-review --model "<M>" "<focus>"`. **If that glob is empty → the `codex` plugin is
    not installed: STOP and tell the user to run `/plugin install codex`** (do not fall back to the
    `codex:codex-rescue` Agent). `codex` is an external plugin (install from the `openai-codex` marketplace) — not a hard `plugin.json` dependency, so igr stays marketplace-agnostic.
+   **Always pass `--model "<M>"`** — the codex `review` feature ignores `config.toml model` and falls back to a built-in default (`gpt-5.3-codex`) that a **ChatGPT-account** login cannot use (HTTP 400). Resolve **<M>**: `$CODEX_REVIEW_MODEL` if set, else the `model = "…"` line from `${CODEX_HOME:-~/.codex}/config.toml`, else `gpt-5.5`. Never rely on the binary's review default.
 2. **zsh eval gotcha — strip ALL backticks and `$` from the focus string**, or the companion
    crashes (`(eval): parse error`). Refer to code as `file colon line` plainly; no backticks.
 3. **Launch exactly once per round**, redirected to a **unique** output file
@@ -60,6 +61,19 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
 6. Track via `/codex:status`. A **rejected** `Agent` tool-use can still leave a Codex job
    running — if that ever happens, tell the user the exact `/codex:cancel <id>` line to type
    (you cannot invoke `/codex:cancel` yourself).
+7. **Environment seams — match known failure shapes on the outfile BEFORE calling a round "malformed"
+   (rule 3).** These are tooling/env errors, **not review findings**; naming the cause saves the ~30-min
+   "Codex did not return valid structured JSON" dead-end. These env-retries do **not** count toward the cap.
+   - **`failed to initialize sqlite state runtime` / `app-server exited unexpectedly`** → a running
+     **desktop Codex.app** holds a lock on `~/.codex`. Fix: quit it, OR re-run under a separate state home
+     seeded with the login —
+     `ALT=$(mktemp -d); cp -p ~/.codex/auth.json ~/.codex/config.toml "$ALT"/; chmod 600 "$ALT/auth.json"; CODEX_HOME="$ALT" node "<path>" adversarial-review --model "<M>" "<focus>"`
+     — then `rm -rf "$ALT"` when done. **Caveat: this copies a live auth token into a temp dir — only on
+     this error, keep it `0600`, clean it up.**
+   - **`invalid_request_error` + `model is not supported`** → the review model is unavailable to this
+     account. Retry the round **ONCE** with `--model` = the `config.toml model` (or another supported model);
+     still failing → STOP and tell the user: *"Codex account cannot use review model &lt;X&gt; — set `CODEX_REVIEW_MODEL` to a supported one (e.g. gpt-5.5)."*
+   - Neither shape matched → the existing malformed-run path (rule 3: one foreground diagnostic, retry once).
 
 ## Setup (before round 1)
 
@@ -93,9 +107,10 @@ For round `N` = 1 .. max:
    (rule 1/3), `run_in_background: true` — only ONE companion job in flight at a time. Wait for
    completion (the harness notifies), then **read the unique outfile** (not the task-output
    file — that is empty when stdout is redirected with `>`). If the outfile has no verdict /
-   findings section (crashed or malformed run), treat it as a FAILED round: run one foreground
-   diagnostic (rule 3), fix the cause, retry that round once — do not count it toward the cap
-   or loop blindly.
+   findings section (crashed or malformed run): **first match it against the rule-7 env-error
+   shapes** (sqlite lock / model-not-supported) and act on the specific cause; only if none match,
+   treat it as a generic FAILED round — run one foreground diagnostic (rule 3), fix the cause,
+   retry that round once — do not count it toward the cap or loop blindly.
 3. **Triage every finding** — this is the core discipline:
    - **Minimal / clear** (faithfulness correction, wrong line ref, a simple missing
      precondition/guard, tightening a test, a narrow correctness fix — **no** new abstraction,
