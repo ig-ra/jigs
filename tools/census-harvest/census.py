@@ -13,15 +13,33 @@ The tool matches SCIP symbols `/X#` (fields + inherent methods) AND `[X]` (trait
 derived from the ONE type name, no trait enumeration. (--boundary-type = raw-substring fallback,
 e.g. a module.) A --grep-token receiver cross-check catches anything SCIP misses (macro/dynamic).
 
-Language-neutral core (consumes SCIP). Per-language: the indexer (rust-analyzer scip / scip-go)
-and the test-detector (--lang).
+Languages (--lang rust|go|ts|none): the SCIP symbol/anchor/edge skeleton is generic; --lang selects
+a per-language adapter (see LANGS + visibility/sig_of/kind_of/parse_sig) for test detection,
+visibility, signature source, and sig parsing. Indexer per lang: rust-analyzer scip / scip-go /
+scip-typescript. Go/TS drop rust's [Trait]impl boundary dimension; verify-plan sig-diff = rust+go.
 """
 import argparse, sys, os, json, re, bisect, shutil
 from collections import defaultdict
 
 DEF_ROLE = 0x1
 CONTAINER_KINDS = {"Function", "Method", "StaticMethod", "Constructor"}
+LANGS = ("rust", "go", "ts", "none")
+
+# ---------- per-language adapters ----------
+# The SCIP consumption (symbols / anchors / edges) is language-neutral. These carry the
+# per-language bits: test detection, visibility, signature parsing, and whether the boundary
+# matcher also looks for a trait/impl symbol encoding ([X], rust-analyzer only).
+
 CFG_TEST = re.compile(r'^\s*#\[\s*cfg\s*\(\s*(any\s*\(\s*)?\s*(test\b|feature\s*=\s*"test-utils")')
+TS_TEST_FILE = re.compile(r'(\.(test|spec)\.[cm]?[jt]sx?$)|(^|/)__tests__/')
+FN_RE = {                                     # locates the fn NAME; parse_sig finds the param list after it
+    "rust": re.compile(r'\bfn\s+(\w+)'),
+    "go":   re.compile(r'\bfunc\s+(?:\([^)]*\)\s*)?(\w+)'),   # optional receiver: func (r T) Name(
+    "ts":   re.compile(r'\b(?:function\s+)?([A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\s*\('),
+}
+
+def lang_boundary_trait(lang):
+    return lang == "rust"                     # only rust-analyzer emits the [Trait]impl encoding
 
 # ---------- shared helpers ----------
 
@@ -33,10 +51,51 @@ def load_index(path, deps):
         idx.ParseFromString(f.read())
     return idx, scip_pb2
 
-def visibility(sig):
-    if sig.startswith(("pub(crate)", "pub(super)", "pub(in")): return "package"
-    if sig.startswith("pub "): return "public"
-    return "private"
+def visibility(lang, sig, name="", src_line=""):
+    if lang == "rust":
+        if sig.startswith(("pub(crate)", "pub(super)", "pub(in")): return "package"
+        if sig.startswith("pub "): return "public"
+        return "private"
+    if lang == "go":                          # exported iff the identifier starts uppercase
+        base = re.split(r'[.:#/]', name.rstrip("()"))[-1] if name else ""
+        return "public" if base[:1].isupper() else "private"
+    if lang == "ts":                          # from the SOURCE line — scip-typescript hover omits export/private
+        s = src_line.strip()
+        if not s: return "?"
+        if re.search(r'\b(private|#\w)', s) and not s.startswith("export"): return "private"
+        if re.search(r'\bprotected\b', s): return "package"
+        if s.startswith(("export ", "export default ", "export abstract ")): return "public"
+        return "private"                      # top-level non-export = module-local
+    return "?"
+
+DOC_FENCE = re.compile(r'```[A-Za-z0-9]*\s*\n?(.*?)```', re.S)
+DOC_HOVER_PREFIX = re.compile(r'^\((?:method|property|getter|setter|local var|local function|class|'
+                              r'interface|enum|enum member|type|type alias|alias|function|constructor|'
+                              r'namespace|module|parameter|var|let|const)\)\s*')
+
+def sig_of(info):
+    """Signature text. rust-analyzer fills signature_documentation; scip-typescript / scip-go put the
+    type in `documentation` as a fenced code block — fall back to its first code line (hover prefix stripped)."""
+    if info.HasField("signature_documentation"):
+        t = info.signature_documentation.text.replace("\n", " ").strip()
+        if t: return t
+    for doc in info.documentation:
+        m = DOC_FENCE.search(doc)
+        if m:
+            for ln in m.group(1).splitlines():
+                if ln.strip(): return DOC_HOVER_PREFIX.sub("", ln.strip()).strip()
+    return ""
+
+def kind_of(info, KindName, sym):
+    """SCIP kind, or inferred from the symbol descriptor when the indexer leaves kind unset
+    (scip-typescript emits kind=0). Descriptors: `X#`=type, `f().`=method/fn, `x.`=term, `p/`=namespace."""
+    if info.kind: return KindName(info.kind)
+    tail = sym.split(" ")[-1]
+    if tail.endswith("#"): return "Class"
+    if tail.endswith(")."): return "Method" if "#" in tail else "Function"
+    if tail.endswith("/"): return "Module"
+    if tail.endswith("."): return "Field" if "#" in tail else "Variable"
+    return "?"
 
 def strip_comment(line):
     s = line.lstrip()
@@ -78,13 +137,15 @@ def rust_test_spans(lines):
             i += 1
     return spans
 
-def make_boundary(structs, raw_types):
+def make_boundary(structs, raw_types, trait_match=True):
+    # `/X#` = the type descriptor (struct/class + its members) — generic across SCIP indexers.
+    # `[X]` = rust-analyzer's trait/impl-method encoding — matched only when trait_match (rust).
     def is_boundary(sym):
         if any(bt in sym for bt in raw_types): return True
-        return any(("/" + n + "#") in sym or ("[" + n + "]") in sym for n in structs)
+        return any(("/" + n + "#") in sym or (trait_match and ("[" + n + "]") in sym) for n in structs)
     def is_member(sym):   # real access (field/method) vs a bare type mention (&Store, Arc<StreamState>)
         if not is_boundary(sym): return False
-        if any(("[" + n + "]") in sym for n in structs): return True   # impl/trait method = always a member
+        if trait_match and any(("[" + n + "]") in sym for n in structs): return True   # impl/trait method = always a member
         tail = sym.rstrip(".").rstrip("()")
         if any(tail.endswith("/" + n + "#") for n in structs): return False
         if any(tail.endswith(bt.rstrip("#") + "#") for bt in raw_types): return False
@@ -115,13 +176,18 @@ def build_test(args, targets):
             src_lines[rp] = open(os.path.join(args.repo, rp), "r", errors="replace").read().splitlines()
         except OSError:
             src_lines[rp] = []
+    lang = args.lang
     test_spans = {}
     for rp in targets:
-        spans = rust_test_spans(src_lines[rp]) if args.lang == "rust" else []
+        spans = rust_test_spans(src_lines[rp]) if lang == "rust" else []   # only rust is span-based
         test_spans[rp] = ([s for s, _ in spans], spans)
     tline = args.test_line
+    def is_test_file(rp):                     # go/ts flag whole files by name/path
+        if lang == "go": return rp.endswith("_test.go")
+        if lang == "ts": return bool(TS_TEST_FILE.search(rp))
+        return False
     def is_test(rp, line0, sym):
-        if "/tests/" in sym: return True
+        if "/tests/" in sym or is_test_file(rp): return True
         starts, spans = test_spans.get(rp, ([], []))
         i = bisect.bisect_right(starts, line0) - 1
         if i >= 0 and spans[i][0] <= line0 <= spans[i][1]: return True
@@ -135,7 +201,7 @@ def build_enclosing(targets, def_by_line, definfo, KindName):
         lines, m = [], {}
         for line0, sym in def_by_line.get(rp, {}).items():
             info = definfo.get(sym)
-            if info and KindName(info.kind) in CONTAINER_KINDS:
+            if info and kind_of(info, KindName, sym) in CONTAINER_KINDS:
                 lines.append(line0); m[line0] = sym
         lines.sort(); cont_lines[rp] = lines; cont_sym[rp] = m
     def enclosing_fn(rp, line0):
@@ -197,19 +263,24 @@ def cmd_harvest(args):
     definfo, def_loc, refs, def_by_line = build_tables(idx)
     src_lines, test_spans, is_test = build_test(args, targets)
     enclosing_fn = build_enclosing(targets, def_by_line, definfo, KindName)
-    is_boundary, is_member = make_boundary(structs, args.boundary_type)
+    is_boundary, is_member = make_boundary(structs, args.boundary_type, lang_boundary_trait(args.lang))
     edges_out, bnd_members, boundary_by_member, scip_boundary_lines, typeref = \
         scan_boundary(idx, targets, is_boundary, is_member, is_test, enclosing_fn, structs)
 
     records = []
     for sym, (rp, line0) in def_loc.items():
         if rp not in targets: continue
+        if "().(" in sym: continue            # scip-typescript emits parameters as symbols — not census rows
         info = definfo.get(sym)
         if info is None: continue
-        sig = (info.signature_documentation.text if info.HasField("signature_documentation") else "").replace("\n"," ").strip()
-        records.append({"symbol": sym, "name": info.display_name or member_label(sym, structs),
-                        "kind": KindName(info.kind) if info.kind else "?", "file": rp, "line": line0 + 1,
-                        "signature": sig, "visibility": visibility(sig) if sig else "?",
+        sig = sig_of(info)
+        name = info.display_name or member_label(sym, structs)
+        srcl = src_lines.get(rp, []); src_line = srcl[line0] if 0 <= line0 < len(srcl) else ""
+        vis = visibility(args.lang, sig, name, src_line)          # rust=sig, go=name-case, ts=source line
+        if args.lang == "rust" and not sig: vis = "?"
+        records.append({"symbol": sym, "name": name,
+                        "kind": kind_of(info, KindName, sym), "file": rp, "line": line0 + 1,
+                        "signature": sig, "visibility": vis,
                         "edges_in": len(refs.get(sym, [])), "edges_out": len(edges_out.get(sym, ())),
                         "boundary_members": sorted(bnd_members.get(sym, ())), "test": is_test(rp, line0, sym)})
     records.sort(key=lambda r: (r["file"], r["line"]))
@@ -218,6 +289,7 @@ def cmd_harvest(args):
     recon = grep_reconcile(args.grep_token, targets, src_lines, test_spans, scip_boundary_lines)
     prod = [r for r in records if not r["test"]]
     payload = {"index_tool": idx.metadata.tool_info.version if idx.metadata.tool_info else "",
+               "lang": args.lang,
                "files": args.file, "boundary_structs": structs, "boundary_types": args.boundary_type,
                "counts": {"symbols": len(records), "prod": len(prod), "test": len(records) - len(prod),
                           "boundary_accesses": sum(b["accesses"] for b in boundary_summary),
@@ -259,21 +331,22 @@ def cmd_scaffold(args):
     definfo, def_loc, refs, def_by_line = build_tables(idx)
     src_lines, test_spans, is_test = build_test(args, targets)
     enclosing_fn = build_enclosing(targets, def_by_line, definfo, KindName)
-    is_boundary, is_member = make_boundary(structs, args.boundary_type)
+    is_boundary, is_member = make_boundary(structs, args.boundary_type, lang_boundary_trait(args.lang))
     _, bnd_members, boundary_by_member, _, _ = \
         scan_boundary(idx, targets, is_boundary, is_member, is_test, enclosing_fn, structs)
 
-    # candidate entries: non-test pub/pub(crate) fns/methods in target files
+    # candidate entries: non-test exported/public fns/methods in target files
     cands = []
     for sym, (rp, line0) in def_loc.items():
         if rp not in targets: continue
         info = definfo.get(sym)
-        if info is None or KindName(info.kind) not in ("Function", "Method", "StaticMethod"): continue
+        if info is None or kind_of(info, KindName, sym) not in ("Function", "Method", "StaticMethod"): continue
         if is_test(rp, line0, sym): continue
-        sig = (info.signature_documentation.text if info.HasField("signature_documentation") else "").replace("\n"," ").strip()
-        if visibility(sig) == "private": continue
-        cands.append((rp, line0 + 1, info.display_name or member_label(sym, structs), sig,
-                      len(bnd_members.get(sym, ()))))
+        sig = sig_of(info)
+        name = info.display_name or member_label(sym, structs)
+        srcl = src_lines.get(rp, []); src_line = srcl[line0] if 0 <= line0 < len(srcl) else ""
+        if visibility(args.lang, sig, name, src_line) == "private": continue
+        cands.append((rp, line0 + 1, name, sig, len(bnd_members.get(sym, ()))))
     cands.sort(key=lambda c: (c[0], c[1]))
     boundary_summary = sorted(({"member": k, "accesses": len(v)} for k, v in boundary_by_member.items()),
                               key=lambda x: -x["accesses"])
@@ -335,7 +408,10 @@ def cmd_merge(args):
 
 # ---------- subcommand: verify-plan (P3a mechanical pre-pass) ----------
 
-FN_RE = re.compile(r'\bfn\s+(\w+)')
+SIG_CFG = {                                   # per-lang sig-diff config; langs absent here -> citations only
+    "rust": {"kw": "fn ",   "fallible": "Result"},   # fallibility marker in the return type
+    "go":   {"kw": "func ", "fallible": "error"},
+}
 
 def _paren_slice(s, oc="(", cc=")"):
     """(inside, rest_after_close) for the first balanced oc..cc in s, else (None, None)."""
@@ -359,33 +435,54 @@ def _top_commas(argstr):
         elif c == ',' and not stack: n += 1
     return n
 
-def parse_fn_sig(s):
-    """(name, argcount, return_type) from a Rust fn sig; RT '()' if none; None if not a fn."""
+def parse_sig(lang, s):
+    """(name, argcount, return_type) from a fn/func/function sig; RT '()' if unit; '' if the type is
+    present-but-omitted (deferred pin); None if not parseable. Best-effort per language."""
     s = s.replace("\n", " ")
-    m = FN_RE.search(s)
+    rx = FN_RE.get(lang)
+    if not rx: return None
+    m = rx.search(s)
     if not m: return None
-    args, rest = _paren_slice(s[m.end():])
+    name = m.group(1)
+    p = s.find("(", m.start(1))                      # param list = first '(' at/after the name
+    if p < 0: return None
+    args, rest = _paren_slice(s[p:])
     if args is None: return None
-    rt = "()"                                        # no arrow at all = real unit return
-    if rest is not None:
-        r = rest.strip()
+    rt = "()"
+    r = (rest or "").strip()
+    if lang == "rust":
         if r.startswith("->"):
             r = r[2:]
             for stop in ("{", " where ", ";"):
                 j = r.find(stop)
                 if j >= 0: r = r[:j]
-            rt = r.strip()                           # "" = arrow present but type omitted (deferred pin)
-    return m.group(1), _top_commas(args), rt
+            rt = r.strip()                           # "" = arrow present, type omitted (deferred pin)
+    elif lang == "ts":
+        if r.startswith(":"):
+            r = r[1:]
+            for stop in ("{", "=>", ";"):
+                j = r.find(stop)
+                if j >= 0: r = r[:j]
+            rt = r.strip()
+    elif lang == "go":                               # return type(s) sit between params and the body/EOL
+        for stop in ("{", ";"):
+            j = r.find(stop)
+            if j >= 0: r = r[:j]
+        rt = r.strip() or "()"
+    return name, _top_commas(args), rt
 
-def norm_rt(rt):
+def norm_rt(lang, rt):
     rt = rt or "()"
-    rt = re.sub(r'\b(?:\w+::)+', '', rt)      # strip path qualifiers: std::sync::Arc -> Arc, anyhow::Result -> Result
+    sep = r'\b(?:\w+::)+' if lang == "rust" else r'\b(?:\w+\.)+'   # strip path/pkg qualifiers
+    rt = re.sub(sep, '', rt)
     return re.sub(r'\s+', '', rt)
 
 def cmd_verify_plan(args):
     plan_lines = open(args.plan, errors="replace").read().splitlines()
     plan_text = "\n".join(plan_lines)
     skel = json.load(open(args.skeleton))
+    lang = skel.get("lang", "rust")
+    sig_cfg = SIG_CFG.get(lang)                       # None -> this lang gets citation checks only, no sig-diff
     census_names = {r["name"] for r in skel["records"]}
     idx, scip = load_index(args.index, args.deps)
     definfo, def_loc, _, _ = build_tables(idx)
@@ -393,7 +490,7 @@ def cmd_verify_plan(args):
     for sym, info in definfo.items():
         nm = info.display_name
         if not nm: continue
-        sig = (info.signature_documentation.text if info.HasField("signature_documentation") else "").strip()
+        sig = sig_of(info)
         by_name[nm].append({"sig": sig, "loc": def_loc.get(sym)})
     index_names = set(by_name)
 
@@ -418,41 +515,43 @@ def cmd_verify_plan(args):
     # standing in for omitted args/type) is NOT a defect.
     def check_sig(buf, lineno):
         raw_code = " ".join(x.split("//")[0] for x in buf)
-        if "fn " not in raw_code: return
+        if sig_cfg["kw"] not in raw_code: return     # cheap skip: no fn/func keyword in this fence
         low = " ".join(buf).lower()
         raw_inside, _ = _paren_slice(raw_code)                    # arg text BEFORE comment-strip
         defer_args = (raw_inside is not None and "/*" in raw_inside) or "re-resolve" in low
-        p = parse_fn_sig(re.sub(r'/\*.*?\*/', '', raw_code))      # strip block comments for the real parse
+        p = parse_sig(lang, re.sub(r'/\*.*?\*/', '', raw_code))   # strip block comments for the real parse
         if not p: return
         name, argc, rt = p
         defs = by_name.get(name)
         if not defs: return                          # new/renamed port method — not name-verifiable
         real_rts, real_argcs = set(), set()
         for d in defs:
-            rp = parse_fn_sig(re.sub(r'/\*.*?\*/', '', d["sig"])) if d["sig"] else None
-            if rp: real_rts.add(norm_rt(rp[2])); real_argcs.add(rp[1])
+            rp = parse_sig(lang, re.sub(r'/\*.*?\*/', '', d["sig"])) if d["sig"] else None
+            if rp: real_rts.add(norm_rt(lang, rp[2])); real_argcs.add(rp[1])
         if not real_rts: return
         loc = defs[0]["loc"]
         if len(real_rts) > 1:
             ambig.append({"name": name, "line": lineno, "n": len(defs)}); return
-        defer_rt = (rt == "") or "re-resolve" in low             # arrow present but type omitted = deferred
-        plan_rt = norm_rt(rt); real_rt = next(iter(real_rts))
+        defer_rt = (rt == "") or "re-resolve" in low             # type omitted = deferred pin
+        plan_rt = norm_rt(lang, rt); real_rt = next(iter(real_rts))
+        F = sig_cfg["fallible"]                       # fallibility marker: rust=Result, go=error
         if not defer_rt and plan_rt != real_rt:
             e = {"name": name, "line": lineno, "plan": rt.strip(), "real": real_rt, "loc": loc}
-            (fallib if ("Result" in plan_rt) != ("Result" in real_rt) else typ).append(e)
+            (fallib if (F in plan_rt) != (F in real_rt) else typ).append(e)
         if argc not in real_argcs and not defer_args:
             argm.append({"name": name, "line": lineno, "plan": argc, "real": sorted(real_argcs), "loc": loc})
 
-    in_fence, buf, buf_start = False, [], 0
-    for i, raw in enumerate(body):
-        if raw.lstrip().startswith("```"):
-            if buf: check_sig(buf, buf_start+1); buf = []
-            in_fence = not in_fence; continue
-        if not in_fence: continue
-        if not buf: buf_start = i
-        buf.append(raw)
-        if ";" in raw or "{" in raw:                             # decl boundary (trait sigs end with ;)
-            check_sig(buf, buf_start+1); buf = []
+    if sig_cfg:                                       # sig-diff only for langs with a keyword+fallibility model (rust/go)
+        in_fence, buf, buf_start = False, [], 0
+        for i, raw in enumerate(body):
+            if raw.lstrip().startswith("```"):
+                if buf: check_sig(buf, buf_start+1); buf = []
+                in_fence = not in_fence; continue
+            if not in_fence: continue
+            if not buf: buf_start = i
+            buf.append(raw)
+            if ";" in raw or "{" in raw:                         # decl boundary (trait sigs end with ;)
+                check_sig(buf, buf_start+1); buf = []
 
     def sec(title, items, fmt=lambda x: str(x)):
         return [f"\n### {title} ({len(items)})"] + ([f"- {fmt(x)}" for x in items] or ["- none"])
@@ -484,7 +583,7 @@ INDEXERS = {"rust": "rust-analyzer", "go": "scip-go", "ts": "scip-typescript", "
 INDEXER_HINT = {
     "rust": "rustup component add rust-analyzer   (or: brew install rust-analyzer)",
     "go":   "go install github.com/sourcegraph/scip-go/cmd/scip-go@latest",
-    "ts":   "npm i -g @sourcegraph/scip-typescript",
+    "ts":   "install `bun` (for `bunx @sourcegraph/scip-typescript`) — or `npm i -g @sourcegraph/scip-typescript`",
 }
 MARK = {"OK": "✓", "FAIL": "✗", "MISSING": "✗", "SKIP": "·"}
 
@@ -536,6 +635,8 @@ def cmd_doctor(args):
         path = shutil.which(idx_bin)
         if path:
             rows.append((f"indexer:{lang}", "OK", f"{idx_bin}  {path}"))
+        elif lang == "ts" and shutil.which("bunx"):        # zero-install fallback: bunx @sourcegraph/scip-typescript
+            rows.append((f"indexer:{lang}", "OK", f"{idx_bin} via `bunx @sourcegraph/scip-typescript`  ({shutil.which('bunx')})"))
         else:
             rows.append((f"indexer:{lang}", "MISSING", f"{idx_bin} not on PATH — {INDEXER_HINT[lang]}"))
             indexer_fail = True
@@ -563,7 +664,7 @@ def main():
                        help="god-struct TYPE NAME to decouple from (e.g. Store) — matches /Name# + [Name]")
         p.add_argument("--boundary-type", action="append", default=[],
                        help="advanced: raw SCIP symbol substring (e.g. a module)")
-        p.add_argument("--lang", default="rust", choices=["rust", "none"])
+        p.add_argument("--lang", default="rust", choices=list(LANGS))
         p.add_argument("--test-line", type=int, default=None)
         p.add_argument("--deps", default=DEPS)
 

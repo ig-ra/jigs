@@ -29,8 +29,17 @@ Name the **god-struct type** you decouple from: `--boundary-struct Store`. The t
 ## Why SCIP (not live LSP)
 Same engine (rust-analyzer), batch dump not per-symbol calls: one `index.scip` has every symbol + signature + resolved reference. No positioning (pre-resolved), no per-call model cost, no server flakiness. The sibling `code-census` agent has the live-LSP fallback for when no indexer exists.
 
-## Language-neutral core
-Consumes SCIP. Swap the indexer per language: Rust `rust-analyzer scip`, Go `scip-go`, TS `scip-typescript`. Per-language test-detector via `--lang` (rust = `#[cfg(test)]` spans).
+## Languages (`--lang rust | go | ts | none`)
+Consumes SCIP; swap the indexer per language, and `--lang` selects a per-language **adapter** (test detection, visibility, signature source, sig parsing). The SCIP symbol/anchor/edge skeleton is generic; the adapters carry the per-language bits.
+
+| lang | indexer | test-flag | visibility | signature | boundary (`--boundary-struct`) | verify-plan sig-diff |
+|---|---|---|---|---|---|---|
+| **rust** | `rust-analyzer scip` | `#[cfg(test)]` spans | `pub`/`pub(crate)` | `signature_documentation` | `/X#` + `[Trait]impl` | ✓ (`Result` fallibility) |
+| **go** | `scip-go` | `*_test.go` files | exported = Name capitalized | doc-fence | `/X#` (struct+methods) | ✓ (`error` fallibility) |
+| **ts** | `scip-typescript` (or `bunx @sourcegraph/scip-typescript`) | `*.test/.spec.ts(x)`, `__tests__/` | `export`/`private` from source line | `documentation` code-fence; kind inferred from descriptor | `/X#` (class+members) | — (citations only) |
+| **none** | any SCIP | — | `?` | best-effort | `/X#` | — |
+
+Notes: Go/TS drop Rust's `[Trait]impl` boundary dimension (they have no such encoding). TS visibility is read from the **source line** (scip-typescript's hover omits `export`/`private`). verify-plan's signature diffing runs for rust+go (keyword+fallibility model); ts gets citation checks only. Go paths are wired but not yet end-to-end validated here (no local `scip-go`).
 
 ## Setup
 Run the preflight — it tells you exactly what (if anything) is missing:
@@ -45,8 +54,12 @@ Run the preflight — it tells you exactly what (if anything) is missing:
 
 ## Usage
 ```
-# 1. index (seconds; current HEAD)
-rust-analyzer scip /path/to/repo --output /tmp/index.scip
+# 1. index (seconds; current HEAD) — pick the indexer for the language
+rust-analyzer scip /path/to/repo --output /tmp/index.scip          # rust
+scip-go --output /tmp/index.scip                                    # go   (run in the module)
+scip-typescript index --output /tmp/index.scip                      # ts   (run in the project; reads tsconfig)
+bunx @sourcegraph/scip-typescript index --output /tmp/index.scip    # ts, zero-install (needs bun) — bin first, else bunx
+# then pass --lang rust|go|ts to harvest/scaffold below
 
 # 2. (optional) scaffold the P0 Scope
 census scaffold --index /tmp/index.scip --repo /path/to/repo \
