@@ -1,6 +1,6 @@
 ---
 description: Loop Codex adversarial-review on a target (spec / plan / code diff) until clean or max rounds, folding minimal fixes and parking over-engineering/breaking findings as Open Questions. Can be driven by a caller (igr-dev) with a single supplied focus/angle.
-argument-hint: "[target-file] [max=10; 3 when --focus] [--focus \"angle\"] [-- settled decisions to protect]"
+argument-hint: "[target-file] [max=10; 3 when --focus] [--focus \"angle\"] [--model <name>] [-- settled decisions to protect]"
 allowed-tools: Bash, Read, Edit
 ---
 
@@ -26,6 +26,12 @@ substitution:
   before positional parsing, then use `\<text\>` as the core of every round's focus instead of
   inventing a generic "review this" framing. This is the L1/L2 seam: a director (the `igr-dev`
   skill) builds the angle; L1 runs it. Keep the text free of backticks and `$` (rule 2).
+- **--model \<name\>** (optional flag, anywhere in `$ARGUMENTS`): the Codex **review model** to pass to
+  the companion (`adversarial-review --model <name>`). Use it when the default is wrong for your account
+  — e.g. a ChatGPT-account login cannot use `gpt-5.3-codex`. **Precedence for the review model `<M>`:**
+  this `--model` flag → `$CODEX_REVIEW_MODEL` env → the `model = "…"` line in `${CODEX_HOME:-~/.codex}/config.toml`
+  → `gpt-5.5`. To set it once for **every** run (incl. when driven by `/igr:plan` / `/igr:brainstorm`),
+  export `CODEX_REVIEW_MODEL` — e.g. in `~/.claude/settings.json` `"env": { "CODEX_REVIEW_MODEL": "gpt-5.5" }`.
 - **settled** (everything after a literal `--`, optional): owner-settled decisions to protect
   from re-litigation this run, in addition to any the target already marks as settled.
 
@@ -47,7 +53,7 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
    then `node "<path>" adversarial-review --model "<M>" "<focus>"`. **If that glob is empty → the `codex` plugin is
    not installed: STOP and tell the user to run `/plugin install codex`** (do not fall back to the
    `codex:codex-rescue` Agent). `codex` is an external plugin (install from the `openai-codex` marketplace) — not a hard `plugin.json` dependency, so igr stays marketplace-agnostic.
-   **Always pass `--model "<M>"`** — the codex `review` feature ignores `config.toml model` and falls back to a built-in default (`gpt-5.3-codex`) that a **ChatGPT-account** login cannot use (HTTP 400). Resolve **<M>**: `$CODEX_REVIEW_MODEL` if set, else the `model = "…"` line from `${CODEX_HOME:-~/.codex}/config.toml`, else `gpt-5.5`. Never rely on the binary's review default.
+   **Always pass `--model "<M>"`** — the codex `review` feature ignores `config.toml model` and falls back to a built-in default (`gpt-5.3-codex`) that a **ChatGPT-account** login cannot use (HTTP 400). Resolve **<M>** by precedence: the `--model` arg (Arguments) → `$CODEX_REVIEW_MODEL` → the `model = "…"` line from `${CODEX_HOME:-~/.codex}/config.toml` → `gpt-5.5`. Never rely on the binary's review default.
 2. **zsh eval gotcha — strip ALL backticks and `$` from the focus string**, or the companion
    crashes (`(eval): parse error`). Refer to code as `file colon line` plainly; no backticks.
 3. **Launch exactly once per round**, redirected to a **unique** output file
