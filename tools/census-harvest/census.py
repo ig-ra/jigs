@@ -34,7 +34,7 @@ CFG_TEST = re.compile(r'^\s*#\[\s*cfg\s*\(\s*(any\s*\(\s*)?\s*(test\b|feature\s*
 TS_TEST_FILE = re.compile(r'(\.(test|spec)\.[cm]?[jt]sx?$)|(^|/)__tests__/')
 FN_RE = {                                     # locates the fn NAME; parse_sig finds the param list after it
     "rust": re.compile(r'\bfn\s+(\w+)'),
-    "go":   re.compile(r'\bfunc\s+(?:\([^)]*\)\s*)?(\w+)'),   # optional receiver: func (r T) Name(
+    "go":   re.compile(r'\bfunc\s+(?:\([^)]*\)\s*\.?\s*)?(\w+)'),   # optional receiver, both forms: func (r T) Name( / scip-go's func (*T).Name(
     "ts":   re.compile(r'\b(?:function\s+)?([A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\s*\('),
 }
 
@@ -159,9 +159,13 @@ def build_tables(idx):
     for d in idx.documents:
         rp = d.relative_path
         for s in d.symbols:
-            if not s.symbol.startswith("local"): definfo.setdefault(s.symbol, s)
+            if not s.symbol.startswith("local") and "().(" not in s.symbol: definfo.setdefault(s.symbol, s)
         for o in d.occurrences:
             if not o.symbol or o.symbol.startswith("local"): continue
+            # scip-typescript emits PARAMETER defs as non-local symbols (`fn().(param)`) ON the fn's
+            # def line — last-write-wins in def_by_line would evict the fn as enclosing container and
+            # mis-attribute its body's edges/boundary accesses. Sub-fn granularity — skip everywhere.
+            if "().(" in o.symbol: continue
             line0 = o.range[0]
             if o.symbol_roles & DEF_ROLE:
                 def_loc.setdefault(o.symbol, (rp, line0)); def_by_line[rp][line0] = o.symbol
@@ -193,7 +197,7 @@ def build_test(args, targets):
         if i >= 0 and spans[i][0] <= line0 <= spans[i][1]: return True
         if tline and line0 + 1 >= tline: return True
         return False
-    return src_lines, test_spans, is_test
+    return src_lines, test_spans, is_test, is_test_file
 
 def build_enclosing(targets, def_by_line, definfo, KindName):
     cont_lines, cont_sym = {}, {}
@@ -233,11 +237,12 @@ def scan_boundary(idx, targets, is_boundary, is_member, is_test, enclosing_fn, s
                     boundary_by_member[lbl].append((rp, line0)); scip_boundary_lines[rp].add(line0)
     return edges_out, bnd_members, boundary_by_member, scip_boundary_lines, typeref
 
-def grep_reconcile(tokens, targets, src_lines, test_spans, scip_boundary_lines):
+def grep_reconcile(tokens, targets, src_lines, test_spans, scip_boundary_lines, is_test_file=lambda rp: False):
     recon = {"per_file": {}, "grep_only_flags": []}
     pats = [re.compile(r'\b' + re.escape(t) + r'\b\s*\.\s*[A-Za-z_]\w*') for t in tokens]
     if not pats: return recon
     for rp in targets:
+        if is_test_file(rp): continue         # the SCIP floor excludes test files — mirror it (go/ts)
         starts, spans = test_spans[rp]
         scip_lines = scip_boundary_lines.get(rp, set())
         hits = 0
@@ -261,7 +266,7 @@ def cmd_harvest(args):
     KindName = scip.SymbolInformation.Kind.Name
     structs = args.boundary_struct
     definfo, def_loc, refs, def_by_line = build_tables(idx)
-    src_lines, test_spans, is_test = build_test(args, targets)
+    src_lines, test_spans, is_test, is_test_file = build_test(args, targets)
     enclosing_fn = build_enclosing(targets, def_by_line, definfo, KindName)
     is_boundary, is_member = make_boundary(structs, args.boundary_type, lang_boundary_trait(args.lang))
     edges_out, bnd_members, boundary_by_member, scip_boundary_lines, typeref = \
@@ -286,7 +291,7 @@ def cmd_harvest(args):
     records.sort(key=lambda r: (r["file"], r["line"]))
     boundary_summary = sorted(({"member": k, "accesses": len(v)} for k, v in boundary_by_member.items()),
                               key=lambda x: -x["accesses"])
-    recon = grep_reconcile(args.grep_token, targets, src_lines, test_spans, scip_boundary_lines)
+    recon = grep_reconcile(args.grep_token, targets, src_lines, test_spans, scip_boundary_lines, is_test_file)
     prod = [r for r in records if not r["test"]]
     payload = {"index_tool": idx.metadata.tool_info.version if idx.metadata.tool_info else "",
                "lang": args.lang,
@@ -329,7 +334,7 @@ def cmd_scaffold(args):
     KindName = scip.SymbolInformation.Kind.Name
     structs = args.boundary_struct
     definfo, def_loc, refs, def_by_line = build_tables(idx)
-    src_lines, test_spans, is_test = build_test(args, targets)
+    src_lines, test_spans, is_test, _is_test_file = build_test(args, targets)
     enclosing_fn = build_enclosing(targets, def_by_line, definfo, KindName)
     is_boundary, is_member = make_boundary(structs, args.boundary_type, lang_boundary_trait(args.lang))
     _, bnd_members, boundary_by_member, _, _ = \
@@ -486,9 +491,12 @@ def cmd_verify_plan(args):
     census_names = {r["name"] for r in skel["records"]}
     idx, scip = load_index(args.index, args.deps)
     definfo, def_loc, _, _ = build_tables(idx)
-    by_name = defaultdict(list)                       # display_name -> [{sig, loc}] across the WHOLE index
+    by_name = defaultdict(list)                       # name -> [{sig, loc}] across the WHOLE index
     for sym, info in definfo.items():
-        nm = info.display_name
+        # display_name-or-descriptor fallback, same as harvest records — scip-typescript leaves
+        # display_name empty, which would empty the index name-set and mislabel every
+        # exists-in-code cite as dangling.
+        nm = info.display_name or member_label(sym)
         if not nm: continue
         sig = sig_of(info)
         by_name[nm].append({"sig": sig, "loc": def_loc.get(sym)})
@@ -560,6 +568,10 @@ def cmd_verify_plan(args):
            f"plan: {args.plan}  ·  index: {skel.get('index_tool','?')}  ·  census rows: {len(census_names)}  ·  cites: {len(cites)}",
            "\n*Structured claims only (code-block sigs + [C:] cites) — deterministic. "
            "FALLIBILITY = high-signal (Result added/dropped). Type diffs may be intended port abstraction — verify.*"]
+    if not sig_cfg:
+        out.append(f"\n**NOTE: sig-diff UNSUPPORTED for lang={lang} — citations checked only; "
+                   "return-type/fallibility/arg-count checks were SKIPPED. The P3b codex angles must "
+                   "carry the whole signature surface for this plan.**")
     out += sec("Dangling citations — [C:name] not found in code at all", dangling, lambda x: f"[C:{x}]")
     out += sec("Cited but not in census — exists in code, missing from census rows", cite_gap, lambda x: f"[C:{x}]")
     out += sec("FALLIBILITY mismatches (HIGH — Result invented/dropped)", fallib,

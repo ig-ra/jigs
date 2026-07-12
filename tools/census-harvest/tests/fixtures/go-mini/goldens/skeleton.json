@@ -1,0 +1,192 @@
+{
+ "index_tool": "0.2.7",
+ "lang": "go",
+ "files": [
+  "engine/engine.go",
+  "engine/engine_test.go"
+ ],
+ "boundary_structs": [
+  "Store"
+ ],
+ "boundary_types": [],
+ "counts": {
+  "symbols": 8,
+  "prod": 6,
+  "test": 2,
+  "boundary_accesses": 6,
+  "boundary_members": 4,
+  "type_mentions_excluded": 6,
+  "grep_only_flags": 5
+ },
+ "records": [
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/",
+   "name": "engine",
+   "kind": "Package",
+   "file": "engine/engine.go",
+   "line": 1,
+   "signature": "package engine",
+   "visibility": "private",
+   "edges_in": 5,
+   "edges_out": 0,
+   "boundary_members": [],
+   "test": false
+  },
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/Compact().",
+   "name": "Compact",
+   "kind": "Function",
+   "file": "engine/engine.go",
+   "line": 5,
+   "signature": "func Compact(s *store.Store, key string) (uint64, error)",
+   "visibility": "public",
+   "edges_in": 2,
+   "edges_out": 6,
+   "boundary_members": [
+    "Store#GetObject",
+    "Store#PutObject",
+    "Store#Stats"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/planCompaction().",
+   "name": "planCompaction",
+   "kind": "Function",
+   "file": "engine/engine.go",
+   "line": 16,
+   "signature": "func planCompaction(s *store.Store) []string",
+   "visibility": "private",
+   "edges_in": 0,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#Cfg"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/estimate().",
+   "name": "estimate",
+   "kind": "Function",
+   "file": "engine/engine.go",
+   "line": 20,
+   "signature": "func estimate(s *store.Store) int",
+   "visibility": "private",
+   "edges_in": 1,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#Cfg"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/MergeRanges().",
+   "name": "MergeRanges",
+   "kind": "Function",
+   "file": "engine/engine.go",
+   "line": 24,
+   "signature": "func MergeRanges(s *store.Store, lo int, hi int) (int, error)",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 4,
+   "boundary_members": [],
+   "test": false
+  },
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/Report().",
+   "name": "Report",
+   "kind": "Function",
+   "file": "engine/engine.go",
+   "line": 35,
+   "signature": "func Report(s *store.Store) store.Stats",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#Stats"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/compactHelper().",
+   "name": "compactHelper",
+   "kind": "Function",
+   "file": "engine/engine_test.go",
+   "line": 9,
+   "signature": "func compactHelper(s *store.Store) uint64",
+   "visibility": "private",
+   "edges_in": 1,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#Stats"
+   ],
+   "test": true
+  },
+  {
+   "symbol": "scip-go gomod example.com/gomini 21a46e3efd61 `example.com/gomini/engine`/TestCompact().",
+   "name": "TestCompact",
+   "kind": "Function",
+   "file": "engine/engine_test.go",
+   "line": 13,
+   "signature": "func TestCompact(t *testing.T)",
+   "visibility": "public",
+   "edges_in": 1,
+   "edges_out": 11,
+   "boundary_members": [],
+   "test": true
+  }
+ ],
+ "boundary_summary": [
+  {
+   "member": "Store#Stats",
+   "accesses": 2
+  },
+  {
+   "member": "Store#Cfg",
+   "accesses": 2
+  },
+  {
+   "member": "Store#GetObject",
+   "accesses": 1
+  },
+  {
+   "member": "Store#PutObject",
+   "accesses": 1
+  }
+ ],
+ "reconciliation": {
+  "per_file": {
+   "engine/engine.go": {
+    "scip_member_lines": 6,
+    "grep_hit_lines": 11
+   }
+  },
+  "grep_only_flags": [
+   {
+    "file": "engine/engine.go",
+    "line": 5,
+    "text": "func Compact(s *store.Store, key string) (uint64, error) {"
+   },
+   {
+    "file": "engine/engine.go",
+    "line": 16,
+    "text": "func planCompaction(s *store.Store) []string {"
+   },
+   {
+    "file": "engine/engine.go",
+    "line": 20,
+    "text": "func estimate(s *store.Store) int {"
+   },
+   {
+    "file": "engine/engine.go",
+    "line": 25,
+    "text": "s *store.Store,"
+   },
+   {
+    "file": "engine/engine.go",
+    "line": 35,
+    "text": "func Report(s *store.Store) store.Stats {"
+   }
+  ]
+ }
+}

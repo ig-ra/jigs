@@ -9,11 +9,15 @@ export const meta = {
 // Effort parameterization mirrors the inline /code-review cells:
 //   high  → 3 correctness + 1 cleanup angle (conventions) × 6 → ≤10 findings
 //   xhigh → 5 correctness + 1 cleanup angle (conventions) × 8 → sweep → ≤15 findings
-//   max   → same structure as xhigh (the API reasoning effort differs, not the fan-out)
+//   max   → same structure/fan-out as xhigh; the difference is per-agent reasoning effort
+// `effort` is passed EXPLICITLY to every find/verify/sweep agent — never inherited from the
+// session. Upstream /code-review relies on inheritance because its level mirrors the session
+// effort by construction; here the level arrives as an arg (/igr:review xhigh) independent of
+// the session, so the level must fully determine the review on its own.
 const LEVEL_PARAMS = {
-  high: { correctnessAngles: 3, perAngle: 6, maxFindings: 10, sweep: false },
-  xhigh: { correctnessAngles: 5, perAngle: 8, maxFindings: 15, sweep: true },
-  max: { correctnessAngles: 5, perAngle: 8, maxFindings: 15, sweep: true },
+  high: { correctnessAngles: 3, perAngle: 6, maxFindings: 10, sweep: false, effort: "high" },
+  xhigh: { correctnessAngles: 5, perAngle: 8, maxFindings: 15, sweep: true, effort: "xhigh" },
+  max: { correctnessAngles: 5, perAngle: 8, maxFindings: 15, sweep: true, effort: "max" },
 }
 const SWEEP_MAX = 8
 
@@ -102,7 +106,7 @@ const scope = await agent(
   "3. Summarize what changed in one paragraph.\n" +
   "4. List the CLAUDE.md files that apply to the changed files (the user-level ~/.claude/CLAUDE.md, the repo-root CLAUDE.md, plus any CLAUDE.md or CLAUDE.local.md in a directory that is an ancestor of a changed file). Read each one that exists and note conventions a reviewer should know.\n\n" +
   "Return diffCommand exactly as a reviewer should run it. Structured output only.",
-  { label: "scope", schema: SCOPE_SCHEMA }
+  { label: "scope", schema: SCOPE_SCHEMA, effort: "high" }
 )
 if (!scope) {
   return { error: "Scope agent returned no result — cannot establish the review scope." }
@@ -189,7 +193,7 @@ async function verifyGroups(candidates) {
   verifierAgents += groups.length
   const out = await parallel(groups.map(g => async () => {
     const short = g[0].file.split("/").pop()
-    const r = await agent(GROUP_VERIFIER_PROMPT(g), { label: "verify:" + short + "(" + g.length + ")", phase: "Verify", schema: GROUP_VERDICT_SCHEMA })
+    const r = await agent(GROUP_VERIFIER_PROMPT(g), { label: "verify:" + short + "(" + g.length + ")", phase: "Verify", schema: GROUP_VERDICT_SCHEMA, effort: P.effort })
     if (!r) return []
     const byIdx = {}
     for (const v of r.verdicts) if (inBounds(v.index, g.length)) byIdx[v.index] = v
@@ -206,7 +210,7 @@ const FINDERS = CORRECTNESS_ANGLES.slice(0, P.correctnessAngles)
   .concat(CLEANUP_ANGLES.map(a => ({ ...a, kind: "cleanup" })))
 
 const finderOuts = await parallel(FINDERS.map(f => () =>
-  agent(FINDER_PROMPT(f), { label: f.label, phase: "Find", schema: CANDIDATES_SCHEMA }).then(r => {
+  agent(FINDER_PROMPT(f), { label: f.label, phase: "Find", schema: CANDIDATES_SCHEMA, effort: P.effort }).then(r => {
     if (!r) return []
     log(f.label + ": " + r.candidates.length + " candidates")
     return ingest(r.candidates, P.perAngle, f.kind)
@@ -229,7 +233,7 @@ if (P.sweep) {
     "Re-read the diff and the enclosing functions looking ONLY for defects not already listed. " +
     "Focus on what the first pass tends to miss: " + SWEEP_GAP_FOCUS + "\n\n" +
     "Surface up to " + SWEEP_MAX + " additional candidates. If nothing new, return an empty list — do not pad.\n\nStructured output only.",
-    { label: "sweep", phase: "Sweep", schema: CANDIDATES_SCHEMA }
+    { label: "sweep", phase: "Sweep", schema: CANDIDATES_SCHEMA, effort: P.effort }
   )
   if (sweep && sweep.candidates.length > 0) {
     const sliced = ingest(sweep.candidates, SWEEP_MAX, "correctness")
@@ -282,7 +286,7 @@ const report = await agent(
   "2. Order decisions most-severe first. Correctness bugs always outrank cleanup findings.\n" +
   "3. Keep at most " + P.maxFindings + " decisions; omit the least severe beyond the cap.\n" +
   "4. Write a 2-3 sentence summary of the review.\n\nStructured output only.",
-  { label: "synthesize", schema: REPORT_SCHEMA }
+  { label: "synthesize", schema: REPORT_SCHEMA, effort: "high" }
 )
 
 // Assembler invariants:

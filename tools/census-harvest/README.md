@@ -41,6 +41,11 @@ Consumes SCIP; swap the indexer per language, and `--lang` selects a per-languag
 
 Notes: Go/TS drop Rust's `[Trait]impl` boundary dimension (they have no such encoding). TS visibility is read from the **source line** (scip-typescript's hover omits `export`/`private`); Go visibility is the name-capitalization rule. verify-plan's signature diffing runs for rust+go (keyword+fallibility model); ts gets citation checks only. All three validated end-to-end (rust-analyzer / `bunx scip-typescript` / `go run scip-go`).
 
+## Tests
+Golden-file suite over vendored SCIP fixtures (rust/go/ts, same mini-domain each): `tests/run`.
+Coverage matrix + known gaps: `tests/SCENARIOS.md`. Regenerate goldens (intentional output
+changes only): `tests/regen.sh`.
+
 ## Setup
 Run the preflight — it tells you exactly what (if anything) is missing:
 ```

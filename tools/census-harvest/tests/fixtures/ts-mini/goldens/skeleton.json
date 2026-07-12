@@ -1,0 +1,181 @@
+{
+ "index_tool": "0.4.0",
+ "lang": "ts",
+ "files": [
+  "src/engine.ts",
+  "src/engine.test.ts"
+ ],
+ "boundary_structs": [
+  "Store"
+ ],
+ "boundary_types": [],
+ "counts": {
+  "symbols": 9,
+  "prod": 6,
+  "test": 3,
+  "boundary_accesses": 6,
+  "boundary_members": 4,
+  "type_mentions_excluded": 8,
+  "grep_only_flags": 0
+ },
+ "records": [
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.test.ts`/",
+   "name": "",
+   "kind": "Module",
+   "file": "src/engine.test.ts",
+   "line": 1,
+   "signature": "module \"engine.test.ts\"",
+   "visibility": "private",
+   "edges_in": 0,
+   "edges_out": 0,
+   "boundary_members": [],
+   "test": true
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.test.ts`/compactHelper().",
+   "name": "compactHelper",
+   "kind": "Function",
+   "file": "src/engine.test.ts",
+   "line": 4,
+   "signature": "function compactHelper(store: Store): number",
+   "visibility": "private",
+   "edges_in": 1,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#stats"
+   ],
+   "test": true
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.test.ts`/testCompact().",
+   "name": "testCompact",
+   "kind": "Function",
+   "file": "src/engine.test.ts",
+   "line": 8,
+   "signature": "function testCompact(): Promise<void>",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 12,
+   "boundary_members": [
+    "Store#`<constructor>`"
+   ],
+   "test": true
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.ts`/",
+   "name": "",
+   "kind": "Module",
+   "file": "src/engine.ts",
+   "line": 1,
+   "signature": "module \"engine.ts\"",
+   "visibility": "private",
+   "edges_in": 2,
+   "edges_out": 0,
+   "boundary_members": [],
+   "test": false
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.ts`/compact().",
+   "name": "compact",
+   "kind": "Function",
+   "file": "src/engine.ts",
+   "line": 3,
+   "signature": "function compact(store: Store, key: string): Promise<number>",
+   "visibility": "public",
+   "edges_in": 4,
+   "edges_out": 14,
+   "boundary_members": [
+    "Store#getObject",
+    "Store#putObject",
+    "Store#stats"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.ts`/planCompaction().",
+   "name": "planCompaction",
+   "kind": "Function",
+   "file": "src/engine.ts",
+   "line": 12,
+   "signature": "function planCompaction(store: Store): string[]",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#cfg"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.ts`/estimate().",
+   "name": "estimate",
+   "kind": "Function",
+   "file": "src/engine.ts",
+   "line": 16,
+   "signature": "function estimate(store: Store): number",
+   "visibility": "private",
+   "edges_in": 1,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#cfg"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.ts`/mergeRanges().",
+   "name": "mergeRanges",
+   "kind": "Function",
+   "file": "src/engine.ts",
+   "line": 20,
+   "signature": "function mergeRanges(store: Store, lo: number, hi: number): number",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 7,
+   "boundary_members": [],
+   "test": false
+  },
+  {
+   "symbol": "scip-typescript npm ts-mini 0.1.0 src/`engine.ts`/report().",
+   "name": "report",
+   "kind": "Function",
+   "file": "src/engine.ts",
+   "line": 31,
+   "signature": "function report(store: Store): Stats",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store#stats"
+   ],
+   "test": false
+  }
+ ],
+ "boundary_summary": [
+  {
+   "member": "Store#stats",
+   "accesses": 2
+  },
+  {
+   "member": "Store#cfg",
+   "accesses": 2
+  },
+  {
+   "member": "Store#getObject",
+   "accesses": 1
+  },
+  {
+   "member": "Store#putObject",
+   "accesses": 1
+  }
+ ],
+ "reconciliation": {
+  "per_file": {
+   "src/engine.ts": {
+    "scip_member_lines": 6,
+    "grep_hit_lines": 6
+   }
+  },
+  "grep_only_flags": []
+ }
+}

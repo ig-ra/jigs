@@ -1,0 +1,6 @@
+{
+  "src/engine.ts:3": {"behavior": "throws on missing object; bump side-effect via putObject", "disposition": "moves"},
+  "src/engine.ts:12": {"disposition": "stays"},
+  "src/engine.ts:20": {"behavior": "throws on lo>hi before any work", "disposition": ""},
+  "src/engine.ts:31": {"disposition": "seam"}
+}

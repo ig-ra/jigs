@@ -125,8 +125,9 @@ does not reimplement the mechanics.** Restated so every method honors them:
    it has edit/commit tools and auto-commits during "review only".
 2. **No codegraph** in any focus string (it hangs the companion ~60 min). rg/sed only.
 3. **zsh eval gotcha** — strip ALL backticks and `$` from the focus string.
-4. **One companion job in flight**, unique outfile per round; poll the outfile for the verdict
-   marker (the completion notification fires early, before the verdict exists).
+4. **One companion job in flight**, unique outfile per round; poll the outfile for the
+   `REVIEW-COMPLETE` terminator (the completion notification fires early — the companion process
+   exits before the review job finishes writing; never read on notify alone).
 5. **Verify every finding against the actual code before folding** — Codex is a lead-generator,
    not an oracle.
 6. **Triage: apply-minimal vs park-scope.** Minimal/clear fix (faithfulness, wrong ref, missing

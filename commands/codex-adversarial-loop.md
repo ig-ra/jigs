@@ -113,15 +113,22 @@ For round `N` = 1 .. max:
      here AND harden the target to state the rule + the mechanism the reviewer keeps missing.
    - Framing: verify against the ACTUAL current code (read the cited files); **flag
      over-engineering as a defect — do not demand new features/abstractions**; output concrete
-     findings with severity + file:line evidence; say `SPEC-SOUND` (or `PLAN-SOUND`) if clean.
+     findings with severity + file:line evidence; say `SPEC-SOUND` (or `PLAN-SOUND`) if clean;
+     **end the output with the single final line REVIEW-COMPLETE** (the loop's completion
+     sentinel — plain token, safe under rule 2).
 2. **Announce** "codex-loop round N/max on <target>" to the user. **Launch** the companion
-   (rule 1/3), `run_in_background: true` — only ONE companion job in flight at a time. Wait for
-   completion (the harness notifies), then **read the unique outfile** (not the task-output
-   file — that is empty when stdout is redirected with `>`). If the outfile has no verdict /
-   findings section (crashed or malformed run): **first match it against the rule-7 env-error
+   (rule 1/3), `run_in_background: true` — only ONE companion job in flight at a time.
+   **The harness completion notification is a launch-finished hint, NOT a read trigger** — the
+   companion process exits before the review job finishes writing the outfile. After the
+   notification, **poll the outfile for the `REVIEW-COMPLETE` terminator** (the sentinel the
+   framing requested), e.g. `grep -q REVIEW-COMPLETE <outfile>` every ~20–30s; only on the
+   sentinel **read the outfile** (not the task-output file — that is empty when stdout is
+   redirected with `>`). **Stall rule:** sentinel absent AND the outfile size unchanged for
+   ~3 min → stop polling and triage: **first match the content against the rule-7 env-error
    shapes** (sqlite lock / model-not-supported) and act on the specific cause; only if none match,
    treat it as a generic FAILED round — run one foreground diagnostic (rule 3), fix the cause,
-   retry that round once — do not count it toward the cap or loop blindly.
+   retry that round once — do not count it toward the cap or loop blindly. (File still growing →
+   keep waiting.)
 3. **Triage every finding** — this is the core discipline:
    - **Minimal / clear** (faithfulness correction, wrong line ref, a simple missing
      precondition/guard, tightening a test, a narrow correctness fix — **no** new abstraction,

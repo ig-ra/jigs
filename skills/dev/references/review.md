@@ -13,14 +13,18 @@ run a build/test gate (do not re-run one here).
 
 ## Scope
 
-The committed diff. The tree is committed, so scope the review to the diff — e.g.
-`git diff HEAD~1..HEAD` (the single squashed commit).
+**All committed branch work vs the branch's base** — always; no per-run range/target arg. The
+diff is `git diff <base>...HEAD` (**three-dot** = vs the merge-base, i.e. where the branch was
+taken from — two-dot would drag in the base's newer commits): base = `origin/main` (fall back
+`main`); a stacked rung based on a parent branch uses the parent as base. The tree must be
+committed — verify the diff is non-empty before reviewing. (In the pipeline flow the branch is
+one squashed commit on the base, so this equals the single-commit diff.)
 
 ## Review flow (exactly this)
 
 1. **`/simplify`** scoped to the diff — the code-simplifier pass (reuse / simplification /
-   efficiency / altitude). E.g. `/simplify the changes in git diff HEAD~1..HEAD` (no preserve-X
-   essays).
+   efficiency / altitude). E.g. `/simplify the changes in git diff origin/main...HEAD` (the
+   branch diff from §Scope; no preserve-X essays).
 2. **`/igr:code-review-skip-simplify <effort>`** — correctness angles + conventions, skipping the
    cleanup angles `/simplify` already covered. **Default effort `xhigh`** (tunable: `high` |
    `xhigh` | `max`; a trivially-mechanical rung MAY be downgraded to `/code-review high`, but
@@ -36,8 +40,10 @@ the confirmed fixes to the code.
 
 ## Commits
 
-Amend the fixes into the single commit (`git add` tracked files only, never the untracked docs
-dir). **No PR / merge** — that belongs to the workflow layer, not this method.
+Single-squashed-commit branch (the pipeline flow) → **amend** the fixes into that commit
+(`git add` tracked files only, never the untracked docs dir). Multi-commit branch (standalone
+run) → commit the fixes as a new commit per the repo's rules — do not amend history. **No PR /
+merge** — that belongs to the workflow layer, not this method.
 
 ## Stop
 

@@ -1,0 +1,185 @@
+{
+ "index_tool": "0.0.0 (7ae18ed96a 2026-07-05)",
+ "lang": "rust",
+ "files": [
+  "src/engine.rs"
+ ],
+ "boundary_structs": [
+  "Store"
+ ],
+ "boundary_types": [],
+ "counts": {
+  "symbols": 9,
+  "prod": 6,
+  "test": 3,
+  "boundary_accesses": 7,
+  "boundary_members": 5,
+  "type_mentions_excluded": 8,
+  "grep_only_flags": 0
+ },
+ "records": [
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/",
+   "name": "engine",
+   "kind": "Module",
+   "file": "src/engine.rs",
+   "line": 1,
+   "signature": "pub mod engine",
+   "visibility": "public",
+   "edges_in": 4,
+   "edges_out": 0,
+   "boundary_members": [],
+   "test": false
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/compact().",
+   "name": "compact",
+   "kind": "Function",
+   "file": "src/engine.rs",
+   "line": 3,
+   "signature": "pub fn compact(store: &mut Store, key: &str) -> Result<u64, String>",
+   "visibility": "public",
+   "edges_in": 2,
+   "edges_out": 10,
+   "boundary_members": [
+    "Store::get_object",
+    "Store::persist",
+    "Store::put_object",
+    "Store::stats"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/plan_compaction().",
+   "name": "plan_compaction",
+   "kind": "Function",
+   "file": "src/engine.rs",
+   "line": 10,
+   "signature": "pub(crate) fn plan_compaction(store: &Store) -> Vec<String>",
+   "visibility": "package",
+   "edges_in": 0,
+   "edges_out": 8,
+   "boundary_members": [
+    "Store#cfg"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/estimate().",
+   "name": "estimate",
+   "kind": "Function",
+   "file": "src/engine.rs",
+   "line": 14,
+   "signature": "fn estimate(store: &Store) -> usize",
+   "visibility": "private",
+   "edges_in": 1,
+   "edges_out": 3,
+   "boundary_members": [
+    "Store#cfg"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/merge_ranges().",
+   "name": "merge_ranges",
+   "kind": "Function",
+   "file": "src/engine.rs",
+   "line": 18,
+   "signature": "pub fn merge_ranges(store: &Store, lo: usize, hi: usize) -> Result<usize, String>",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 10,
+   "boundary_members": [],
+   "test": false
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/report().",
+   "name": "report",
+   "kind": "Function",
+   "file": "src/engine.rs",
+   "line": 29,
+   "signature": "pub fn report(store: &Store) -> Stats",
+   "visibility": "public",
+   "edges_in": 0,
+   "edges_out": 7,
+   "boundary_members": [
+    "Store::stats"
+   ],
+   "test": false
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/tests/",
+   "name": "tests",
+   "kind": "Module",
+   "file": "src/engine.rs",
+   "line": 34,
+   "signature": "mod tests",
+   "visibility": "private",
+   "edges_in": 0,
+   "edges_out": 0,
+   "boundary_members": [],
+   "test": true
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/tests/compact_helper().",
+   "name": "compact_helper",
+   "kind": "Function",
+   "file": "src/engine.rs",
+   "line": 38,
+   "signature": "fn compact_helper(store: &mut Store) -> u64",
+   "visibility": "private",
+   "edges_in": 1,
+   "edges_out": 4,
+   "boundary_members": [
+    "Store::stats"
+   ],
+   "test": true
+  },
+  {
+   "symbol": "rust-analyzer cargo rust_mini 0.1.0 engine/tests/test_compact().",
+   "name": "test_compact",
+   "kind": "Function",
+   "file": "src/engine.rs",
+   "line": 43,
+   "signature": "fn test_compact()",
+   "visibility": "private",
+   "edges_in": 0,
+   "edges_out": 10,
+   "boundary_members": [
+    "Store::new"
+   ],
+   "test": true
+  }
+ ],
+ "boundary_summary": [
+  {
+   "member": "Store::stats",
+   "accesses": 2
+  },
+  {
+   "member": "Store#cfg",
+   "accesses": 2
+  },
+  {
+   "member": "Store::get_object",
+   "accesses": 1
+  },
+  {
+   "member": "Store::put_object",
+   "accesses": 1
+  },
+  {
+   "member": "Store::persist",
+   "accesses": 1
+  }
+ ],
+ "reconciliation": {
+  "per_file": {
+   "src/engine.rs": {
+    "scip_member_lines": 7,
+    "grep_hit_lines": 7
+   }
+  },
+  "grep_only_flags": []
+ }
+}

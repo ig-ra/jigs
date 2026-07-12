@@ -1,0 +1,6 @@
+{
+  "src/engine.rs:3": {"behavior": "early-return on empty key; bump side-effect via put_object; persist ordering after put", "disposition": "moves"},
+  "src/engine.rs:10": {"disposition": "stays"},
+  "src/engine.rs:18": {"behavior": "Err on lo>hi before any work", "disposition": ""},
+  "src/engine.rs:29": {"disposition": "seam"}
+}

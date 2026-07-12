@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Run the census test suite under the tool-local venv (bootstraps it via the wrapper if absent).
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TOOL="$HERE/.."
+[ -x "$TOOL/venv/bin/python" ] || "$TOOL/census" doctor --lang none >/dev/null 2>&1 || true
+exec "$TOOL/venv/bin/python" -m unittest discover -s "$HERE" -v

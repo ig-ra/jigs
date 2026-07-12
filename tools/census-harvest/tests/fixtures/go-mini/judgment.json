@@ -1,0 +1,6 @@
+{
+  "engine/engine.go:5": {"behavior": "early-return on GetObject err; bump side-effect via PutObject", "disposition": "moves"},
+  "engine/engine.go:16": {"disposition": "stays"},
+  "engine/engine.go:24": {"behavior": "err on lo>hi before any work", "disposition": ""},
+  "engine/engine.go:34": {"disposition": "seam"}
+}
