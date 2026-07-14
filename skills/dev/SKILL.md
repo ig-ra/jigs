@@ -151,8 +151,13 @@ to **every** method — including `impl` (codex) and `review` (`/simplify` +
 - Folding a finding you have not read the cited code for → **verify first**.
 - Adding a new abstraction/knob/module because Codex suggested it → **park it**, don't apply.
 - Putting backticks or `$` in a focus string → the companion will crash.
-- Declaring a spec "done" after one clean pass → specs converge on **all-angles-cleared +
-  COVERAGE-COMPLETE**, not one pass (see `references/brainstorm.md`).
+- Declaring a spec "done" after one clean pass → specs converge on the **exit gate** (all angles
+  cleared + COVERAGE-COMPLETE + zero Open Questions + clean-rewritten, no run records — see
+  `references/brainstorm.md` §6).
+- Ending `brainstorm` with Open Questions still in the spec, or skipping the clean-rewrite /
+  re-census → the method did NOT finish; the exit-gate grep catches it.
+- Handing `plan` a spec that still carries OQs / revision-log churn → not brainstorm-clean;
+  `plan`'s P0 intake gate warns — finish `/igr:brainstorm` first.
 
 ## Convergence philosophy (shared)
 

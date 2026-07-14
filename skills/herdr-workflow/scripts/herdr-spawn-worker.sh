@@ -48,8 +48,9 @@ PANE=$(herdr tab create --workspace "$WS" --label "$LABEL" | jqpane)
 [ -n "$PANE" ] || { echo "tab create failed" >&2; exit 1; }
 echo "   root pane: $PANE"
 
-echo ">> launching: cd $WTDIR && direnv allow && claude --model opus"
-herdr pane run "$PANE" "cd $WTDIR && direnv allow && claude --model opus"
+PLAN_MODEL="${IGR_PLAN_MODEL:-opus}"   # planning-claude model knob; sibling of IGR_IMPL_*/IGR_REVIEW_*
+echo ">> launching: cd $WTDIR && direnv allow && claude --model $PLAN_MODEL"
+herdr pane run "$PANE" "cd $WTDIR && direnv allow && claude --model $PLAN_MODEL"
 
 echo ">> waiting for boot..."
 for _ in $(seq 1 40); do

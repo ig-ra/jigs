@@ -40,7 +40,7 @@ before running any of them — the gotchas are where the real failures live.
 `git -C <repo-root> fetch && git pull --ff-only origin main`, then
 `scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` → it **pre-creates the
 worktree+branch** (`git worktree add -b <branch> .worktrees/<dir> <base>`, default base `origin/main`),
-launches **plain `claude --model opus`** (NOT `claude --worktree`) cd'd in the worktree, `/rename`s,
+launches **plain `claude --model "${IGR_PLAN_MODEL:-opus}"`** (NOT `claude --worktree`) cd'd in the worktree, `/rename`s,
 and prints the pane id, worktree path, branch, and the **claude session UUID** (the session handle).
 You OWN the branch name — match the tracker's `gitBranchName` form (e.g. `igor/saw-8194-needle-storage`),
 include the `saw-XXXX` id so the PR auto-links. **Stack** by passing a parent branch as `[base-ref]`.
@@ -118,7 +118,7 @@ surface any failure.
 
 ## Human preferences to confirm/carry (defaults from prior runs; re-confirm per human)
 - Tab labels short (≤20 chars, no ticket#); worktree DIR names short (<25 chars, include the ticket id). **Branch name = match the human's Linear `gitBranchName` form** (e.g. `igor/saw-XXXX-<slug>`), NOT the `worktree-` prefix; keep `saw-XXXX` in it so the PR auto-links by substring.
-- Planning claude launched with `--model opus`; `/rename` the session immediately on launch (capture UUID).
+- Planning claude launched with `--model "${IGR_PLAN_MODEL:-opus}"` (env knob, default opus); `/rename` the session immediately on launch (capture UUID).
 - Codex at xhigh. Implement = speedup + squash (the behavior-net + full test run ONCE on the landed commit, not per WIP commit).
 - Never commit the human's gitignored docs dir or generated indexes. Worker stops before push/PR; the human opens PRs (but often drives finalize/review themselves — varies).
 

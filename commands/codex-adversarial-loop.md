@@ -28,9 +28,9 @@ substitution:
   skill) builds the angle; L1 runs it. Keep the text free of backticks and `$` (rule 2).
 - **--model \<name\>** (optional flag, anywhere in `$ARGUMENTS`): the Codex **review model** to pass to
   the companion (`adversarial-review --model <name>`). Use it when the default is wrong for your account
-  — e.g. a ChatGPT-account login cannot use `gpt-5.3-codex`. **Precedence for the review model `<M>`:**
-  this `--model` flag → `$IGR_REVIEW_MODEL` env → the `model = "…"` line in `${CODEX_HOME:-~/.codex}/config.toml`
-  → `gpt-5.5`. To set it once for **every** run (incl. when driven by `/igr:plan` / `/igr:brainstorm`),
+  — e.g. a ChatGPT-account login cannot use `gpt-5.3-codex`. **Precedence for the review model `<M>`
+  is defined ONCE in hard-rule 1** (flag → env → config.toml → fallback) — do not restate it here.
+  To set it once for **every** run (incl. when driven by `/igr:plan` / `/igr:brainstorm`),
   export `IGR_REVIEW_MODEL` — e.g. in `~/.claude/settings.json` `"env": { "IGR_REVIEW_MODEL": "gpt-5.6-sol" }`.
   **Review reasoning-effort is NOT settable** here — the companion's `adversarial-review` exposes
   `--model` but no `--effort` (only its `task` command does). Best-effort: set `model_reasoning_effort`
@@ -62,9 +62,14 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
 2. **zsh eval gotcha — strip ALL backticks and `$` from the focus string**, or the companion
    crashes (`(eval): parse error`). Refer to code as `file colon line` plainly; no backticks.
 3. **Launch exactly once per round**, redirected to a **unique** output file
-   `/tmp/codex-loop-<topic>-r<N>.out` (topic = a short slug of the target). Never point two
-   runs at the same file. If a launch fails: run **one** foreground diagnostic (`pwd`, read the
-   outfile, read the actual error) **before** relaunching — never re-fire blind, never spam.
+   `/tmp/codex-loop-<worktree>-<topic>-r<N>.out` (worktree = basename of the cwd from rule 4;
+   topic = a short slug of the target). The worktree component is what keeps **concurrent runs
+   in sibling worktrees with same-named targets** (parallel PR-ladder rungs) from clobbering
+   each other — /tmp is machine-global. **Delete any pre-existing file at the path before
+   launching** (a stale outfile from an earlier run already contains REVIEW-COMPLETE and would
+   satisfy the poll instantly with an old verdict). Never point two runs at the same file. If a
+   launch fails: run **one** foreground diagnostic (`pwd`, read the outfile, read the actual
+   error) **before** relaunching — never re-fire blind, never spam.
 4. **cwd must be the directory/worktree that contains the target** so untracked files (e.g. a
    new spec) are in the companion's working tree and reviewable. Verify with `pwd` first.
 5. **Never git-commit docs** (the owner commits docs themselves). For non-doc targets, follow
@@ -93,7 +98,8 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
 2. Read the target and, if it has one, its sibling spec / source. Locate the target's revision
    log and any owner-settled markers (e.g. "owner-settled", "do not re-litigate") so round 1
    can seed the don't-re-litigate list.
-3. Derive a short topic slug from the target filename for the per-round outfile names.
+3. Derive the per-round outfile prefix: `<worktree>` = basename of the cwd (the
+   directory/worktree from step 1) + `<topic>` = a short slug of the target filename (rule 3).
 4. Initialize empty **FIXED** and **PARKED** (Open Questions) lists.
 
 ## The loop

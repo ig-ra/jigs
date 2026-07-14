@@ -22,6 +22,14 @@ fallback / non-code text only. Language-neutral: same flow for Go or Rust, point
 
 ## P0 — SCOPE (inline, main session)
 
+**Spec intake gate — run FIRST.** A plan must derive from a **brainstorm-clean** spec. Check for
+hardening residue:
+`grep -nE 'Open Questions|AWAITING HUMAN|rounds-spent|Revision log|\[R[0-9]+' SPEC_PATH`
+Any hit → the spec left brainstorm unfinished (unresolved OQs, no clean-rewrite/re-census):
+**WARN the owner and recommend `/igr:brainstorm SPEC_PATH` to finish it** (resolve OQs →
+clean-rewrite → re-census → exit gate). **Proceed only on the owner's explicit OK**, and record
+that OK in the plan's `## Review status`. Zero hits → proceed.
+
 From the spec, decide: **entry symbols** (the surface the change touches), the **boundary** it
 decouples from (e.g. a god-struct receiver `&Store` / `*Store`, a package, a module), and the
 **coverage checklist** (spec requirements). Small output, highest-leverage judgment → keep inline on
@@ -245,7 +253,7 @@ unclassified candidate, and the **safe-with-reason rows** are what actually clos
 (A captured-resource class dribbled one member per round for many rounds until a per-candidate table
 enumerated the whole surface — then a single confirm pass returned clean.)
 
-This is what keeps rounds within the cap. Template:
+This is what keeps rounds within the cap.
 
 **The 3-round cap is a uniform diagnostic tripwire, not a work budget.** With front-loading (census +
 P3a verify-plan) an angle should converge in **~1–2** rounds. **If an angle is not SOLID at 3 rounds,
@@ -271,6 +279,8 @@ the **class-generalization discipline** (on each finding, generalize to its clas
 whole plan before re-running — so "no new class this round" is a real convergence signal). Both are
 being validated on the current run's angles before folding; adopt the pair together once the data
 holds. Until then: flat cap-3 + ASK.
+
+**Per-angle focus template:**
 
 > Review the plan at PLAN_PATH against its spec SPEC_PATH and census CENSUS_PATH, ANGLE ONLY:
 > \<angle description\>. Enumerate EVERY instance in this angle, not just the most salient. Verify

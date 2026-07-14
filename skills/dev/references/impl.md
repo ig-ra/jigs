@@ -43,9 +43,11 @@ The command accepts free-form execution tweaks and extra plan context — **hono
 ## Gate (default)
 
 After implementing (and squashing, per the knobs) run the repo's **full gate once** on the final
-commit — build + lint + format + tests + behavior-net. Needle-wide instance: clippy `-D warnings`,
-`fmt --check`, `test --workspace --all-features`, `make net`, standalone crate build;
-explain-counters must not move. Never commit docs / generated dirs.
+commit — build + lint + format + tests + behavior-net. **The gate is the TARGET repo's own** —
+read it from that repo's CLAUDE.md / Makefile / justfile / CI config; do not assume any specific
+commands. (Example — needle-wide: clippy `-D warnings`, `fmt --check`,
+`test --workspace --all-features`, `make net`, standalone crate build; explain-counters must not
+move.) Never commit docs / generated dirs.
 
 ## Commits
 

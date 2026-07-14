@@ -14,8 +14,10 @@ Use **`superpowers:brainstorming`** to turn the idea into a spec (Q&A → design
 input `<target>` is **already a spec path**, skip production and go straight to hardening.
 
 The spec doc must carry a `## Open Questions (awaiting human resolution)` section (parked findings
-land there) and a revision log (the loop bumps it). Never git-commit the spec — the owner commits
-docs themselves.
+land there) and a revision log (the loop bumps it) — **both are working-state only**: step 3
+resolves and empties the OQs, the clean-rewrite (step 4) strips the log, and the final spec
+carries **no record of the runs** (audit lives in the sidecar — see §Budget). Never git-commit
+the spec — the owner commits docs themselves.
 
 ## Reviewer recipe (EXPLORATORY)
 
@@ -64,22 +66,43 @@ batch) or re-raises/churn (a stall — fix the process, don't spend rounds)?
   silently add a 6th angle — list it as `UNPROBED`; the owner decides at the next checkpoint
   whether to grant it a slot.
 
-### 3. Clean-rewrite pass (LOAD-BEARING — not cosmetic)
+### 3. Owner resolves Open Questions (STOP — before the rewrite)
 
-Once angles are largely cleared, rewrite the spec into a **clean, one-pass, authoritative doc**:
-strip ALL round-by-round churn, version-tracing, and patch-history; **KEEP** every decision, its
-reasoning, and every rejected alternative. This step is load-bearing because the rewrite forces a
-fresh read that exposes bugs the annotated doc hid — several real bugs surfaced ONLY here.
+Once angles are largely cleared, **STOP and present every parked Open Question to the owner**.
+Fold each answer into the spec as a settled decision (a substantive fold → re-run the affected
+angle once). **The method does not end with OQs in the spec** — parking is a mid-run state, not
+an output. Only when the OQ section is empty proceed to the rewrite (so the rewrite bakes the
+decisions in, and the fresh read covers them too).
 
-### 4. Re-census + per-angle on the clean doc
+### 4. Clean-rewrite pass (LOAD-BEARING — not cosmetic)
+
+Rewrite the spec into a **clean, one-pass, authoritative doc**: strip ALL round-by-round churn,
+version-tracing, patch-history, the revision log, round tags, and the (now empty) Open Questions
+section; **KEEP** every decision, its reasoning, and every rejected alternative. This step is
+load-bearing because the rewrite forces a fresh read that exposes bugs the annotated doc hid —
+several real bugs surfaced ONLY here.
+
+### 5. Re-census + per-angle on the clean doc
 
 New angles appear post-rewrite (the doc reads differently). Re-run the census on the clean doc,
-**re-cluster to ≤ 5** (same cap + ranking as §1), and loop the fresh angles.
+**re-cluster to ≤ 5** (same cap + ranking as §1), and loop the fresh angles. A new finding that
+parks an OQ → resolve it with the owner (step 3 rules) before the exit gate.
 
-### 5. Stop condition (the STRONG stop)
+### 6. Exit gate (the STRONG stop — ALL must hold)
 
-Stop when **every census angle is cleared** AND a **completeness-critic** pass returns
-`COVERAGE-COMPLETE`. The completeness critic is one call that asks: *what failure-class has NOT
+The spec is DONE only when **every one** of these holds — a checklist, not a vibe:
+
+1. **Every census angle cleared** (`SPEC-SOUND`) — including the post-rewrite re-census angles.
+2. **Completeness critic** returned `COVERAGE-COMPLETE` (below).
+3. **Zero Open Questions** — resolved by the owner (steps 3/5) and folded; the section is gone.
+4. **No record of the runs** — clean-rewrite done; deterministic self-check, run it:
+   `grep -nE 'Open Questions|AWAITING HUMAN|rounds-spent|Revision log|\[R[0-9]+' SPEC_PATH`
+   → **zero hits**, or the gate FAILS (go back to the step that leaks).
+
+Report on exit: the clean spec path + the sidecar audit log path (§Budget). Skipping the rewrite,
+the re-census, or OQ resolution = the method did NOT finish, whatever the angle verdicts say.
+
+The completeness critic is one call that asks: *what failure-class has NOT
 been probed?* — and finds nothing new. Focus shape:
 
 > For the spec at SPEC_PATH, do not re-review cleared angles. Ask only: what failure-class has NOT yet
@@ -108,10 +131,13 @@ budget of its own). Three tiers:
 - **Hard backstop ~30 rounds total** — stop regardless, dump the state + the remaining backlog.
   The safety net for unattended runs.
 
-**The counter lives in the artifact, not the conversation:** keep a `rounds-spent: N` line in the
-spec's revision log, updated at each fold (the log already bumps per round — free; survives
-compaction / session resume). L1 reports rounds-run per invocation in its final report — sum those;
-do not recount from memory.
+**The counter lives in a SIDECAR, not the conversation and not the final spec:** keep
+`rounds-spent: N` + the FIXED/PARKED ledger + checkpoint scoreboards in
+**`<prefix>-brainstorm-log.md`** (scratch; survives compaction / session resume; never committed,
+deletable after). The working spec's revision log is fine mid-run, but the exit gate requires the
+FINAL spec to carry no run records — the sidecar is where the audit trail lives instead. L1
+reports rounds-run per invocation in its final report — sum those into the sidecar; do not
+recount from memory.
 
 ## Spec angle taxonomy (seed the census)
 

@@ -30,6 +30,11 @@ human opt-in to multi-agent orchestration (the pipeline spawns and drives long-r
 
 ## Backend interface (what igr-workflow requires of any orchestrator)
 
+**Backend selection:** the owner names the backend skill in the invocation (e.g. "ship X —
+backend: igr:tmux-workflow"); absent an explicit choice, the default is **`igr:herdr-workflow`**.
+Select ONCE, before spawn-worker; run the **selected** backend's preflight and route every
+operation below through that one skill — never mix backends mid-pipeline.
+
 The pipeline calls these **abstract operations**; the backend skill implements each (herdr's
 implementation: `igr:herdr-workflow`). A new backend is "supported" once it provides all of:
 
@@ -57,9 +62,11 @@ no check.
 
 ## The pipeline (agnostic — phases, methods, gates)
 
-**Spec hardening is UPSTREAM and one-time:** `/igr:brainstorm <idea>` → a SPEC-SOUND spec **before**
-the ladder, not inside the per-PR loop (a census + clean-rewrite per rung would be wasteful — a plan's
-surface is closed). Each rung's plan derives from that settled spec.
+**Spec hardening is UPSTREAM and one-time:** `/igr:brainstorm <idea>` → a SPEC-SOUND **and
+brainstorm-clean** spec **before** the ladder (its exit gate: OQs owner-resolved, clean-rewrite +
+re-census done, zero run records), not inside the per-PR loop (a census + clean-rewrite per rung
+would be wasteful — a plan's surface is closed). Each rung's plan derives from that settled spec;
+`/igr:plan` re-verifies cleanliness at intake and warns if the spec is dirty.
 
 Then, per unit of work — **three phases, each ONE agent**. The hand-off currency is the **session
 handle**: Phase I captures it, Phase III resumes it; Phase II is a different agent (codex).
@@ -81,6 +88,8 @@ handle**: Phase I captures it, Phase III resumes it; Phase II is a different age
 
 ## Gates (STOP and escalate)
 
+- Phase-I `/igr:plan` intake reports a **dirty spec** (Open Questions / revision-log churn) →
+  STOP; finish `/igr:brainstorm` first (the owner may explicitly override).
 - Any Open Question unresolved after `/igr:plan` → STOP; the human resolves before implement.
 - Plan produced **spec fold-back** (`## Appendix: Possible spec updates`) → **OFFER to update the
   canonical spec; ASK, never auto** (it may live elsewhere; the owner decides whether/where).
