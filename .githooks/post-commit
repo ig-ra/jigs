@@ -5,14 +5,13 @@
 #   feat!: / BREAKING CHANGE  -> major
 #   feat:                     -> minor
 #   anything else             -> patch
-# The plugin root IS the repo root, so nearly every tracked file ships in the plugin —
-# bumps unless the commit touches ONLY repo-internal paths (.githooks/, .remember/, .gitignore).
+# Bumps when the commit ships plugin content (anything under plugins/igr/).
 # Skips: version already moved in HEAD (manual bump — and the recursion guard for the
 # amend below); rebase/cherry-pick/merge replays; uncommitted plugin.json edits.
 # Bypass: IGR_NO_BUMP=1 git commit …
 # One-time setup after clone: ./setup.sh  (= git config core.hooksPath .githooks)
 set -euo pipefail
-PLUGIN=.claude-plugin/plugin.json
+PLUGIN=plugins/igr/.claude-plugin/plugin.json
 
 if [[ "${IGR_NO_BUMP:-}" == "1" ]]; then exit 0; fi
 if ! git rev-parse -q --verify HEAD^ >/dev/null 2>&1; then exit 0; fi   # initial commit
@@ -22,8 +21,8 @@ if [[ -d $g/rebase-merge || -d $g/rebase-apply || -f $g/CHERRY_PICK_HEAD || -f $
   exit 0   # replayed commits carry their own bumps
 fi
 
-if ! git diff-tree --no-commit-id --name-only -r HEAD | grep -qvE '^(\.githooks/|\.remember/|\.gitignore$)'; then
-  exit 0   # only repo-internal files in this commit — nothing shipped changed
+if ! git diff-tree --no-commit-id --name-only -r HEAD | grep -qE '^plugins/igr/'; then
+  exit 0   # no shipped plugin content in this commit
 fi
 
 json_v() { python3 -c 'import json,sys;print(json.load(sys.stdin)["version"])' 2>/dev/null || true; }
@@ -49,7 +48,7 @@ fi
 
 BUMP=$bump python3 - <<'EOF'
 import json, os
-p = ".claude-plugin/plugin.json"
+p = "plugins/igr/.claude-plugin/plugin.json"
 d = json.load(open(p))
 ma, mi, pa = (int(x) for x in d["version"].split("."))
 b = os.environ["BUMP"]

@@ -7,10 +7,6 @@
   production target: return-type + arg-count diff are achievable from plan code fences
   (`Promise<T>` vs `T`, `| null` unions map to the fallibility class); thrown-exception
   fallibility stays with the codex angles.
-- **Repo restructure** — move the plugin to `plugins/igr/`, add a root
-  `.claude-plugin/marketplace.json` (marketplace name `jigs`) so any machine can
-  `/plugin marketplace add ig-ra/jigs`; update the post-commit hook's content-dir regex; move the
-  local checkout to `~/work/dev-tools/jigs` and re-register the directory marketplace.
 - **Dev-SKILL preflight: codex-session detect** (skipped low #5) — the impl row requires a codex
   session but the detect paragraph has no check for it.
 - **Stall-based per-angle cap** (parked in `plan.md` §P3b "Pending refinement") — replace flat

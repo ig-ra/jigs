@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "jigs",
+  "description": "Jigs for coding agents — angle-driven dev methods, adversarial review loops, and census tooling.",
+  "owner": { "name": "Igor Rayak" },
+  "plugins": [
+    {
+      "name": "igr",
+      "description": "Angle-driven dev methods (brainstorm/plan/impl/review) + igr-workflow orchestration + the codex adversarial-review loop.",
+      "source": "./plugins/igr",
+      "category": "workflow"
+    }
+  ]
+}

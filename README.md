@@ -16,9 +16,9 @@ methods plus the machinery around them, arranged in three strict layers:
 
 | layer | what | where |
 |---|---|---|
-| **L3 — pipeline** | `igr:workflow` — ships a change as a ladder of small worktree-isolated PRs, sequencing the L2 methods over a pluggable orchestration backend (default: `igr:herdr-workflow`, herdr panes + git worktrees) | `skills/workflow/`, `skills/herdr-workflow/` |
-| **L2 — methods** | `igr:dev` — four independent methods, one per artifact kind (below) | `skills/dev/` |
-| **L1 — mechanism** | `/igr:codex-adversarial-loop` — runs ONE (target, focus) review loop against the Codex companion until clean or capped; folds minimal fixes, parks scope-creep as Open Questions | `commands/codex-adversarial-loop.md` |
+| **L3 — pipeline** | `igr:workflow` — ships a change as a ladder of small worktree-isolated PRs, sequencing the L2 methods over a pluggable orchestration backend (default: `igr:herdr-workflow`, herdr panes + git worktrees) | `plugins/igr/skills/workflow/`, `…/skills/herdr-workflow/` |
+| **L2 — methods** | `igr:dev` — four independent methods, one per artifact kind (below) | `plugins/igr/skills/dev/` |
+| **L1 — mechanism** | `/igr:codex-adversarial-loop` — runs ONE (target, focus) review loop against the Codex companion until clean or capped; folds minimal fixes, parks scope-creep as Open Questions | `plugins/igr/commands/codex-adversarial-loop.md` |
 
 Each layer knows nothing about the one above it; the seams are explicit (focus strings down,
 ordering/git up).
@@ -42,7 +42,7 @@ ordering/git up).
   exactly what `/simplify` covered), then fix-or-park. Scope is always the branch vs its
   merge-base.
 
-### The census tool (`tools/census-harvest/`)
+### The census tool (`plugins/igr/tools/census-harvest/`)
 
 A Python CLI that turns a [SCIP](https://github.com/sourcegraph/scip) index into a code census's
 mechanical spine in seconds — symbols, exact signatures, call edges, boundary coupling — so the
@@ -54,7 +54,7 @@ factual claims vs the index — the P3a mechanical pre-pass), `doctor` (prefligh
 exit-code contract). Golden-file test suite over vendored indexes for all three languages:
 `tests/run`; coverage matrix in `tests/SCENARIOS.md`.
 
-### The vendored review workflow (`workflows/code-review-skip-simplify.js`)
+### The vendored review workflow (`plugins/igr/workflows/code-review-skip-simplify.js`)
 
 A fork of Claude Code's built-in `/code-review` workflow with two deltas (marked inline):
 cleanup lenses reduced to Conventions-only (pair it with `/simplify`, which owns the rest), and
@@ -64,17 +64,21 @@ upstream generation it was synced from and the re-vendor recipe.
 ### Repo automation
 
 `.githooks/post-commit` auto-bumps the plugin version from the conventional-commit type
-(feat! → major, feat → minor, else patch) and amends the bump into HEAD — for any commit that
-touches shipped content (the plugin root is the repo root, so that's everything except
-`.githooks/`, `.remember/`, `.gitignore`). **One-time setup per clone: `./setup.sh`** (git
-cannot auto-enable hooks on clone).
+(feat! → major, feat → minor, else patch) and amends the bump into HEAD — for any commit
+touching shipped plugin content (`plugins/igr/**`). **One-time setup per clone: `./setup.sh`**
+(git cannot auto-enable hooks on clone).
 
 ## Install / update
 
-Local development: registered as a directory marketplace; after committing changes run
-`/plugin update igr` + `/reload-plugins` in a Claude Code session. External plugin dependencies
-(gated at runtime, not in plugin.json): `superpowers`, `codex` (companion), and — for the default
-workflow backend — a herdr pane.
+This repo is its own Claude Code **marketplace** (`.claude-plugin/marketplace.json`, name `jigs`):
+
+- Any machine: `/plugin marketplace add ig-ra/jigs` then `/plugin install igr@jigs`.
+- Local development: add it as a **directory** marketplace instead (live edits, no push needed):
+  `/plugin marketplace add ~/work/dev-tools/jigs`. After committing changes: `/plugin update igr`
+  + `/reload-plugins`.
+
+External plugin dependencies (gated at runtime, not in plugin.json): `superpowers`, `codex`
+(companion), and — for the default workflow backend — a herdr pane.
 
 ## Roadmap / open items
 
