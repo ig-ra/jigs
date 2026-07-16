@@ -44,7 +44,7 @@ chain them, and does not touch PR / branch / merge. Sequencing the methods into 
 
 | method | input → output | producer (superpowers) | review profile | recipe |
 |--------|---------------|------------------------|----------------|--------|
-| `brainstorm` | idea → spec | `brainstorming` | **EXPLORATORY** (census + clean-rewrite) | `references/brainstorm.md` |
+| `brainstorm` | idea → spec | `brainstorming` | **EXPLORATORY** (Mental Model contract + census + clean-rewrite; Drift-A/Drift-B gates) | `references/brainstorm.md` |
 | `plan` | spec → plan | `writing-plans` (+ code census) | **code census → mechanical diffs + judgment angles-till-SOLID + broad pass** | `references/plan.md` |
 | `impl` | plan → code | `executing-plans` + `subagent-driven-development` | **codex session**, tunable gate/squash — production | `references/impl.md` |
 | `review` | diff → fixed code | `receiving-code-review` | **claude session** — `/simplify` + `/igr:code-review-skip-simplify`, then FIX | `references/review.md` |
@@ -156,6 +156,10 @@ to **every** method — including `impl` (codex) and `review` (`/simplify` +
   `references/brainstorm.md` §6).
 - Ending `brainstorm` with Open Questions still in the spec, or skipping the clean-rewrite /
   re-census → the method did NOT finish; the exit-gate grep catches it.
+- Starting the census before writing the `## Mental Model` contract and clearing the owner's
+  Drift-A review — or auto-editing that contract during a fold / the clean-rewrite / the Drift-B
+  check → the intent gate was skipped or the immutable contract mutated; see
+  `references/brainstorm.md` §"Mental Model contract".
 - Handing `plan` a spec that still carries OQs / revision-log churn → not brainstorm-clean;
   `plan`'s P0 intake gate warns — finish `/igr:brainstorm` first.
 

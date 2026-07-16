@@ -19,6 +19,58 @@ resolves and empties the OQs, the clean-rewrite (step 4) strips the log, and the
 carries **no record of the runs** (audit lives in the sidecar — see §Budget). Never git-commit
 the spec — the owner commits docs themselves.
 
+## Mental Model contract (write once, immutable — the Drift-A gate)
+
+Before hardening, capture the **as-designed mental model** — a ≤ 50-line PM + staff-eng *changeset
+inventory* of what the spec commits to build. It guards the two distinct drifts this method exists
+to catch:
+
+- **Drift A — intent vs model, caught HERE by the owner.** The owner reads the model against *what
+  they actually intend* and catches the gap: a capability obvious to them that never reached the
+  spec, a removal they didn't mean, a tech they'd veto. Something obvious to the human is often not
+  obvious to the producer — this is where that shows up. Far cheaper to fix now than after ~16
+  hardening rounds on an already-off spec.
+- **Drift B — hardening vs contract, caught at exit by the method (step 7).** This frozen model is
+  the baseline that step 7 diffs the hardened spec against.
+
+**When.** Right after the Producer writes the spec. If the input was **already a spec**: reuse its
+`## Mental Model` section if present; else generate one from the incoming spec now.
+
+**How.** Inline (main model — the spec is in context; **no codex, no subagent**). Write it into the
+spec as a top-level `## Mental Model` section in this exact shape (fixed so the step-7 diff is
+clean — deliverables match by meaning, not line):
+
+```
+## Mental Model (as-designed — immutable)
+
+_The design this spec commits to. Immutable contract — the hardened spec must honor it;
+the method reports any drift at exit._
+
+**Ships:** <one line — what capability lands, for whom>
+
+**Deliverables** — changeset vs current system
+- ADD    **<cap>** — <what it does> · <tech/approach>
+- CHANGE **<cap>** — <what changes> · <tech>
+- REMOVE **<cap>** — <what goes, why> · <replaced-by, if any>
+```
+
+Each deliverable is ONE line fusing **capability × the tech chosen for it**, tagged ADD / CHANGE /
+REMOVE vs the current system (greenfield → all ADD). **Only what gets supplied** — no non-goals, no
+risk section; those are not what the owner scans for omissions. Group under sub-headers only if
+deliverables exceed ~8 and span separate subsystems; otherwise keep one flat, scannable list.
+
+**The Drift-A gate (STOP — owner reviews before hardening).** Present the model in chat and ask the
+owner directly: *does this match your intent? anything you expected that's missing, or here you
+didn't intend?* Fold the answer — a real gap means the **spec** is wrong (fix it) or the **model**
+misread it (fix the model); converge both to the agreed intent. **Only on the owner's sign-off**
+freeze the section and start the census (§1).
+
+**Immutable thereafter.** The method NEVER auto-edits `## Mental Model` once frozen — not in a
+per-angle fold, not in the clean-rewrite (step 4 KEEPs it verbatim). If hardening legitimately
+forces a design change, that surfaces as **Drift B at exit** for the owner to reconcile
+deliberately — the contract is not silently rewritten to match. (The section's tokens don't match
+the exit-gate grep in §6, so it rides through the gate untouched.)
+
 ## Reviewer recipe (EXPLORATORY)
 
 ### 1. Step 0 — census (enumerate, do NOT review)
@@ -78,7 +130,9 @@ decisions in, and the fresh read covers them too).
 
 Rewrite the spec into a **clean, one-pass, authoritative doc**: strip ALL round-by-round churn,
 version-tracing, patch-history, the revision log, round tags, and the (now empty) Open Questions
-section; **KEEP** every decision, its reasoning, and every rejected alternative. This step is
+section; **KEEP** every decision, its reasoning, and every rejected alternative, and **KEEP the
+`## Mental Model` contract section verbatim** — it is the immutable as-designed contract, not
+run-churn; never rewrite, reword, or drop it. This step is
 load-bearing because the rewrite forces a fresh read that exposes bugs the annotated doc hid —
 several real bugs surfaced ONLY here.
 
@@ -99,7 +153,8 @@ The spec is DONE only when **every one** of these holds — a checklist, not a v
    `grep -nE 'Open Questions|AWAITING HUMAN|rounds-spent|Revision log|\[R[0-9]+' SPEC_PATH`
    → **zero hits**, or the gate FAILS (go back to the step that leaks).
 
-Report on exit: the clean spec path + the sidecar audit log path (§Budget). Skipping the rewrite,
+Report on exit: the clean spec path + the sidecar audit log path (§Budget) + the **Drift-B verdict**
+(step 7). Skipping the rewrite,
 the re-census, or OQ resolution = the method did NOT finish, whatever the angle verdicts say.
 
 The completeness critic is one call that asks: *what failure-class has NOT
@@ -114,6 +169,28 @@ angle slot or explicitly accept the gap — never silently drop it, never silent
 
 This is **NOT** "one clean pass." Convergence signal in practice: angles return `SPEC-SOUND`
 first-try and findings degrade to consistency-of-your-own-edits rather than code gaps.
+
+### 7. Drift check (Drift B — as-hardened vs the contract)
+
+After the exit gate passes, **re-derive** the mental model from the **final clean spec** (model #2 —
+same template, inline, no codex) and **semantically diff** it against the frozen `## Mental Model`
+contract: match deliverables by *meaning*, not text — a rewording is not drift; an added / dropped /
+re-teched capability is. Report in **chat** (and append to the sidecar §Budget as audit) — **never
+back into the spec, never auto-editing the contract**:
+
+```
+Drift vs Mental Model (as-hardened):
+- ADDED:   <capability not in the contract> · <tech>
+- REMOVED: <contract capability now gone>
+- CHANGED: <cap> — contract said X; hardened spec does Y   ← intended?
+- <unchanged deliverables, listed by name>
+Verdict: HONORS CONTRACT  |  DRIFTED (<n> deltas)
+```
+
+Drift B is a **report, not an auto-fix**: the method surfaces the deltas; the **owner** decides
+whether hardening improved the design (amend the contract deliberately) or wandered off it (a
+regression to fix). A `DRIFTED` verdict does NOT block the exit — the spec is DONE per §6 — it is
+the owner's signal to reconcile. Fold the verdict into the exit report.
 
 ## Budget & checkpoints (stage-separate)
 
@@ -132,7 +209,7 @@ budget of its own). Three tiers:
   The safety net for unattended runs.
 
 **The counter lives in a SIDECAR, not the conversation and not the final spec:** keep
-`rounds-spent: N` + the FIXED/PARKED ledger + checkpoint scoreboards in
+`rounds-spent: N` + the FIXED/PARKED ledger + checkpoint scoreboards + the step-7 Drift-B report in
 **`<prefix>-brainstorm-log.md`** (scratch; survives compaction / session resume; never committed,
 deletable after). The working spec's revision log is fine mid-run, but the exit gate requires the
 FINAL spec to carry no run records — the sidecar is where the audit trail lives instead. L1
