@@ -19,11 +19,31 @@ codex ${IGR_IMPL_MODEL:+--model "$IGR_IMPL_MODEL"} -c model_reasoning_effort="${
 Set once in `~/.claude/settings.json` `"env": { "IGR_IMPL_MODEL": "gpt-5.6-terra", "IGR_IMPL_EFFORT": "high" }`.
 These are **independent of the review knobs** (`IGR_REVIEW_MODEL`, `/igr:codex-adversarial-loop`) — different flow, different model/effort.
 
+## Who implements + how it's dispatched (the handoff contract)
+
+**Default impl agent = codex** (`xhigh`). **codex has the `superpowers` skills but NOT the `igr`
+plugin** — so codex **cannot run `/igr:impl` (or any `/igr:*`) natively.** When impl runs in codex,
+**claude (which has igr) translates this method into a codex handoff doc** and dispatches a one-liner.
+
+- **Handoff doc:** `<prefix>-impl-handoff.md` in the impl **worktree** (uncommitted). Filled from
+  `references/impl-handoff-template.md` — names the superpowers skills (`executing-plans` +
+  `subagent-driven-development` + `test-driven-development`), the plan's **absolute** path, the
+  resolved **target-repo gate command**, the gate/squash cadence, and stop-before-push.
+- **Dispatch (one line):** `read <ABS_HANDOFF_PATH> and implement the plan per it; stop before push`.
+- **No codex preflight** — the handoff names the superpowers skills; if codex lacks one it says so.
+- `/igr:wf:spawn impl` automates authoring + dispatch; a human doing it manually follows the same
+  template.
+
 ## Plan source
 
 Use the plan **passed to the command** (the target arg) if given; otherwise **find the plan in the
 current worktree** (the plan doc the `plan` method produced). Confirm which plan you are executing
 before starting.
+
+**The plan lives where it was authored, and docs are never committed** — so the impl agent (a
+different worktree/agent) reads the plan by its **absolute path**, not a worktree-relative one. Happy
+path: brainstorm→plan→impl share one worktree (via `/igr:wf:spawn`), so the plan is already local;
+fallback (planned in the main tree): pass the absolute main-tree path in the handoff.
 
 ## Implement
 

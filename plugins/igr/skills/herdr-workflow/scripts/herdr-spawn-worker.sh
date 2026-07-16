@@ -15,7 +15,8 @@
 #
 #   REPO_ROOT env overrides the repo root (default = the main worktree from `git worktree list`).
 #
-# We PRE-CREATE the worktree+branch with `git worktree add -b`, then launch PLAIN `claude` (NOT
+# We CREATE-OR-REUSE the worktree+branch (reuse in place if the dir is already a worktree on <branch>,
+# add from an existing branch, else `git worktree add -b`), then launch PLAIN `claude` (NOT
 # `claude --worktree`) so we own the branch name + base. (`claude --worktree NAME` would force a
 # `worktree-<NAME>` branch off main — that prefix is its default, not a git requirement, and gives us nothing.)
 # Consequence: closing this claude has NO "Keep/Remove worktree" dialog (that is a --worktree feature) — it
@@ -26,21 +27,44 @@
 set -euo pipefail
 
 case "${1:-}" in -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0;; esac
-[ $# -ge 4 ] || { echo "usage: $0 <workspace-id> <tab-label> <worktree-dir> <branch> [base-ref]" >&2; exit 2; }
 
-WS=$1; LABEL=$2; WTDIRNAME=$3; BRANCH=$4; BASE=${5:-origin/main}
+# resolve_worktree <wtdir-abs> <branch> <base>: create-or-reuse; exits nonzero on conflict.
+#   dir already a worktree on <branch> -> reuse; <branch> exists but no dir -> add from it;
+#   neither -> create -b off <base>; dir on a DIFFERENT branch -> error.
+resolve_worktree() {
+  local wtdir="$1" branch="$2" base="$3"
+  if [ -e "$wtdir" ]; then
+    local cur; cur="$(git -C "$wtdir" symbolic-ref --short HEAD 2>/dev/null || true)"
+    [ "$cur" = "$branch" ] || { echo "worktree $wtdir is on '$cur', not '$branch'" >&2; return 1; }
+    echo ">> reusing existing worktree $wtdir ($branch)"; return 0
+  fi
+  if git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$branch"; then
+    echo ">> adding worktree $wtdir from existing branch $branch"
+    git -C "$REPO_ROOT" worktree add "$wtdir" "$branch"
+  else
+    echo ">> creating worktree $wtdir (new branch $branch off $base)"
+    git -C "$REPO_ROOT" worktree add -b "$branch" "$wtdir" "$base"
+  fi
+}
+
 REPO_ROOT="${REPO_ROOT:-$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')}"
 [ -n "$REPO_ROOT" ] && [ -d "$REPO_ROOT" ] || { echo "cannot determine REPO_ROOT (set REPO_ROOT env)" >&2; exit 1; }
+
+# test hook: resolve worktree only (no herdr/tab-create), then exit
+if [ "${1:-}" = "--resolve-worktree-only" ]; then
+  shift; resolve_worktree "$REPO_ROOT/.worktrees/$1" "$2" "${3:-origin/main}"; exit $?
+fi
+
+[ $# -ge 4 ] || { echo "usage: $0 <workspace-id> <tab-label> <worktree-dir> <branch> [base-ref]" >&2; exit 2; }
+WS=$1; LABEL=$2; WTDIRNAME=$3; BRANCH=$4; BASE=${5:-origin/main}
 WTDIR="$REPO_ROOT/.worktrees/$WTDIRNAME"
 
 jqpane() { python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])'; }
 jquuid() { python3 -c 'import sys,json; s=(json.load(sys.stdin)["result"]["pane"].get("agent_session") or {}); print(s.get("value") or "")'; }
 
-echo ">> fetch + create worktree $WTDIR  (branch $BRANCH off $BASE)"
+echo ">> fetch + resolve worktree $WTDIR  (branch $BRANCH off $BASE)"
 git -C "$REPO_ROOT" fetch origin -q || true
-[ -e "$WTDIR" ] && { echo "worktree dir already exists: $WTDIR" >&2; exit 1; }
-git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$BRANCH" && { echo "branch already exists: $BRANCH" >&2; exit 1; }
-git -C "$REPO_ROOT" worktree add -b "$BRANCH" "$WTDIR" "$BASE"
+resolve_worktree "$WTDIR" "$BRANCH" "$BASE"
 git -C "$WTDIR" log --oneline -1 | sed 's/^/   base tip: /'
 
 echo ">> creating tab '$LABEL' in $WS"

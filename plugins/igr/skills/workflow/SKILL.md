@@ -68,6 +68,13 @@ re-census done, zero run records), not inside the per-PR loop (a census + clean-
 would be wasteful — a plan's surface is closed). Each rung's plan derives from that settled spec;
 `/igr:plan` re-verifies cleanliness at intake and warns if the spec is dirty.
 
+**Lightweight entry points (standalone, not the full ladder).** The full pipeline below is now the
+*less common* path. Most runs enter one phase at a time via **`/igr:wf:spawn <brainstorm|plan|impl>`**
+(herdr backend): it resolves the ticket + worktree and opens a pane running the right agent for that
+phase. `brainstorm`/`plan` dispatch a native `/igr:` command to claude; `impl` writes a codex handoff
+(codex has no igr plugin — see `igr:dev` `references/impl.md`). Use the full pipeline when you want
+the whole ladder driven end-to-end; use `/igr:wf:spawn` to start/continue a single phase.
+
 Then, per unit of work — **three phases, each ONE agent**. The hand-off currency is the **session
 handle**: Phase I captures it, Phase III resumes it; Phase II is a different agent (codex).
 
@@ -82,6 +89,12 @@ handle**: Phase I captures it, Phase III resumes it; Phase II is a different age
 2. **Phase II — IMPLEMENT** (codex): **swap-agent** to codex → **dispatch** `/igr:impl` (implement →
    squash → **full gate once**; pass tweaks, e.g. "gate once after squash, not per task") →
    **shape-git**: rebase onto latest `main` for stacking.
+   - **Plan location across worktrees:** docs are never committed, so when the plan and the impl
+     worktree differ (planned in main), the impl agent reads the plan by **absolute path** (carried
+     in the codex handoff). The happy path keeps plan+impl in one worktree so this doesn't arise.
+   - **codex has no `igr` plugin** → Phase II does not dispatch `/igr:impl` *to codex* verbatim; the
+     driving claude renders the impl method into a codex handoff doc (see `igr:dev`
+     `references/impl.md` §"Who implements + how it's dispatched").
 3. **Phase III — REVIEW + SHIP** (claude, **resume-session**): **dispatch** `/igr:review` (`/simplify`
    + `/igr:code-review-skip-simplify`, apply confirmed fixes) → amend → **ship** (push → open PR if
    delegated → watch checks).

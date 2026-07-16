@@ -45,6 +45,11 @@ and prints the pane id, worktree path, branch, and the **claude session UUID** (
 You OWN the branch name — match the tracker's `gitBranchName` form (e.g. `igor/saw-8194-needle-storage`),
 include the `saw-XXXX` id so the PR auto-links. **Stack** by passing a parent branch as `[base-ref]`.
 
+**Create-or-reuse:** the helper now reuses instead of failing — reuses in place if `<dir>` is already
+a worktree on `<branch>`, adds a worktree from an existing branch, or creates `-b` when neither exists
+(errors only if `<dir>` is checked out on a *different* branch). This is the standalone re-entry path
+(`/igr:wf:spawn` on an existing ticket).
+
 ### dispatch
 `herdr pane run <pane> '<ONE-LINE prompt>'` then `herdr pane send-keys <pane> Enter` (bracketed-paste
 often swallows the Enter). One line only — embedded newlines submit partial. Single-quote the arg;
@@ -61,6 +66,24 @@ Close the current agent, then launch the next in the SAME pane. Close: clear the
 `Space`+`C-c C-c` burst. If a **Keep/Remove-worktree dialog** appears, `Enter` = Keep, never Remove.
 **Verify `foreground_cwd` and `cd <worktree>` as its OWN command** before launching (the shell may be
 at repo root). codex: `direnv allow && codex ${IGR_IMPL_MODEL:+--model "$IGR_IMPL_MODEL"} -c model_reasoning_effort="${IGR_IMPL_EFFORT:-xhigh}"` (model+effort from the `IGR_IMPL_*` env — see `/igr:impl`; independent of the review model).
+
+### spawn-codex  (fresh codex in a new pane — the standalone impl handoff)
+For `/igr:wf:spawn impl` (not the in-pipeline swap): open a **new pane in the same workspace** running
+codex in the (reused) worktree, rather than swapping the current pane. **No helper** — the reused
+worktree already exists, so this is plain herdr CLI the driving claude runs directly (see the bundled
+`herdr` skill):
+1. `herdr tab create --workspace <ws> --label <label>` → parse the root pane id.
+2. `herdr pane run <pane> 'cd <worktree-abs> && direnv allow && codex …IGR_IMPL_*…'` — the codex launch
+   line from **swap-agent** above (model+effort from `IGR_IMPL_*`).
+3. **Readiness = claude judgment, NOT a pinned marker** — `herdr pane read <pane>` until codex's input
+   box is up and settled (watch the footer, per the finish-watch gotcha); **never dispatch into a
+   booting shell** (dispatching too early types into the boot). A hardcoded codex-prompt regex is
+   brittle across codex versions — read + judge instead.
+4. Dispatch the one-line handoff: `herdr pane run <pane> 'read <abs handoff>, implement per it; stop
+   before push'` then `herdr pane send-keys <pane> Enter`.
+The plan-claude pane **stays alive** in the same worktree → it is the reviewer (Phase III native
+`/igr:review`). No swap-agent self-kill, no resume-session. Because **codex has no `igr` plugin**, the
+dispatch is a handoff doc claude authored (`references/impl-handoff-template.md`), NOT `/igr:impl`.
 
 ### resume-session  (the Phase I→III hand-off)
 `claude --resume <uuid|"name">` (fresh pane if the old one is gone; **verify cwd**). The resumed
@@ -92,7 +115,9 @@ surface any failure.
 ## Quick reference
 | Need | Do |
 |---|---|
-| Spawn worker | `scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` (pre-creates worktree+branch, plain claude) |
+| Spawn worker | `scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` (create-or-reuse worktree+branch, plain claude) |
+| Reuse a worktree | `herdr-spawn-worker.sh` auto-reuses if `<dir>`/`<branch>` already exist (no `exit 1`) |
+| Spawn fresh codex (impl) | inline recipe (no helper) — see `### spawn-codex`: `tab create` → codex launch → claude-judged readiness → handoff dispatch |
 | Send a prompt | `herdr pane run <pane> '<ONE-LINE prompt>'` then `herdr pane send-keys <pane> Enter` |
 | Watch a finish | background POLL for status≠`working` (NOT `--status done` — see Gotchas) |
 | Tell ghost from human input | `pane read <pane> --format ansi \| grep '<text>' \| cat -v` → dim `^[[2m` or grey `153` = **ghost = empty/no input** (not the human's); normal-bright after `❯`/`›` = real typed prompt |
