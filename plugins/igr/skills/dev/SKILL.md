@@ -44,7 +44,7 @@ chain them, and does not touch PR / branch / merge. Sequencing the methods into 
 
 | method | input → output | producer (superpowers) | review profile | recipe |
 |--------|---------------|------------------------|----------------|--------|
-| `brainstorm` | idea → spec | `brainstorming` | **EXPLORATORY** (Mental Model contract + census + clean-rewrite; Drift-A/Drift-B gates) | `references/brainstorm.md` |
+| `brainstorm` | idea → spec | `brainstorming` | **EXPLORATORY** (Mental Model + FOCUSED/FULL route + round-parallel angles + clean-rewrite; Drift-A/B gates) | `references/brainstorm.md` |
 | `plan` | spec → plan | `writing-plans` (+ code census) | **code census → mechanical diffs + judgment angles-till-SOLID + broad pass** | `references/plan.md` |
 | `impl` | plan → code | `executing-plans` + `subagent-driven-development` | **codex session**, tunable gate/squash — production | `references/impl.md` |
 | `review` | diff → fixed code | `receiving-code-review` | **claude session** — `/simplify` + `/igr:code-review-skip-simplify`, then FIX | `references/review.md` |
@@ -125,9 +125,12 @@ does not reimplement the mechanics.** Restated so every method honors them:
    it has edit/commit tools and auto-commits during "review only".
 2. **No codegraph** in any focus string (it hangs the companion ~60 min). rg/sed only.
 3. **zsh eval gotcha** — strip ALL backticks and `$` from the focus string.
-4. **One companion job in flight**, unique outfile per round; poll the outfile for the
-   `REVIEW-COMPLETE` terminator (the completion notification fires early — the companion process
-   exits before the review job finishes writing; never read on notify alone).
+4. **Unique outfile per job; poll each for the `REVIEW-COMPLETE` terminator** (the completion
+   notification fires early — the companion process exits before the review job finishes writing;
+   never read on notify alone). **Independent angles may run as concurrent lanes** — one job per
+   lane, **≤ 5 lanes**, a unique outfile per lane (the brainstorm §2 round-parallel model); on a
+   companion rate-limit (`at capacity`) reduce concurrency, never spin. A serial single-angle L1
+   loop still holds to one job at a time.
 5. **Verify every finding against the actual code before folding** — Codex is a lead-generator,
    not an oracle.
 6. **Triage: apply-minimal vs park-scope.** Minimal/clear fix (faithfulness, wrong ref, missing
@@ -160,6 +163,13 @@ to **every** method — including `impl` (codex) and `review` (`/simplify` +
   Drift-A review — or auto-editing that contract during a fold / the clean-rewrite / the Drift-B
   check → the intent gate was skipped or the immutable contract mutated; see
   `references/brainstorm.md` §"Mental Model contract".
+- Running the FULL recipe on a ≤ 3-angle low-blast spec (should be FOCUSED), or FOCUSED on a
+  high-blast one → mis-routed; the route is owner-confirmed at the Drift-A gate and any high-blast
+  class forces FULL. See `references/brainstorm.md` §Route.
+- Looping angles strictly serially, STOP-and-ASK per angle as it caps, or re-looping an
+  already-cleared angle to re-confirm → the angle loop is **round-parallel** (independent lanes
+  concurrent, fold serial), capped angles are collected for one checkpoint, and cleared = cleared.
+  See `references/brainstorm.md` §2/§5.
 - Handing `plan` a spec that still carries OQs / revision-log churn → not brainstorm-clean;
   `plan`'s P0 intake gate warns — finish `/igr:brainstorm` first.
 

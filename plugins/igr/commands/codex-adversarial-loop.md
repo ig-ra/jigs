@@ -65,7 +65,10 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
    `/tmp/codex-loop-<worktree>-<topic>-r<N>.out` (worktree = basename of the cwd from rule 4;
    topic = a short slug of the target). The worktree component is what keeps **concurrent runs
    in sibling worktrees with same-named targets** (parallel PR-ladder rungs) from clobbering
-   each other — /tmp is machine-global. **Delete any pre-existing file at the path before
+   each other — /tmp is machine-global. For **concurrent angle-lanes against the SAME target in
+   the SAME worktree** (the brainstorm round-parallel angle loop — see `references/brainstorm.md`
+   §2), add a short **angle/lane slug** to the prefix too; otherwise same-target same-worktree
+   jobs share a path and clobber. **Delete any pre-existing file at the path before
    launching** (a stale outfile from an earlier run already contains REVIEW-COMPLETE and would
    satisfy the poll instantly with an old verdict). Never point two runs at the same file. If a
    launch fails: run **one** foreground diagnostic (`pwd`, read the outfile, read the actual

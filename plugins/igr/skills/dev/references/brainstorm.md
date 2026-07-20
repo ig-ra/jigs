@@ -71,6 +71,34 @@ forces a design change, that surfaces as **Drift B at exit** for the owner to re
 deliberately — the contract is not silently rewritten to match. (The section's tokens don't match
 the exit-gate grep in §6, so it rides through the gate untouched.)
 
+## Route: FOCUSED vs FULL (triage — decided at the Drift-A gate)
+
+Not every spec needs the full machinery. Running the whole census → 5-cluster → 7-cap →
+clean-rewrite → re-census pipeline on a small, single-purpose, code-verified spec burns dozens of
+codex rounds where 1–3 focused ones carry all the value (observed on real runs: a 1-round spec
+beside a 45-round spec of similar length). **Decide the route at the Drift-A gate** — the Mental
+Model changeset inventory is already the signal, so this costs nothing extra:
+
+- **FOCUSED** — ≤ 3 real angles, low/med blast radius, spec authored clean in one pass. Signals
+  from the Mental Model: few deliverables and **no** high-blast class among them (data-loss /
+  isolation / concurrency / security / migration / tenant-boundary). Run: census (to name the ≤ 3
+  angles) → the round-parallel angle loop (§2) on those angles → **the clean-rewrite (§4)** →
+  completeness critic (§6) on the fresh doc → Drift-B (§7). **KEEP the clean-rewrite** — it is
+  inline (no codex rounds) and its fresh read bubbles up hidden problems regardless of how clean the
+  doc looked; that bug-surfacing is load-bearing even here. **SKIP only the full re-census +
+  re-angle-loop (§5)** — the expensive part. The completeness critic on the fresh doc is the
+  lightweight closure; if the fresh read flags something concrete, spend ≤ 1 focused round on it
+  rather than re-running the whole census machinery. (Resolve OQs §3 before the rewrite as usual.)
+- **FULL** — ≥ 4 angles, OR any high-blast class present, OR a messy multi-pass / heavily-revised
+  spec. Run the whole recipe §1–§7 as written.
+
+**The owner confirms the route at the Drift-A stop** (already there): e.g. "read as FOCUSED — 3
+angles, low blast; census + 3 parallel angle loops + fresh-rewrite + critic + drift, no re-census,
+~minutes. Override to FULL?" **Guard:**
+any high-blast class forces FULL (or at minimum ≥ 1 dedicated round on that class) regardless of
+angle count; the owner may always override upward. FOCUSED still runs **real** adversarial review
+on the named angles — it drops the exhaustive ceremony, not the review.
+
 ## Reviewer recipe (EXPLORATORY)
 
 ### 1. Step 0 — census (enumerate, do NOT review)
@@ -93,30 +121,48 @@ first, mechanics / wiring last; **run at most 5 angle-clusters**. Whatever doesn
 the nearest cluster's focus text, or list it in the backlog as `UNPROBED` for the owner to see at
 the next checkpoint — **never silently drop it, never silently run a 6th**.
 
-### 2. Per-angle loop
+### 2. Angle loop — ROUND-PARALLEL (independent angles run concurrently)
 
-For each angle in the backlog, drive L1 in single-focus mode:
+The ≤ 5 angle-clusters are **independent failure-classes over the same spec** (kept immutable
+*during* a review batch), so their codex reviews are safe to run at the same time. Serial
+per-angle looping is the biggest avoidable wall-clock cost — each round is a 2–6 min codex wait,
+and running the angles one-at-a-time simply sums those waits (measured on real runs: strictly
+serial, zero overlap). **Invert it: parallelize the slow REVIEW, serialize the fast FOLD.**
 
-`/igr:codex-adversarial-loop SPEC_PATH 7 --focus "<angle text>"`
+Per round:
 
-where `<angle text>` names the one failure-class + the code location + the standard framing
-(verify against actual code; no codegraph; flag over-engineering; no backticks/`$`). L1 loops that
-angle to clean and returns a per-focus verdict.
+1. **Launch every still-open angle's review concurrently** — one backgrounded companion job per
+   angle (`Bash run_in_background: true`), **a unique outfile per angle** (the L1 rule-3 scheme +
+   an angle slug, so same-spec / same-worktree lanes never clobber). Each job is **review-only**:
+   it emits findings + a per-angle verdict and does **not** edit the spec. Focus text per lane =
+   the one failure-class + code location + standard framing (verify against actual code; no
+   codegraph; flag over-engineering; no backticks/`$`). Cap at **5 concurrent lanes**; on a
+   companion rate-limit (`at capacity` / L1 rule-7 shapes) back that lane off and serialize the
+   overflow — never spin.
+2. **Poll every lane** for `REVIEW-COMPLETE` (invariant 4 — never read on the early launch-notify).
+3. **Fold SERIALLY into the one spec** as lanes return: **verify** each finding against the cited
+   code (Codex is a lead-generator), then **apply-minimal / park-scope** (invariant 6) —
+   faithfulness/ref/guard/narrow-correctness → apply; new abstraction/knob/module or broadened
+   scope → park to Open Questions. Two lanes touching the same region → fold the second against
+   the first's edits (serial fold makes that safe). Folding is seconds; the parallel wait is what
+   mattered.
+4. **Re-launch only the still-open angles** next round. An angle that returns `SPEC-SOUND` is
+   **cleared** — drop it from the batch. **Append-on-discovery:** a finding revealing a new
+   failure-class → fold into the nearest of the 5 clusters (widen its focus); fits none → list it
+   `UNPROBED` (never silently add a 6th, never silently run it).
 
-The `7` is the **per-angle cap**, passed as L1's `max` arg (overriding its single-focus default of
-3 — spec angles run without census grounding, so they get more headroom than the plan method's 3).
-An angle not `SPEC-SOUND` at 7 → **STOP and ASK the owner**, same diagnostic as the plan method:
-are the remaining findings NEW failure-classes (legit progress — the owner may grant another
-batch) or re-raises/churn (a stall — fix the process, don't spend rounds)?
+**Critical path = the deepest single angle's round count, not the serial sum** — that is the whole
+win. **Per-angle cap = 7 rounds.** Angles still open at 7 are **collected, not stopped mid-batch**:
+raise them together at the checkpoint / OQ gate (§3, §Budget) with the same diagnostic — NEW
+failure-classes (legit progress, owner may grant more) vs re-raises/churn (a stall — fix the
+process). Do NOT STOP-and-ASK per angle as each caps; that re-serializes the loop into a chain of
+human gates.
 
-- **Verify** each finding against the cited code before folding (Codex is a lead-generator).
-- **Fold minimal, park scope** (invariant 6). Faithfulness/ref/guard/narrow-correctness → apply;
-  new abstraction/knob/module or broadened scope → park to Open Questions, keep going.
-- Mark an angle **cleared** when it returns `SPEC-SOUND`.
-- **Append-on-discovery (within the cap):** a finding that reveals a new failure-class → **fold it
-  into the nearest of the 5 clusters** (widen that cluster's focus text). If it fits none, do NOT
-  silently add a 6th angle — list it as `UNPROBED`; the owner decides at the next checkpoint
-  whether to grant it a slot.
+*(Transport: in a single session the main model fires the N background jobs and folds. Under
+`/igr:wf:spawn` / a pane ladder each lane can instead be its own pane — same round-parallel
+structure. The serial `/igr:codex-adversarial-loop SPEC_PATH 7 --focus "<angle>"` stays the
+single-angle tool for the FOCUSED route and the fallback when concurrency is unavailable; `7` is
+its per-angle `max`.)*
 
 ### 3. Owner resolves Open Questions (STOP — before the rewrite)
 
@@ -125,6 +171,17 @@ Fold each answer into the spec as a settled decision (a substantive fold → re-
 angle once). **The method does not end with OQs in the spec** — parking is a mid-run state, not
 an output. Only when the OQ section is empty proceed to the rewrite (so the rewrite bakes the
 decisions in, and the fresh read covers them too).
+
+**Scope / boundary is a must-settle OQ class.** The census probes correctness of what the spec
+*says*, not how the change is *packaged* — so a scope boundary can slip through SPEC-SOUND
+unsettled and then detonate in `/igr:plan`. Before the rewrite, the spec must have **no open
+"which change owns capability/config X" or "where is the seam to the next change" question**; if
+one is open, park it as an OQ and settle it here, then state the boundary explicitly in the spec
+(it maps directly to the Mental Model changeset — an ambiguous deliverable owner IS the OQ). *(A
+real run lost a whole plan: a config landed SPEC-SOUND without settling which PR owned it; the
+plan built on the wrong split and was discarded + redone — ~2–3h.)* **This is scope only** —
+brainstorm does NOT decide PR order / sequencing (that is igr-workflow's; a freeze-before-plan
+gate lives there). It only refuses to ship a spec carrying a hidden scope assumption.
 
 ### 4. Clean-rewrite pass (LOAD-BEARING — not cosmetic)
 
@@ -138,9 +195,14 @@ several real bugs surfaced ONLY here.
 
 ### 5. Re-census + per-angle on the clean doc
 
-New angles appear post-rewrite (the doc reads differently). Re-run the census on the clean doc,
-**re-cluster to ≤ 5** (same cap + ranking as §1), and loop the fresh angles. A new finding that
-parks an OQ → resolve it with the owner (step 3 rules) before the exit gate.
+New angles appear post-rewrite (the doc reads differently). Re-run the census on the clean doc
+**once**, **re-cluster to ≤ 5** (same cap + ranking as §1), and loop **only genuinely new** angles
+(round-parallel, §2). **Do NOT re-loop already-cleared angles to re-confirm them** — that is the
+confirm-pass churn (measured on real runs: reverify×2 / confirm×3 rounds that surfaced no new
+defect). A cleared angle re-opens only if this single re-census surfaces a *specific* new finding
+against it. The re-census itself is **kept** — it catches regressions the rewrite introduced — only
+the per-angle re-confirmation is cut. A new finding that parks an OQ → resolve it with the owner
+(step 3 rules) before the exit gate.
 
 ### 6. Exit gate (the STRONG stop — ALL must hold)
 
@@ -152,6 +214,9 @@ The spec is DONE only when **every one** of these holds — a checklist, not a v
 4. **No record of the runs** — clean-rewrite done; deterministic self-check, run it:
    `grep -nE 'Open Questions|AWAITING HUMAN|rounds-spent|Revision log|\[R[0-9]+' SPEC_PATH`
    → **zero hits**, or the gate FAILS (go back to the step that leaks).
+5. **Scope boundary settled** (§3) — no open "which change owns X / where is the seam" question;
+   the spec states its in-scope / out-of-scope boundary explicitly. (Prevents a plan built on an
+   unsettled split being discarded downstream.)
 
 Report on exit: the clean spec path + the sidecar audit log path (§Budget) + the **Drift-B verdict**
 (step 7). Skipping the rewrite,
@@ -169,6 +234,10 @@ angle slot or explicitly accept the gap — never silently drop it, never silent
 
 This is **NOT** "one clean pass." Convergence signal in practice: angles return `SPEC-SOUND`
 first-try and findings degrade to consistency-of-your-own-edits rather than code gaps.
+
+**Cleared means cleared** — once an angle returns `SPEC-SOUND`, do not re-loop it to re-confirm;
+the completeness critic (one call) is the only post-clearance check. A re-confirmation pass over
+already-clean angles is the confirm-pass churn §5 cuts, not convergence.
 
 ### 7. Drift check (Drift B — as-hardened vs the contract)
 
