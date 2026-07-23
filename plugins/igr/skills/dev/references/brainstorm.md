@@ -49,15 +49,23 @@ the method reports any drift at exit._
 **Ships:** <one line — what capability lands, for whom>
 
 **Deliverables** — changeset vs current system
-- ADD    **<cap>** — <what it does> · <tech/approach>
-- CHANGE **<cap>** — <what changes> · <tech>
-- REMOVE **<cap>** — <what goes, why> · <replaced-by, if any>
+
+| tag | capability | tech / where |
+|-----|------------|--------------|
+| ADD | <what it does> | <tech · path> |
+| CHANGE | <what changes> | <tech · path> |
+| REMOVE | <what goes, why — replaced-by if any> | <tech · path> |
+
+**Unchanged:** <existing behavior this explicitly does NOT touch>
 ```
 
-Each deliverable is ONE line fusing **capability × the tech chosen for it**, tagged ADD / CHANGE /
-REMOVE vs the current system (greenfield → all ADD). **Only what gets supplied** — no non-goals, no
-risk section; those are not what the owner scans for omissions. Group under sub-headers only if
-deliverables exceed ~8 and span separate subsystems; otherwise keep one flat, scannable list.
+Each deliverable is ONE table row fusing **capability × the tech chosen for it**, tagged ADD /
+CHANGE / REMOVE vs the current system (greenfield → all ADD). **Only what gets supplied** — no
+non-goals, no risk section; those are not what the owner scans for omissions. The one boundary line
+allowed is **Unchanged** — existing behavior the change explicitly preserves — because a
+wrongly-touched invariant IS an omission the owner scans for. Split into more than one table under
+sub-headers only if deliverables exceed ~8 and span separate subsystems; otherwise keep one flat,
+scannable table.
 
 **The Drift-A gate (STOP — owner reviews before hardening).** Present the model in chat and ask the
 owner directly: *does this match your intent? anything you expected that's missing, or here you
