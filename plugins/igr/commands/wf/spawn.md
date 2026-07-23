@@ -44,10 +44,12 @@ is unsubstituted, resolve: `ls -d ~/.claude/plugins/cache/*/igr/*/skills | sort 
 4. **Author the handoff** — copy the template to `<worktree>/<prefix>-impl-handoff.md` and fill
    `<TICKET>`, `<PREFIX>`, `<ABS_PLAN_PATH>` (absolute), `<RESOLVED_GATE_CMD>`. Leave it **uncommitted**
    (never commit docs).
-5. **Spawn codex + dispatch (inline via the `herdr` skill — no helper; the worktree already exists):**
-   - `herdr tab create --workspace <ws> --label <label>` → parse the root pane id.
-   - `herdr pane run <pane> 'cd <worktree-abs> && direnv allow && codex …IGR_IMPL_*…'` (codex launch
-     line per `igr:herdr-workflow` §swap-agent).
+5. **Spawn codex + dispatch** — use the helper so the `cd` into the worktree is baked into the launch
+   and can never be dropped (the failure that lands codex on `main`):
+   - `herdr-spawn-worker.sh --agent codex <ws> <label> <worktree-dir> <branch> [base]` — create-or-reuse
+     the worktree, tab-create, and launch `cd <worktree> && direnv allow && codex …IGR_IMPL_*…` as ONE
+     command. It prints the pane id and STOPS right after launch (no boot-wait — codex readiness is the
+     caller's judgment, not a pinned marker).
    - **Read the pane until codex is ready** (judgment — never dispatch into a booting shell; no pinned
      marker), THEN `herdr pane run <pane> 'read <ABS handoff> and implement per it; stop before push'`
      + `herdr pane send-keys <pane> Enter`.

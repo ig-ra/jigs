@@ -69,17 +69,18 @@ at repo root). codex: `direnv allow && codex ${IGR_IMPL_MODEL:+--model "$IGR_IMP
 
 ### spawn-codex  (fresh codex in a new pane — the standalone impl handoff)
 For `/igr:wf:spawn impl` (not the in-pipeline swap): open a **new pane in the same workspace** running
-codex in the (reused) worktree, rather than swapping the current pane. **No helper** — the reused
-worktree already exists, so this is plain herdr CLI the driving claude runs directly (see the bundled
-`herdr` skill):
-1. `herdr tab create --workspace <ws> --label <label>` → parse the root pane id.
-2. `herdr pane run <pane> 'cd <worktree-abs> && direnv allow && codex …IGR_IMPL_*…'` — the codex launch
-   line from **swap-agent** above (model+effort from `IGR_IMPL_*`).
-3. **Readiness = claude judgment, NOT a pinned marker** — `herdr pane read <pane>` until codex's input
+codex in the (reused) worktree, rather than swapping the current pane. Use the **worker helper with
+`--agent codex`** — it bakes `cd <worktree>` into the launch so it can't be dropped (dropping it lands
+codex on `main`, the recurring failure); it branches the launch line by agent and returns right after
+launch (no ❯ boot-wait, no `/rename` — those are claude-only):
+1. `herdr-spawn-worker.sh --agent codex <ws> <label> <worktree-dir> <branch> [base]` — create-or-reuse
+   the worktree, tab-create, and launch `cd <worktree> && direnv allow && codex …IGR_IMPL_*…` (model+effort
+   from `IGR_IMPL_*`, the swap-agent line above) as ONE command. Prints the pane id, then STOPS.
+2. **Readiness = claude judgment, NOT a pinned marker** — `herdr pane read <pane>` until codex's input
    box is up and settled (watch the footer, per the finish-watch gotcha); **never dispatch into a
    booting shell** (dispatching too early types into the boot). A hardcoded codex-prompt regex is
    brittle across codex versions — read + judge instead.
-4. Dispatch the one-line handoff: `herdr pane run <pane> 'read <abs handoff>, implement per it; stop
+3. Dispatch the one-line handoff: `herdr pane run <pane> 'read <abs handoff>, implement per it; stop
    before push'` then `herdr pane send-keys <pane> Enter`.
 The plan-claude pane **stays alive** in the same worktree → it is the reviewer (Phase III native
 `/igr:review`). No swap-agent self-kill, no resume-session. Because **codex has no `igr` plugin**, the
@@ -115,9 +116,9 @@ surface any failure.
 ## Quick reference
 | Need | Do |
 |---|---|
-| Spawn worker | `scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` (create-or-reuse worktree+branch, plain claude) |
+| Spawn worker | `scripts/herdr-spawn-worker.sh [--agent claude\|codex] <ws> <label> <worktree-dir> <branch> [base-ref]` (create-or-reuse worktree+branch; `cd` baked into launch) |
 | Reuse a worktree | `herdr-spawn-worker.sh` auto-reuses if `<dir>`/`<branch>` already exist (no `exit 1`) |
-| Spawn fresh codex (impl) | inline recipe (no helper) — see `### spawn-codex`: `tab create` → codex launch → claude-judged readiness → handoff dispatch |
+| Spawn fresh codex (impl) | `herdr-spawn-worker.sh --agent codex …` — see `### spawn-codex`: baked-`cd` codex launch → claude-judged readiness → handoff dispatch |
 | Send a prompt | `herdr pane run <pane> '<ONE-LINE prompt>'` then `herdr pane send-keys <pane> Enter` |
 | Watch a finish | background POLL for status≠`working` (NOT `--status done` — see Gotchas) |
 | Tell ghost from human input | `pane read <pane> --format ansi \| grep '<text>' \| cat -v` → dim `^[[2m` or grey `153` = **ghost = empty/no input** (not the human's); normal-bright after `❯`/`›` = real typed prompt |
