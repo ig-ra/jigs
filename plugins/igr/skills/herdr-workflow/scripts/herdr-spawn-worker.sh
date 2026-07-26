@@ -94,8 +94,9 @@ echo ">> launching: $LAUNCH"
 herdr pane run "$PANE" "$LAUNCH"
 
 # claude boots to a ❯ prompt → server-side wait-output (returns the instant it appears, ~100ms; no
-# sleep-poll) + /rename. codex has no stable boot marker → the CALLER waits readiness via
-# `agent wait --until idle` (status-based), so for codex we return right after launch.
+# sleep-poll) + /rename. codex: no stable boot marker AND a fresh worktree shows a "trust this
+# directory?" modal that reads as `idle` → the CALLER handles readiness (wait-idle → clear the trust
+# modal → confirm by read), so for codex we return right after launch.
 if [ "$AGENT" = claude ]; then
   echo ">> waiting for boot (wait-output on ❯)..."
   herdr pane wait-output "$PANE" --match '❯' --timeout 120000 >/dev/null 2>&1 || echo "   (boot wait timed out — proceeding)"
@@ -111,8 +112,9 @@ echo "branch=$BRANCH   (off $BASE)"
 if [ "$AGENT" = codex ]; then
   echo "agent=codex   # resume: codex resume ${UUID:-<uuid>}"
   echo "------------------------------------------------------------"
-  echo "next: wait readiness → herdr agent wait $PANE --until idle --timeout 120000  (then one pane read to confirm; never dispatch into a booting shell),"
-  echo "      THEN dispatch atomically → herdr agent prompt $PANE 'read <ABS impl-handoff> and implement per it; stop before push'  (no send-keys Enter)."
+  echo "next: readiness → herdr agent wait $PANE --until idle  THEN pane read: a FRESH worktree shows codex's 'trust this directory?' modal (also reads idle) —"
+  echo "      if up, herdr pane send-keys $PANE Enter (=Yes) and wait-idle again; dispatch only once the read shows codex's real input box (NEVER on bare idle)."
+  echo "      dispatch atomically → herdr agent prompt $PANE 'read <ABS impl-handoff> and implement per it; stop before push'  (no send-keys Enter)."
   echo "      impl flickers → watch finish via the footer-settle discipline, NOT agent wait --until idle (herdr-workflow gotchas)."
 else
   echo "session=$UUID   # resume: claude --resume \"$LABEL\"  (or the UUID)"

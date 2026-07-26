@@ -50,8 +50,10 @@ is unsubstituted, resolve: `ls -d ~/.claude/plugins/cache/*/igr/*/skills | sort 
      the worktree, tab-create, and launch `cd <worktree> && direnv allow && codex …IGR_IMPL_*…` as ONE
      command. It prints the pane id and STOPS right after launch (no boot-wait — the caller waits
      readiness via `agent wait`).
-   - **Wait for readiness** → `herdr agent wait <pane> --until idle --timeout 120000` (status-based; then
-     one `pane read` to confirm — never dispatch into a booting shell). THEN dispatch **atomically** →
+   - **Wait for readiness** → `herdr agent wait <pane> --until idle` gets codex booted, THEN `pane read`:
+     a **fresh worktree pops codex's "Do you trust this directory?" modal, which also reads `idle`** — if
+     up, `send-keys <pane> Enter` (=Yes) and wait-idle again; dispatch only once the read shows codex's
+     real input box (**never on bare idle** — see the codex-trust gotcha). THEN dispatch **atomically** →
      `herdr agent prompt <pane> 'read <ABS handoff> and implement per it; stop before push'` (no separate
      Enter). Impl flickers → watch finish via the footer-settle discipline (`igr:herdr-workflow`
      gotchas), NOT `agent wait --until idle`.
