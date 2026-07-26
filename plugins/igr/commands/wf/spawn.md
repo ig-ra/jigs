@@ -30,7 +30,7 @@ is unsubstituted, resolve: `ls -d ~/.claude/plugins/cache/*/igr/*/skills | sort 
 - Run `herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base]` — create-or-reuse worktree,
   launch claude, capture the session UUID.
 - `plan` needs a spec: find the spec `*.md` in the worktree; else ask for its **absolute** path.
-- Dispatch ONE line, then `herdr pane send-keys <pane> Enter`:
+- Dispatch ONE line **atomically** via `herdr agent prompt <pane> '<line>'` (no separate `send-keys Enter`):
   - brainstorm → `/igr:brainstorm <idea text, if any>`
   - plan → `/igr:plan <ABSOLUTE spec path>`
 
@@ -48,11 +48,13 @@ is unsubstituted, resolve: `ls -d ~/.claude/plugins/cache/*/igr/*/skills | sort 
    and can never be dropped (the failure that lands codex on `main`):
    - `herdr-spawn-worker.sh --agent codex <ws> <label> <worktree-dir> <branch> [base]` — create-or-reuse
      the worktree, tab-create, and launch `cd <worktree> && direnv allow && codex …IGR_IMPL_*…` as ONE
-     command. It prints the pane id and STOPS right after launch (no boot-wait — codex readiness is the
-     caller's judgment, not a pinned marker).
-   - **Read the pane until codex is ready** (judgment — never dispatch into a booting shell; no pinned
-     marker), THEN `herdr pane run <pane> 'read <ABS handoff> and implement per it; stop before push'`
-     + `herdr pane send-keys <pane> Enter`.
+     command. It prints the pane id and STOPS right after launch (no boot-wait — the caller waits
+     readiness via `agent wait`).
+   - **Wait for readiness** → `herdr agent wait <pane> --until idle --timeout 120000` (status-based; then
+     one `pane read` to confirm — never dispatch into a booting shell). THEN dispatch **atomically** →
+     `herdr agent prompt <pane> 'read <ABS handoff> and implement per it; stop before push'` (no separate
+     Enter). Impl flickers → watch finish via the footer-settle discipline (`igr:herdr-workflow`
+     gotchas), NOT `agent wait --until idle`.
 6. **Review** — the plan-claude pane (this one, if you ran it here) **stays alive** → once codex reports
    done, run `/igr:review` here (Phase III). If you spawned the worktree fresh (planned in main), run
    `/igr:review` from a claude pane cd'd into that worktree instead.

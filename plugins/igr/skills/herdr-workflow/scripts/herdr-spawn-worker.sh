@@ -93,14 +93,12 @@ fi
 echo ">> launching: $LAUNCH"
 herdr pane run "$PANE" "$LAUNCH"
 
-# claude boots to a ❯ prompt we can wait on + /rename; codex readiness is the caller's judgment
-# (no pinned marker — brittle across versions), so for codex we return right after launch.
+# claude boots to a ❯ prompt → server-side wait-output (returns the instant it appears, ~100ms; no
+# sleep-poll) + /rename. codex has no stable boot marker → the CALLER waits readiness via
+# `agent wait --until idle` (status-based), so for codex we return right after launch.
 if [ "$AGENT" = claude ]; then
-  echo ">> waiting for boot..."
-  for _ in $(seq 1 40); do
-    sleep 3
-    herdr pane read "$PANE" --source visible --lines 8 2>/dev/null | grep -q '❯' && break
-  done
+  echo ">> waiting for boot (wait-output on ❯)..."
+  herdr pane wait-output "$PANE" --match '❯' --timeout 120000 >/dev/null 2>&1 || echo "   (boot wait timed out — proceeding)"
   echo ">> /rename $LABEL"
   herdr pane run "$PANE" "/rename $LABEL"; sleep 1; herdr pane send-keys "$PANE" Enter; sleep 2
 fi
@@ -113,10 +111,11 @@ echo "branch=$BRANCH   (off $BASE)"
 if [ "$AGENT" = codex ]; then
   echo "agent=codex   # resume: codex resume ${UUID:-<uuid>}"
   echo "------------------------------------------------------------"
-  echo "next: READ the pane until codex's input box is up + settled (caller judgment — never dispatch into a booting shell),"
-  echo "      THEN: herdr pane run $PANE 'read <ABS impl-handoff> and implement per it; stop before push' ; herdr pane send-keys $PANE Enter"
+  echo "next: wait readiness → herdr agent wait $PANE --until idle --timeout 120000  (then one pane read to confirm; never dispatch into a booting shell),"
+  echo "      THEN dispatch atomically → herdr agent prompt $PANE 'read <ABS impl-handoff> and implement per it; stop before push'  (no send-keys Enter)."
+  echo "      impl flickers → watch finish via the footer-settle discipline, NOT agent wait --until idle (herdr-workflow gotchas)."
 else
   echo "session=$UUID   # resume: claude --resume \"$LABEL\"  (or the UUID)"
   echo "------------------------------------------------------------"
-  echo "next: dispatch the ONE-LINE spec/plan prompt → herdr pane run $PANE '<prompt>' ; herdr pane send-keys $PANE Enter"
+  echo "next: dispatch the spec/plan prompt atomically → herdr agent prompt $PANE '<prompt>'  (no separate send-keys Enter)"
 fi
