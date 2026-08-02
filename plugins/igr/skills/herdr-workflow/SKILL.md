@@ -29,7 +29,7 @@ Run inside a **herdr pane**: `[ "$HERDR_ENV" = 1 ] && [ -n "$HERDR_PANE_ID" ]`. 
 
 (Edge case: if the `herdr` skill is not in your available skills despite being in a pane, install it from the herdr repo into your skills dir — do not reimplement the CLI inline. Don't vendor it — it's versioned with herdr.)
 
-The spawn helper (referred to below as `scripts/herdr-spawn-worker.sh`) ships with this skill — run it by absolute path: `${CLAUDE_PLUGIN_ROOT}/skills/herdr-workflow/scripts/herdr-spawn-worker.sh`. If `${CLAUDE_PLUGIN_ROOT}` is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/skills/herdr-workflow/scripts/herdr-spawn-worker.sh | sort -V | tail -1`.
+The spawn helper (referred to below as `scripts/wf-herdr.sh`) ships with this skill — run it by absolute path: `${CLAUDE_PLUGIN_ROOT}/skills/herdr-workflow/scripts/wf-herdr.sh`. If `${CLAUDE_PLUGIN_ROOT}` is unset/unsubstituted, resolve it: `ls -d ~/.claude/plugins/cache/*/igr/*/skills/herdr-workflow/scripts/wf-herdr.sh | sort -V | tail -1`.
 
 ## Backend operations (herdr implementation)
 
@@ -38,12 +38,19 @@ before running any of them — the gotchas are where the real failures live.
 
 ### spawn-worker
 `git -C <repo-root> fetch && git pull --ff-only origin main`, then
-`scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` → it **pre-creates the
-worktree+branch** (`git worktree add -b <branch> .worktrees/<dir> <base>`, default base `origin/main`),
-launches **plain `claude --model "${IGR_PLAN_MODEL:-opus}"`** (NOT `claude --worktree`) cd'd in the worktree, `/rename`s,
-and prints the pane id, worktree path, branch, and the **claude session UUID** (the session handle).
-You OWN the branch name — match the tracker's `gitBranchName` form (e.g. `igor/saw-8194-needle-storage`),
-include the `saw-XXXX` id so the PR auto-links. **Stack** by passing a parent branch as `[base-ref]`.
+`scripts/wf-herdr.sh [--agent claude|codex] [--placement new-tab|split-right] <ws|-> <label> <worktree-dir> <branch> [base-ref]`
+→ it **creates-or-reuses the worktree+branch** (`git worktree add -b <branch> .worktrees/<dir> <base>`,
+default base `origin/main`), launches **plain `claude --model "${IGR_PLAN_MODEL:-opus}"`** (NOT `claude
+--worktree`) cd'd in the worktree, `/rename`s, and prints the pane id, **terminal id**, worktree, branch,
+and the **claude session UUID** (the session handle). You OWN the branch name — match the tracker's
+`gitBranchName` form (e.g. `igor/saw-8194-needle-storage`), include the `saw-XXXX` id so the PR
+auto-links. **Stack** by passing a parent branch as `[base-ref]`.
+**Placement + workspace pinning:** `--placement new-tab` (default) opens a workspace-pinned NEW tab
+(brainstorm/plan); `--placement split-right` splits the orchestrator's pane (`$HERDR_PANE_ID`) to its
+RIGHT in the SAME tab (impl beside the planner). Pass `<ws>` as `-` to pin to `$HERDR_WORKSPACE_ID` —
+this is what stops tabs from landing in another workspace (a bare `tab create` uses the FOCUSED one).
+The **terminal id** is the move-proof handle: `pane_id` changes when a pane is moved, `terminal_id` does
+not (re-resolve the current pane_id via `herdr pane list`).
 
 **Create-or-reuse:** the helper now reuses instead of failing — reuses in place if `<dir>` is already
 a worktree on `<branch>`, adds a worktree from an existing branch, or creates `-b` when neither exists
@@ -52,23 +59,31 @@ a worktree on `<branch>`, adds a worktree from an existing branch, or creates `-
 
 ### dispatch
 `herdr agent prompt <pane> '<ONE-LINE prompt>'` — submits **atomically** (encodes the Enter itself → no
-separate `send-keys Enter`; kills the bracketed-paste Enter-swallow). Add `--wait --until idle,blocked
---timeout MS` to block until the turn settles, but ONLY for a **non-flickery** turn (a single
-planning/review turn, no subagents). For a **flickery** dispatch (codex impl / the adversarial loop /
-any subagent-driven turn) submit WITHOUT `--wait` and watch the finish with the footer-settle discipline
-(see watch-finish) — `--wait --until idle` fires EARLY on the mid-work idle flicker, same as a raw poll.
-Still one line only (embedded newlines submit partial); single-quote the arg; avoid
-apostrophes/backticks/`$`/double-quotes. Legacy fallback if `agent prompt` is unavailable: `pane run
-<pane> '<prompt>'` + `pane send-keys <pane> Enter`.
+separate `send-keys Enter`; kills the bracketed-paste Enter-swallow). Add `--wait --timeout MS` to block
+until the turn settles — **bare `--wait` already waits for the first settled `idle`/`done`/`blocked`; do
+NOT pass `--until` to restate those, and never list a subset like `idle,blocked` (it drops `done`, the
+finished-unseen state).** `--wait` self-guards: a prompt from a non-working state that produces no
+lifecycle change in 5s returns `agent_prompt_stalled` rather than hanging. **Use `--wait` only for a
+non-flickery turn** (a single planning/review turn, no subagents). For a **flickery** dispatch (codex
+impl / the adversarial loop / any subagent-driven turn) submit WITHOUT `--wait` and watch the finish
+with the footer-settle discipline (see watch-finish) — there a `--wait` can be satisfied by an
+*intermediate* settled turn and fire EARLY. Still one line only (embedded newlines submit partial);
+single-quote the arg; avoid apostrophes/backticks/`$`/double-quotes. Legacy fallback if `agent prompt`
+is unavailable: `pane run <pane> '<prompt>'` + `pane send-keys <pane> Enter`.
 
 ### watch-finish
 **Simple (non-flickery) finish** — one planning/review turn, no subagents: `herdr agent wait <pane>
---until idle,blocked --timeout MS` (event-driven; replaces the sleep-poll). **Flickery finish** — the
-codex adversarial loop / `/review` / any subagent-driven implement flicker working↔idle mid-work, so
-BOTH `agent wait --until idle` AND a raw status poll fire EARLY. There, keep the discipline: watch the
-pane FOOTER (fire only when status≠`working` AND no `Working`/`esc to interrupt`/`shell`, settled ≥2),
-then READ + VERIFY on fire and re-poll. Never `herdr wait agent-status --status done` (hangs on a seen
-pane → `idle`), and never trust a scrollback text marker (`wait-output` matches the command-echo too).
+--timeout MS` (**bare** — the default already waits for the first settled `idle`/`done`/`blocked`;
+event-driven, replaces the sleep-poll). Do NOT pass `--until idle,blocked`: it drops `done` (the
+finished-*unseen* state) → a background finish is missed until timeout. Size MS to the work — a review
+that runs longer than MS returns on TIMEOUT, not finish → **re-wait, don't proceed**. **Flickery finish**
+— the codex adversarial loop / `/review` / any subagent-driven implement flicker working↔idle mid-work;
+herdr's wait DOES settle + has a 5s stall guard (so it beats a raw poll), BUT per its own doc
+"completion of the active turn may satisfy the wait" → an *intermediate* settled turn still fires EARLY.
+Keep the discipline: watch the pane FOOTER (fire only when status≠`working` AND no `Working`/`esc to
+interrupt`/`shell`, settled ≥2), then READ + VERIFY on fire and re-poll (herdr itself says inspect
+`agent get`/`agent read` before acting). Never trust a scrollback text marker (`wait-output` matches the
+command-echo too).
 
 ### swap-agent  (claude → codex, and back)
 Close the current agent, then launch the next in the SAME pane. Close: clear the line FIRST
@@ -83,18 +98,19 @@ codex in the (reused) worktree, rather than swapping the current pane. Use the *
 `--agent codex`** — it bakes `cd <worktree>` into the launch so it can't be dropped (dropping it lands
 codex on `main`, the recurring failure); it branches the launch line by agent and returns right after
 launch (no ❯ boot-wait, no `/rename` — those are claude-only):
-1. `herdr-spawn-worker.sh --agent codex <ws> <label> <worktree-dir> <branch> [base]` — create-or-reuse
-   the worktree, tab-create, and launch `cd <worktree> && direnv allow && codex …IGR_IMPL_*…` (model+effort
+1. `wf-herdr.sh --agent codex --placement split-right - <label> <worktree-dir> <branch> [base]` —
+   create-or-reuse the worktree, **split the orchestrator's pane to its right in the SAME tab**, and launch
+   `cd <worktree> && direnv allow && codex …IGR_IMPL_*…` (model+effort
    from `IGR_IMPL_*`, the swap-agent line above) as ONE command. Prints the pane id, then STOPS.
-2. **Readiness** — `herdr agent wait <pane> --until idle --timeout 120000` gets codex to "booted", THEN
-   `herdr pane read <pane>` and CHECK: a **fresh worktree pops codex's "Do you trust this directory?"
-   modal, which also reports `idle`** — if it's up, `herdr pane send-keys <pane> Enter` (default = Yes)
-   and `agent wait --until idle` again. Dispatch only once the read shows codex's real input box. **Never
-   dispatch on bare idle** (see the codex-trust gotcha — status is noisy post-accept, flips through
-   `done`, so confirm by READ not status).
+2. **Readiness** — `herdr agent wait <pane> --timeout 120000` gets codex to "booted" (bare wait = first
+   settled idle/done/blocked), THEN `herdr pane read <pane>` and CHECK: a **fresh worktree pops codex's
+   "Do you trust this directory?" modal, which also reports `idle`** — if it's up, `herdr pane send-keys
+   <pane> Enter` (default = Yes) and `agent wait` again. Dispatch only once the read shows codex's real
+   input box. **Never dispatch on bare idle** (see the codex-trust gotcha — status is noisy post-accept,
+   flips through `done`, so confirm by READ not status).
 3. Dispatch the one-line handoff **atomically**: `herdr agent prompt <pane> 'read <abs handoff>,
    implement per it; stop before push'` (no separate Enter). Impl flickers → watch finish via the
-   footer-settle discipline, NOT `agent wait --until idle`.
+   footer-settle discipline, NOT a bare `agent wait`.
 The plan-claude pane **stays alive** in the same worktree → it is the reviewer (Phase III native
 `/igr:review`). No swap-agent self-kill, no resume-session. Because **codex has no `igr` plugin**, the
 dispatch is a handoff doc claude authored (`references/impl-handoff-template.md`), NOT `/igr:impl`.
@@ -129,11 +145,15 @@ surface any failure.
 ## Quick reference
 | Need | Do |
 |---|---|
-| Spawn worker | `scripts/herdr-spawn-worker.sh [--agent claude\|codex] <ws> <label> <worktree-dir> <branch> [base-ref]` (create-or-reuse worktree+branch; `cd` baked into launch) |
-| Reuse a worktree | `herdr-spawn-worker.sh` auto-reuses if `<dir>`/`<branch>` already exist (no `exit 1`) |
-| Spawn fresh codex (impl) | `herdr-spawn-worker.sh --agent codex …` — see `### spawn-codex`: baked-`cd` launch → readiness (wait-idle → clear codex trust modal → confirm by read) → handoff dispatch |
-| Send a prompt | `herdr agent prompt <pane> '<ONE-LINE prompt>'` (atomic; no separate Enter). Add `--wait --until idle,blocked --timeout MS` only for a NON-flickery turn. Legacy: `pane run` + `send-keys Enter` |
-| Watch a finish | simple turn: `herdr agent wait <pane> --until idle,blocked --timeout MS`. Flickery (codex loop/`/review`/subagent): footer-settle + verify — `agent wait --until idle` fires early too (see Gotchas) |
+| Spawn worker | `scripts/wf-herdr.sh [--agent claude\|codex] [--placement new-tab\|split-right] <ws\|-> <label> <worktree-dir> <branch> [base-ref]` (create-or-reuse worktree; `cd` baked; `<ws>=-` pins `$HERDR_WORKSPACE_ID`; prints terminal id) |
+| Placement | `new-tab` (default) = workspace-pinned new tab (brainstorm/plan); `split-right` = split orchestrator's pane right, same tab (impl beside planner) |
+| Track a moved pane | key on **`terminal_id`** (durable); `pane_id` changes on move — re-resolve via `wf-herdr.py resolve <terminal_id>` |
+| Move a pane | `wf-herdr.py move <pane> --new-tab <ws> [--label L]` (break split out / cross-workspace) · `--new-workspace` · `--tab <t> [--target <p>] [--split right]` (merge in) — socket-only, CLI can't |
+| Raw socket op / events | `wf-herdr.py rpc <method> [json]` · `wf-herdr.py subscribe <event.type>...` (push, one JSON/line) |
+| Reuse a worktree | `wf-herdr.sh` auto-reuses if `<dir>`/`<branch>` already exist (no `exit 1`) |
+| Spawn fresh codex (impl) | `wf-herdr.sh --agent codex --placement split-right - <label> …` — split right of the planner; see `### spawn-codex`: readiness (wait → clear codex trust modal → confirm by read) → handoff dispatch |
+| Send a prompt | `herdr agent prompt <pane> '<ONE-LINE prompt>'` (atomic; no separate Enter). Add bare `--wait --timeout MS` only for a NON-flickery turn (bare = settled idle/done/blocked — don't pass `--until`). Legacy: `pane run` + `send-keys Enter` |
+| Watch a finish | simple turn: `herdr agent wait <pane> --timeout MS` (bare = settled idle/done/blocked; size MS to the work, re-wait on timeout). Flickery (codex loop/`/review`/subagent): footer-settle + verify — a bare wait can fire on an intermediate settled turn (see Gotchas) |
 | Detect a terminal marker | `herdr pane wait-output <pane> (--match TEXT\|--regex PAT) --timeout MS` — server-side, ~100ms; matches the command-echo too, so use an OUTPUT-only string |
 | Tell ghost from human input | `pane read <pane> --format ansi \| grep '<text>' \| cat -v` → dim `^[[2m` or grey `153` = **ghost = empty/no input** (not the human's); normal-bright after `❯`/`›` = real typed prompt |
 | Exit claude past a ghost | `send-keys Space; send-keys C-c; send-keys C-c` (rapid burst — ghost regenerates in ~2s + swallows C-c; Escape/C-u/BSpace don't work) |
@@ -146,9 +166,9 @@ surface any failure.
 | Hand off Phase I→III | capture the claude session UUID (`/rename` + record); Phase III = `claude --resume <uuid>` |
 
 ## Gotchas (each = a real failure that cost turns)
-- **Finish-watch: `herdr agent wait <pane> --until idle,blocked --timeout MS` for a SIMPLE turn (event-driven, no sleep-poll); NEVER `herdr wait agent-status --status done`.** `--status done` HANGS when an agent finishes into `idle` — which it does whenever you've recently *read* that pane (`done` = "finished AND pane unseen"; a seen pane goes `idle`). Legacy poll if `agent wait` is unavailable: `for i in $(seq 1 N); do st=$(herdr pane get <pane>|…agent_status); [ "$st" != working ] && [ -n "$st" ] && break; sleep 12; done` (run_in_background).
-- **The codex-adversarial-loop, codex `/review`, AND subagent-driven codex implement all flicker status working↔idle between internal steps** (the orchestrator goes idle WAITING on a task-agent/companion for minutes) — so `agent wait --until idle` fires EARLY here just like a raw poll (it waits on the SAME flickering status; it does NOT know "settled"). **Watch the codex pane FOOTER instead** — fire only when status≠`working` AND the footer shows no `Working`/`esc to interrupt`/`shell`, settled ≥2; on fire READ + VERIFY (converged/committed vs mid-step) and re-poll. `herdr pane wait-output` scans recent scrollback INCLUDING the echoed command line → false-fires; don't trust text markers for finish.
-- **Fresh worktree → codex "Do you trust this directory?" modal that reads as `idle` (verified).** codex trusts per EXACT path (`~/.codex/config.toml [projects."<path>"].trust_level`); a new `.worktrees/<dir>` is never in that list → on launch codex shows a trust modal ("…Press enter to continue") AND reports `agent_status: idle`. So `agent wait --until idle` FALSE-fires and a dispatch types INTO the modal. Codex readiness = wait-idle → `pane read` → if the modal is up, `send-keys <pane> Enter` (default = Yes) and wait-idle again → dispatch only when the read shows codex's real input box. Status is noisy post-accept (flips through `done`) → confirm by READ, never status alone. (The same trust-prompt shape can hit claude on a brand-new folder — if the `❯` wait-output ever times out on a fresh worktree, a claude trust dialog is the likely cause; clear it then re-wait.)
+- **Finish-watch: `herdr agent wait <pane> --timeout MS` for a SIMPLE turn (bare — default = first settled `idle`/`done`/`blocked`; event-driven, no sleep-poll).** Don't pass `--until idle,blocked`: it drops `done` — the SAME idle state after *unseen* background work — so a background finish is missed until timeout. `done` exists only while the pane is UNSEEN; **CLI reads do NOT mark it seen — only *focusing* the tab/pane does** (so reading to verify is safe; it's focus that flips `done`→`idle`). Because the bare wait already covers `done`, never reach for `herdr wait agent-status --status done`. Legacy poll if `agent wait` is unavailable: `for i in $(seq 1 N); do st=$(herdr pane get <pane>|…agent_status); [ "$st" != working ] && [ -n "$st" ] && break; sleep 12; done` (run_in_background).
+- **The codex-adversarial-loop, codex `/review`, AND subagent-driven codex implement all flicker status working↔idle between internal steps** (the orchestrator goes idle WAITING on a task-agent/companion for minutes). herdr's wait DOES settle + has a 5s stall guard (better than a raw poll), BUT per its own doc "completion of the active turn may satisfy the wait" — so an *intermediate* settled turn still fires EARLY here. **Watch the codex pane FOOTER instead** — fire only when status≠`working` AND the footer shows no `Working`/`esc to interrupt`/`shell`, settled ≥2; on fire READ + VERIFY (converged/committed vs mid-step) and re-poll. `herdr pane wait-output` scans recent scrollback INCLUDING the echoed command line → false-fires; don't trust text markers for finish.
+- **Fresh worktree → codex "Do you trust this directory?" modal that reads as `idle` (verified).** codex trusts per EXACT path (`~/.codex/config.toml [projects."<path>"].trust_level`); a new `.worktrees/<dir>` is never in that list → on launch codex shows a trust modal ("…Press enter to continue") AND reports `agent_status: idle`. So a bare `agent wait` FALSE-fires (idle is one of its settled states) and a dispatch types INTO the modal. Codex readiness = wait → `pane read` → if the modal is up, `send-keys <pane> Enter` (default = Yes) and wait again → dispatch only when the read shows codex's real input box. Status is noisy post-accept (flips through `done`) → confirm by READ, never status alone. (The same trust-prompt shape can hit claude on a brand-new folder — if the `❯` wait-output ever times out on a fresh worktree, a claude trust dialog is the likely cause; clear it then re-wait.)
 - **Recognize ghost-suggestion vs the human's real input — a ghost IS empty input, NEVER the human's message.** Both claude and codex render an AI-suggested next-prompt in the *empty* box, styled **dim/faint (ansi `^[[2m`) and/or grey (`38;2;153;153;153`)**. Plain `pane read` strips color, so a ghost looks IDENTICAL to a real typed prompt — you WILL misread it as the human's (cost a whole exit fight once). **Decision rule:** read `--format ansi` and look at the styling of the box text — **dim `[2m` or grey `153` ⇒ ghost ⇒ treat the box as EMPTY / no input** (don't attribute it to the human, don't ASK whether to keep it, don't act on its text); **normal-brightness (default fg, no `[2m`) text after `❯`/`›` ⇒ a real typed prompt** (could be the human's — the human often drives panes directly: ASK before typing over, clearing, or acting on it — never clobber). Detect: `pane read <pane> --format ansi | grep -iE '<the text>' | cat -v` → `^[[2m...^[[0m` = ghost. Don't waste keys "clearing" a ghost just to read; for *typing a prompt*, type right over it.
 - **Exit needs a TRULY EMPTY input line, and the ghost fights you.** `C-c C-c` only exits when the box is empty; a ghost (or real pending text) *swallows* the Ctrl-C → the first C-c shows an interrupt **recap** and the agent **keeps running** (silent no-op). **`Escape` does NOT dismiss a ghost; `C-u`/`BSpace` are unsupported by `herdr send-keys`.** What works: send **`Space`** (overrides/dismisses the ghost so the box truly empties) then **`C-c C-c` immediately, as one rapid burst** — the ghost **regenerates on idle within ~2s** and will eat the next C-c if you dawdle. So: `send-keys Space; send-keys C-c; send-keys C-c` back-to-back (no sleeps between), then verify the shell prompt returned. Re-burst if the recap (not the shell) reappears. claude in a worktree *can* show a **Keep/Remove-worktree dialog** on exit → `Enter` = Keep, never Remove (Remove deletes the plan/spec); the pre-create plain-`claude` flow exits with NO dialog (verified) and leaves the shell IN the worktree.
 - **Pre-create the worktree; do NOT use `claude --worktree`.** `claude --worktree NAME` force-names the branch `worktree-<NAME>` off `main` — a prefix you don't control and that buys nothing. The helper does `git worktree add -b <branch> .worktrees/<dir> <base>` then launches plain `claude`, so you own the branch name (match the Linear `gitBranchName`) + base (stack by passing a parent branch as `<base>`). Remove the worktree yourself when done (`git worktree remove`).
@@ -169,5 +189,14 @@ surface any failure.
 - Closing/typing in a pane the human is actively driving → collision. Verify, then act; ask if unsure.
 - Reimplementing the pipeline here (phase order, which method to run, gates) → that is `igr:workflow`. This skill is mechanics only.
 
-## Helper script
-`scripts/herdr-spawn-worker.sh <ws> <label> <worktree-dir> <branch> [base-ref]` encapsulates spawn-worker (fetch, `git worktree add -b <branch> .worktrees/<dir> <base>`, tab-create, launch plain `claude --model opus` cd'd in the worktree, `/rename`, capture session UUID). Stack by passing a parent branch as `<base>`. Run it instead of hand-typing. See its `--help`.
+## Helper scripts
+Two files in `scripts/`, one herdr layer:
+- **`wf-herdr.py`** — the herdr **socket toolbox** (JSON-RPC over `$HERDR_SOCKET_PATH`). Every herdr op
+  goes through it: `tab-create`, `split`, `run`, `send-keys`, `wait-output`, `agent-session`, `move`,
+  `resolve`, `subscribe`, `rpc`. Callable directly for the socket-only ops the `herdr` CLI lacks
+  (`move` to a new tab/workspace, `subscribe`, `resolve` a moved pane by terminal_id). See its module docstring.
+- **`wf-herdr.sh [--agent claude|codex] [--placement new-tab|split-right] <ws|-> <label> <worktree-dir> <branch> [base-ref]`**
+  — spawn-worker orchestration: fetch + create-or-reuse worktree (git), create the pane per `--placement`,
+  launch the agent cd'd in the worktree, boot-wait, capture session UUID + terminal id. It owns git/worktree
+  + sequencing and **delegates every herdr call to `wf-herdr.py`**. `<ws>=-` pins `$HERDR_WORKSPACE_ID`;
+  stack via `<base>`. Run it instead of hand-typing. See its `--help`.

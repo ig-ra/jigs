@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Unit test for herdr-spawn-worker.sh worktree create-or-reuse (no herdr needed).
+# Unit test for wf-herdr.sh worktree create-or-reuse (no herdr needed).
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-SUT="$here/../herdr-spawn-worker.sh"
+SUT="$here/../wf-herdr.sh"
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 git -C "$tmp" init -q

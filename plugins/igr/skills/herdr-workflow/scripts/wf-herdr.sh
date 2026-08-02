@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# herdr-spawn-worker.sh — spawn a herdr worker pane running claude in a git worktree whose branch
+# wf-herdr.sh — spawn a herdr worker pane running claude in a git worktree whose branch
 # name YOU choose (no forced `worktree-` prefix). Run from the orchestrator pane's shell.
 #
 # Usage:
-#   herdr-spawn-worker.sh [--agent claude|codex] <workspace-id> <tab-label> <worktree-dir> <branch> [base-ref]
+#   wf-herdr.sh [--agent claude|codex] [--placement|-p new-tab|split-right|split-down] <workspace-id> <tab-label> <worktree-dir> <branch> [base-ref]
 #
 #   <workspace-id>   herdr workspace id (e.g. w65421391321653) — `herdr pane list` shows it.
 #   <tab-label>      short tab/session name, <=20 chars, no ticket# (e.g. r2a-storage).
@@ -15,6 +15,11 @@
 #   [--agent VAL]    LEADING flag, claude (default) | codex. codex launches `codex` (model+effort from
 #                    IGR_IMPL_MODEL / IGR_IMPL_EFFORT) not claude, and SKIPS the ❯ boot-wait + /rename —
 #                    codex readiness is the CALLER's judgment (no pinned marker), so it returns right after launch.
+#   [--placement|-p] LEADING flag, new-tab (default) | split-right | split-down. new-tab: `tab create` in
+#                    <workspace-id> (WORKSPACE-PINNED — brainstorm/plan). split-right/-down: `pane split` the
+#                    ORCHESTRATOR's pane ($HERDR_PANE_ID) that direction in the SAME tab, cwd=<worktree> (impl
+#                    beside the planner); inherits the tab's workspace, so <workspace-id> is ignored. Pass
+#                    <workspace-id> as `-` to default it to $HERDR_WORKSPACE_ID (orchestrator's ws — avoids drift).
 #
 #   REPO_ROOT env overrides the repo root (default = the main worktree from `git worktree list`).
 #
@@ -29,15 +34,23 @@
 # dispatch the prompt/handoff — that's the orchestrator's judgment (one-line, then `send-keys <pane> Enter`).
 set -euo pipefail
 
+# All herdr ops go through the socket toolbox next to this script (single herdr layer). git/worktree
+# orchestration + sequencing stay here; wf-herdr.py owns every herdr call.
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+wf() { python3 "$SELF_DIR/wf-herdr.py" "$@"; }
+
 AGENT=claude
+PLACEMENT=new-tab
 while [ $# -gt 0 ]; do
   case "$1" in
     --agent) AGENT="${2:-}"; shift 2;;
-    -h|--help) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    --placement|-p) PLACEMENT="${2:-}"; shift 2;;
+    -h|--help) sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
     *) break;;
   esac
 done
 case "$AGENT" in claude|codex) ;; *) echo "unknown --agent '$AGENT' (want claude|codex)" >&2; exit 2;; esac
+case "$PLACEMENT" in new-tab|split-right|split-down) ;; *) echo "unknown --placement '$PLACEMENT' (want new-tab|split-right|split-down)" >&2; exit 2;; esac
 
 # resolve_worktree <wtdir-abs> <branch> <base>: create-or-reuse; exits nonzero on conflict.
 #   dir already a worktree on <branch> -> reuse; <branch> exists but no dir -> add from it;
@@ -68,20 +81,30 @@ fi
 
 [ $# -ge 4 ] || { echo "usage: $0 <workspace-id> <tab-label> <worktree-dir> <branch> [base-ref]" >&2; exit 2; }
 WS=$1; LABEL=$2; WTDIRNAME=$3; BRANCH=$4; BASE=${5:-origin/main}
+{ [ -z "$WS" ] || [ "$WS" = "-" ]; } && WS="${HERDR_WORKSPACE_ID:-}"   # `-` (or empty) → the orchestrator's own workspace
 WTDIR="$REPO_ROOT/.worktrees/$WTDIRNAME"
-
-jqpane() { python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])'; }
-jquuid() { python3 -c 'import sys,json; s=(json.load(sys.stdin)["result"]["pane"].get("agent_session") or {}); print(s.get("value") or "")'; }
 
 echo ">> fetch + resolve worktree $WTDIR  (branch $BRANCH off $BASE)"
 git -C "$REPO_ROOT" fetch origin -q || true
 resolve_worktree "$WTDIR" "$BRANCH" "$BASE"
 git -C "$WTDIR" log --oneline -1 | sed 's/^/   base tip: /'
 
-echo ">> creating tab '$LABEL' in $WS"
-PANE=$(herdr tab create --workspace "$WS" --label "$LABEL" | jqpane)
-[ -n "$PANE" ] || { echo "tab create failed" >&2; exit 1; }
-echo "   root pane: $PANE"
+# both create ops print "<pane_id>\t<terminal_id>"; terminal_id is the DURABLE handle (pane_id changes on move).
+case "$PLACEMENT" in
+  split-*)   # split-right | split-down: split the orchestrator's pane, same tab, cwd=worktree
+    [ -n "${HERDR_PANE_ID:-}" ] || { echo "$PLACEMENT needs \$HERDR_PANE_ID (run from the orchestrator pane)" >&2; exit 1; }
+    DIR=${PLACEMENT#split-}; WHERE="split $DIR of $HERDR_PANE_ID, same tab"
+    echo ">> splitting orchestrator pane $HERDR_PANE_ID ($DIR, same tab), cwd=$WTDIR"
+    CREATE=$(wf split "$HERDR_PANE_ID" "$DIR" --cwd "$WTDIR") ;;
+  new-tab)
+    [ -n "$WS" ] || { echo "new-tab needs a workspace: pass <workspace-id> (or '-' / set \$HERDR_WORKSPACE_ID)" >&2; exit 1; }
+    WHERE="workspace $WS"
+    echo ">> creating tab '$LABEL' in workspace $WS"
+    CREATE=$(wf tab-create "$WS" "$LABEL") ;;
+esac
+PANE=${CREATE%%$'\t'*}; TERMID=${CREATE#*$'\t'}
+[ -n "$PANE" ] || { echo "pane create failed" >&2; exit 1; }
+echo "   pane: $PANE  terminal: $TERMID"
 
 if [ "$AGENT" = codex ]; then
   # model+effort from IGR_IMPL_* (see /igr:impl); the `cd` is baked into the launch so it can't be dropped.
@@ -91,7 +114,7 @@ else
   LAUNCH="cd $WTDIR && direnv allow && claude --model $PLAN_MODEL"
 fi
 echo ">> launching: $LAUNCH"
-herdr pane run "$PANE" "$LAUNCH"
+wf run "$PANE" "$LAUNCH"
 
 # claude boots to a ❯ prompt → server-side wait-output (returns the instant it appears, ~100ms; no
 # sleep-poll) + /rename. codex: no stable boot marker AND a fresh worktree shows a "trust this
@@ -99,23 +122,24 @@ herdr pane run "$PANE" "$LAUNCH"
 # modal → confirm by read), so for codex we return right after launch.
 if [ "$AGENT" = claude ]; then
   echo ">> waiting for boot (wait-output on ❯)..."
-  herdr pane wait-output "$PANE" --match '❯' --timeout 120000 >/dev/null 2>&1 || echo "   (boot wait timed out — proceeding)"
+  wf wait-output "$PANE" '❯' --timeout 120000 >/dev/null 2>&1 || echo "   (boot wait timed out — proceeding)"
   echo ">> /rename $LABEL"
-  herdr pane run "$PANE" "/rename $LABEL"; sleep 1; herdr pane send-keys "$PANE" Enter; sleep 2
+  wf run "$PANE" "/rename $LABEL"; sleep 2   # `run` sends the Enter itself (send_input)
 fi
 
-UUID=$(herdr pane get "$PANE" 2>/dev/null | jquuid)
+UUID=$(wf agent-session "$PANE" 2>/dev/null || true)
 echo "------------------------------------------------------------"
-echo "pane=$PANE"
+echo "pane=$PANE   placement=$PLACEMENT ($WHERE)"
+echo "terminal=$TERMID   # DURABLE handle: pane_id changes on move, terminal_id doesn't — re-resolve via 'wf-herdr.py resolve $TERMID'"
 echo "worktree=$WTDIR"
 echo "branch=$BRANCH   (off $BASE)"
 if [ "$AGENT" = codex ]; then
   echo "agent=codex   # resume: codex resume ${UUID:-<uuid>}"
   echo "------------------------------------------------------------"
-  echo "next: readiness → herdr agent wait $PANE --until idle  THEN pane read: a FRESH worktree shows codex's 'trust this directory?' modal (also reads idle) —"
-  echo "      if up, herdr pane send-keys $PANE Enter (=Yes) and wait-idle again; dispatch only once the read shows codex's real input box (NEVER on bare idle)."
+  echo "next: readiness → herdr agent wait $PANE --timeout 120000  THEN pane read: a FRESH worktree shows codex's 'trust this directory?' modal (also reads idle) —"
+  echo "      if up, herdr pane send-keys $PANE Enter (=Yes) and wait again; dispatch only once the read shows codex's real input box (NEVER on bare idle)."
   echo "      dispatch atomically → herdr agent prompt $PANE 'read <ABS impl-handoff> and implement per it; stop before push'  (no send-keys Enter)."
-  echo "      impl flickers → watch finish via the footer-settle discipline, NOT agent wait --until idle (herdr-workflow gotchas)."
+  echo "      impl flickers → watch finish via the footer-settle discipline, NOT a bare agent wait (herdr-workflow gotchas)."
 else
   echo "session=$UUID   # resume: claude --resume \"$LABEL\"  (or the UUID)"
   echo "------------------------------------------------------------"
