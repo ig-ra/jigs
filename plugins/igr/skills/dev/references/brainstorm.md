@@ -148,12 +148,17 @@ Per round:
    companion rate-limit (`at capacity` / L1 rule-7 shapes) back that lane off and serialize the
    overflow — never spin.
 2. **Poll every lane** for `REVIEW-COMPLETE` (invariant 4 — never read on the early launch-notify).
-3. **Fold SERIALLY into the one spec** as lanes return: **verify** each finding against the cited
-   code (Codex is a lead-generator), then **apply-minimal / park-scope** (invariant 6) —
-   faithfulness/ref/guard/narrow-correctness → apply; new abstraction/knob/module or broadened
-   scope → park to Open Questions. Two lanes touching the same region → fold the second against
-   the first's edits (serial fold makes that safe). Folding is seconds; the parallel wait is what
+3. **Route SERIALLY into the one spec** as lanes return: run each finding through the
+   **FOLD / DISCUSS / DROP router (SKILL.md invariant 6)** — Q0 verify against the cited code
+   (Codex is a lead-generator, and most findings are hardening pressure rather than bugs), then
+   Q1-new / Q2-settled; unsure → DISCUSS. FOLD applies minimally to the spec; DISCUSS goes to
+   `## Open Questions` **and** the round report with a recommendation (never blocks the round);
+   DROP needs its one-line cite. Two lanes touching the same region → fold the second against the
+   first's edits (serial fold makes that safe). Routing is seconds; the parallel wait is what
    mattered.
+   **This path drives the companion directly, so it owns the list-carry L1 would otherwise do:**
+   maintain FIXED / PARKED / **REFUTED** across rounds and feed all three into every lane's focus
+   text next round. Drop REFUTED and each lane re-raises the same false positive every round.
 4. **Re-launch only the still-open angles** next round. An angle that returns `SPEC-SOUND` is
    **cleared** — drop it from the batch. **Append-on-discovery:** a finding revealing a new
    failure-class → fold into the nearest of the 5 clusters (widen its focus); fits none → list it
@@ -279,14 +284,15 @@ budget of its own). Three tiers:
 - **Per-angle cap = 7** (§2 above — passed as L1's `max`; STOP-and-ASK on a capped angle).
 - **Checkpoint every ~10 cumulative codex rounds** — count EVERY companion call: the census,
   per-angle rounds, the re-census, the completeness critic. Report the scoreboard — angles
-  cleared / remaining / added-on-discovery, FIXED count, PARKED count, rounds spent — and ASK the
+  cleared / remaining / added-on-discovery, FOLD / DISCUSS / DROP counts, rounds spent — and ASK the
   owner: continue / narrow / stop. A checkpoint is a **human gate, not a kill**: append-on-discovery
   grows the backlog legitimately; this is where the owner sees why.
 - **Hard backstop ~30 rounds total** — stop regardless, dump the state + the remaining backlog.
   The safety net for unattended runs.
 
 **The counter lives in a SIDECAR, not the conversation and not the final spec:** keep
-`rounds-spent: N` + the FIXED/PARKED ledger + checkpoint scoreboards + the step-7 Drift-B report in
+`rounds-spent: N` + the FOLD/DISCUSS/DROP ledger (every DROP with its cite — this is the audit
+trail for what was thrown away) + checkpoint scoreboards + the step-7 Drift-B report in
 **`<prefix>-brainstorm-log.md`** (scratch; survives compaction / session resume; never committed,
 deletable after). The working spec's revision log is fine mid-run, but the exit gate requires the
 FINAL spec to carry no run records — the sidecar is where the audit trail lives instead. L1

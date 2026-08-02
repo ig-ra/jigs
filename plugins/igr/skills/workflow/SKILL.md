@@ -116,7 +116,8 @@ handle**: Phase I captures it, Phase III resumes it; Phase II is a different age
 - igr-workflow **transitions phases + delegates**; it does not review (that is `igr-dev`) and does
   **not** touch tool mechanics — every pane/git/worktree/watch action goes through a **backend
   operation** (above), implemented by the backend skill.
-- The **§1 review invariants** (companion-only, no-codegraph, verify-before-fold, park-vs-apply,
+- The **§1 review invariants** (companion-only, no-codegraph, verify-before-fold, the
+  FOLD/DISCUSS/DROP router,
   never-commit-docs) are inherited through `igr-dev` — do not re-litigate here.
 - The **backend mechanics + gotchas** (spawn/CLI/pane/worktree/finish-watch/exit) live in the backend
   skill (`igr:herdr-workflow` for herdr) — do not duplicate or reimplement them here.

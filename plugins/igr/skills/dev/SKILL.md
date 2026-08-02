@@ -133,16 +133,54 @@ does not reimplement the mechanics.** Restated so every method honors them:
    loop still holds to one job at a time.
 5. **Verify every finding against the actual code before folding** — Codex is a lead-generator,
    not an oracle.
-6. **Triage: apply-minimal vs park-scope.** Minimal/clear fix (faithfulness, wrong ref, missing
-   guard, narrow correctness — no new abstraction/knob/scope) → apply. Over-engineering OR
-   breaking/major (new abstraction/module/knob, broadened scope, contradicts a settled call) → do
-   NOT apply → park to the target's `## Open Questions (awaiting human resolution)`. Unsure → park.
+6. **Disposition router — every verified finding gets exactly ONE of FOLD / DISCUSS / DROP.**
+   Announce the disposition per finding; **never fold a DISCUSS without the owner's sign-off.**
+   A reviewer finding is usually not a bug — it is often a push to close or harden a point that
+   does not need it. **Execute the gates in order; do not pattern-match the categories:**
+
+   | gate | test | if yes |
+   |---|---|---|
+   | **Q0 verify** | does the cited code/contract actually say what the reviewer claims? (read the file:line — invariant 5) | **no → DROP** |
+   | **Q1 new** | does the fix introduce something that does not exist yet — abstraction, module, knob, protocol/schema, policy choice, exhaustive test matrix, broadened scope? | **DISCUSS** |
+   | **Q2 settled** | does it touch an owner-settled decision, the immutable `## Mental Model`, a security / trust-boundary posture, a scope-or-ownership seam, or depend on an infra/platform fact you have not verified? | **DISCUSS** |
+   | — | none of the above | **FOLD** |
+
+   **Unsure at any gate → DISCUSS.** Bias to asking, never to silently expanding scope.
+
+   - **FOLD** — apply now, minimal: tighten wording, narrow/widen an EXISTING invariant, add a
+     guard. Correctness / faithfulness / internal-consistency only. An inconsistency your own
+     earlier folds created is FOLD-eligible by default — that is cleaning up after yourself, not
+     new scope.
+   - **DISCUSS** — do NOT apply. Write to the target's `## Open Questions (awaiting human
+     resolution)` AND print it in the round report with a recommendation. **The loop does not
+     block** (park-don't-pause) — the owner resolves at the gates that already exist (brainstorm
+     §3 OQ gate, plan P3b cap-ASK, the ~10-round checkpoint). Feasibility-dependent fix: verify
+     the fact inline if that is cheap; if it needs infra/platform truth you do not have, it is
+     DISCUSS — never a silent fold.
+   - **DROP** — false positive, already covered by an invariant, or already listed
+     out-of-scope/follow-up. One line, and it **must cite**: the code line that refutes it, the
+     invariant that covers it, or the out-of-scope entry. **No cite → DISCUSS, not DROP.** Log
+     every DROP in the run's sidecar so the owner can audit what was thrown away.
+
+   **DROP feeds back — carry a REFUTED list** into the next round's focus string beside FIXED and
+   PARKED. Without it a false positive is re-raised every single round for the life of the loop.
+
+   **Report format, per round:**
+   ```
+   FOLD:    <finding> — <the wrong assumption, file:line> — <the minimal edit>
+   DISCUSS: <finding> — <the decision> — A) … B) … — recommend: <X, why>
+   DROP:    <finding> — refuted by <file:line> | covered by <invariant> | out-of-scope <ref>
+   ```
+
+   **The mix is a convergence signal:** a round returning zero FOLD (all DISCUSS/DROP) means the
+   angle is exhausted — that is the qualitative-SOLID read, not "zero findings".
 7. **Never git-commit docs** (the owner commits docs). For code, follow the repo's commit rules;
    for docs, leave edits uncommitted and say so.
 8. **cwd = the directory containing the target** so untracked files are in the companion's tree.
 
 **Scope:** invariants 1–4 and 8 govern the methods that drive `/igr:codex-adversarial-loop`
-(`brainstorm`, `plan`). Invariants 5–7 (verify-before-fold, park-vs-apply, never-commit-docs) apply
+(`brainstorm`, `plan`). Invariants 5–7 (verify-before-fold, the FOLD/DISCUSS/DROP router,
+never-commit-docs) apply
 to **every** method — including `impl` (codex) and `review` (`/simplify` +
 `/igr:code-review-skip-simplify`), which do not touch the Codex companion.
 
@@ -152,7 +190,10 @@ to **every** method — including `impl` (codex) and `review` (`/simplify` +
   **`igr-workflow`**, not igr-dev. (Code commits within a method, per repo rules, are fine.)
 - About to spawn `codex:codex-rescue` for a review → **wrong tool**, use `/igr:codex-adversarial-loop`.
 - Folding a finding you have not read the cited code for → **verify first**.
-- Adding a new abstraction/knob/module because Codex suggested it → **park it**, don't apply.
+- Adding a new abstraction/knob/module because Codex suggested it → that is **DISCUSS** (Q1),
+  don't apply.
+- Folding every reported finding because the reviewer reported it, or DROPping one without a cite
+  → the router (invariant 6) was skipped; most findings are hardening pressure, not bugs.
 - Putting backticks or `$` in a focus string → the companion will crash.
 - Declaring a spec "done" after one clean pass → specs converge on the **exit gate** (all angles
   cleared + COVERAGE-COMPLETE + zero Open Questions + clean-rewritten, no run records — see

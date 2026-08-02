@@ -231,8 +231,9 @@ that angle until a pass returns **zero new findings** (ANGLE-SOLID; remaining = 
 cap of 3 rounds** — whichever first. **The cap travels as L1's `max` arg** (`3` — matches L1's
 single-focus default; pass it anyway, intent explicit). When L1 returns capped, **YOU** run the
 STOP-and-ASK triage below — L1 only reports; the caller owns the ASK. Different model from the plan's author (codex) is the point —
-external adversary. Feed each pass the census + FIXED + PARKED; fold minimal inline (main), park
-scope/breaking (invariants 5–6). Focus-string rules: **no backticks, no `$`, no codegraph** (it
+external adversary. Feed each pass the census + FIXED + PARKED + **REFUTED**, and route every
+finding through the **FOLD / DISCUSS / DROP router** (SKILL.md invariant 6 — verify first, then
+Q1-new / Q2-settled; unsure → DISCUSS). Focus-string rules: **no backticks, no `$`, no codegraph** (it
 hangs — rg/sed only); tell it to **enumerate EVERY instance in the lens, not the top one**, and verify
 each against code (LSP/rg).
 
@@ -322,8 +323,9 @@ It is **method-audit, not implementation** — place it at the end, clearly labe
   one-line "is this trustworthy / done". (A comparison or a fresh reviewer needs exactly this and cannot
   infer it from the tasks.)
 - **Parked Open Questions:** count + severities + "owner resolves before/with implement" + a pointer.
-- **Per-phase table:** P1 census (rows) · P3a (verify-plan clean) · P3b each angle (rounds → ANGLE-/
-  qualitative-SOLID) · P3c (rounds → verdict).
+- **Per-phase table:** P1 census (rows) · P3a (verify-plan clean) · P3b each angle (rounds →
+  ANGLE-/qualitative-SOLID, **FOLD/DISCUSS/DROP counts**) · P3c (rounds → verdict). A tail of
+  rounds with zero FOLD is the exhaustion signal — record it, it is the qualitative-SOLID evidence.
 - **Spec-updates:** Appendix §N pointer, if the review surfaced any.
 - **Provenance ledger:** one line per fold (`Rn: what`) — **this is where round-provenance lives.**
 - **Stamp:** "as of HEAD `<sha>`" (snapshot; the plan may be edited after).

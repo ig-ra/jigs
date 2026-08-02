@@ -2,7 +2,8 @@
 
 This method **defines how code review is done**, and FIXES what it finds. It is the **claude-side**
 review — it does **not** use the Codex companion, so the companion invariants (SKILL.md invariants
-1–4, 8) do not apply here; verify-before-fold, park-vs-apply, and never-commit-docs (5–7) do.
+1–4, 8) do not apply here; verify-before-fold, the FOLD/DISCUSS/DROP router, and
+never-commit-docs (5–7) do.
 
 **Preflight:** needs the `superpowers` plugin (`receiving-code-review`) — verify per SKILL.md §Preflight; if absent, STOP with the `/plugin install` line. (No Codex companion here.)
 
@@ -35,8 +36,11 @@ agreement).
 
 ## Triage + fix
 
-Fix only **simple + needed**; **park complex / risky** findings (invariant 6) and escalate. Apply
-the confirmed fixes to the code.
+Route every finding through the **FOLD / DISCUSS / DROP router** (SKILL.md invariant 6): verify
+against the actual code first, then FOLD only the simple + needed fix; anything introducing a new
+abstraction/knob/scope, or touching a settled decision / security posture / seam, is **DISCUSS** —
+escalate with a recommendation, do not apply. A refuted finding is **DROP** with its one-line cite.
+Apply the FOLDed fixes to the code.
 
 ## Commits
 

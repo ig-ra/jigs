@@ -47,7 +47,7 @@ per-focus verdict, and return. Do **not** claim overall project convergence — 
 the `igr-dev` skill running a census of many angles) owns cross-angle convergence and decides
 whether to run further angles. Without `--focus`, behave exactly as today: one self-directed
 loop to the first clean pass over the whole target. Everything else (companion invocation,
-triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
+the FOLD/DISCUSS/DROP router, no-codegraph, no-commit-docs) is identical in both modes.
 
 ## Hard rules (do NOT violate)
 
@@ -103,7 +103,10 @@ triage, park-vs-apply, no-codegraph, no-commit-docs) is identical in both modes.
    can seed the don't-re-litigate list.
 3. Derive the per-round outfile prefix: `<worktree>` = basename of the cwd (the
    directory/worktree from step 1) + `<topic>` = a short slug of the target filename (rule 3).
-4. Initialize empty **FIXED** and **PARKED** (Open Questions) lists.
+4. Initialize three empty lists: **FIXED** (folded), **PARKED** (Open Questions awaiting the
+   human), **REFUTED** (dropped — false positive / already covered / out-of-scope). All three are
+   fed to every later round's focus string (loop step 1); REFUTED is what stops a false positive
+   from being re-raised each round.
 
 ## The loop
 
@@ -117,6 +120,9 @@ For round `N` = 1 .. max:
      current state and does not re-raise resolved items);
    - **PARKED / Open Questions**: items already deferred to the human — "acknowledged-deferred,
      do NOT re-flag as new findings";
+   - **REFUTED**: findings already checked against the code and dropped, each with its one-line
+     reason — "verified against the code and rejected, do NOT re-raise". Omit this and the same
+     false positive returns every round;
    - **Do NOT re-litigate** these settled decisions: the `--` arg + any the target marks as
      owner-settled. If a reviewer keeps no-shipping a settled call, the fix is BOTH: pin it
      here AND harden the target to state the rule + the mechanism the reviewer keeps missing.
@@ -138,22 +144,52 @@ For round `N` = 1 .. max:
    treat it as a generic FAILED round — run one foreground diagnostic (rule 3), fix the cause,
    retry that round once — do not count it toward the cap or loop blindly. (File still growing →
    keep waiting.)
-3. **Triage every finding** — this is the core discipline:
-   - **Minimal / clear** (faithfulness correction, wrong line ref, a simple missing
-     precondition/guard, tightening a test, a narrow correctness fix — **no** new abstraction,
-     config knob, broadened scope, or architectural change) → **apply to the target now**.
-   - **Over-engineering OR breaking / major change** (new abstraction/module/knob, broadened
-     scope, architectural shift, or contradicts a settled decision) → **do NOT apply** → append
-     to the target's `## Open Questions (awaiting human resolution)` section:
+3. **Route every finding — FOLD / DISCUSS / DROP** — this is the core discipline. A codex finding
+   is usually **not** a bug; it is often pressure to close or harden a point that does not need
+   it. Exactly ONE disposition per finding, announced. **Execute the gates in order — do not
+   pattern-match the categories:**
+   - **Q0 verify** — does the cited code/contract actually say what Codex claims? **Read the
+     file:line.** No → **DROP**.
+   - **Q1 new** — does the fix introduce something that does not exist yet (abstraction, module,
+     config knob, protocol/schema, policy choice, exhaustive test matrix, broadened scope)? Yes →
+     **DISCUSS**.
+   - **Q2 settled** — does it touch an owner-settled decision, an immutable `## Mental Model`, a
+     security / trust-boundary posture, a scope-or-ownership seam, or depend on an infra/platform
+     fact you have not verified? Yes → **DISCUSS**.
+   - None of the above → **FOLD**. **Unsure at any gate → DISCUSS** (bias to asking the human,
+     never to silently expanding scope).
+
+   What each disposition does:
+   - **FOLD** → **apply to the target now**, minimal: faithfulness correction, wrong line ref, a
+     missing precondition/guard, tightening a test, narrowing/widening an EXISTING invariant. An
+     inconsistency your own earlier folds created is FOLD-eligible by default.
+   - **DISCUSS** → **do NOT apply.** Append to the target's `## Open Questions (awaiting human
+     resolution)` section **and** print it in this round's report with a recommendation. The loop
+     does **not** block on it (park-don't-pause, step 5):
      ```
      ### OQ<k>: <title>  [R<N> codex finding]
      - Finding: ...
-     - Why deferred: adds <new abstraction / scope / breaking change> beyond a minimal fix
-     - Suggested: A) ...  B) ...
+     - Why deferred: <Q1 new abstraction/scope | Q2 settled/security/seam/unverified-fact>
+     - Suggested: A) ...  B) ...   Recommend: <X, why>
      - Status: AWAITING HUMAN
      ```
-   - If genuinely unsure whether a fix counts as over-engineering, **park it** (bias to asking
-     the human, not to silently expanding scope).
+     A feasibility-dependent fix: verify the fact inline if that is cheap; if it needs
+     infra/platform truth you do not have, it is DISCUSS — never a silent fold.
+   - **DROP** → one line, and it **must cite** the code line that refutes it, the invariant that
+     already covers it, or the out-of-scope/follow-up entry. **No cite → DISCUSS, not DROP.**
+     Add it to the **REFUTED** list (Setup step 4) — carried into every later round's focus
+     string. **Without the REFUTED list a false positive is re-raised every single round for the
+     life of the loop.**
+
+   **Round report format:**
+   ```
+   FOLD:    <finding> — <the wrong assumption, file:line> — <the minimal edit>
+   DISCUSS: <finding> — <the decision> — A) … B) … — recommend: <X, why>
+   DROP:    <finding> — refuted by <file:line> | covered by <invariant> | out-of-scope <ref>
+   ```
+
+   **The mix is a convergence signal:** a round returning zero FOLD (all DISCUSS/DROP) means this
+   angle is exhausted — report that, do not keep grinding for a "clean" pass.
 4. **Bump the revision** and update the target's revision log with the round's fixed list +
    any new Open Questions. Do not commit docs.
 5. **Stop conditions** (check after applying):
@@ -170,13 +206,19 @@ For round `N` = 1 .. max:
 
 When the loop stops, report:
 - rounds run and why it stopped (converged vs cap);
-- the FIXED changelog (what changed across rounds);
-- the **Open Questions** list for the human to resolve (the only thing awaiting them);
+- the **FIXED** changelog (what was FOLDed across rounds);
+- the **Open Questions** list — every DISCUSS, each with its recommendation (the only thing
+  awaiting the human);
+- the **REFUTED** list — every DROP with its one-line cite (so the human can audit what was
+  thrown away, and a later run does not re-litigate it);
+- the **per-round disposition mix** (FOLD / DISCUSS / DROP counts) — a tail of rounds with zero
+  FOLD is the exhaustion signal;
 - final verdict and the path to the (uncommitted, for docs) revised target.
 
 **In single-focus mode**, frame the final verdict as a compact **per-focus result** the caller
 can consume: the angle reviewed, its verdict (`SPEC-SOUND` / `PLAN-SOUND` / needs-attention),
-what was folded, what was parked. Do not recommend overall stop — return control to the caller.
+what was FOLDed, what is DISCUSS-pending, what was DROPped. Do not recommend overall stop —
+return control to the caller.
 
 Then let the human (or the calling director) resolve the Open Questions and decide on any
 further rounds / angles.
