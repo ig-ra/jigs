@@ -77,10 +77,15 @@ the FOLD/DISCUSS/DROP router, no-codegraph, no-commit-docs) is identical in both
    new spec) are in the companion's working tree and reviewable. Verify with `pwd` first.
 5. **Never git-commit docs** (the owner commits docs themselves). For non-doc targets, follow
    the repo's normal commit rules; for docs, leave the edits uncommitted and say so.
-6. Track via `/codex:status`. A **rejected** `Agent` tool-use can still leave a Codex job
+6. **The companion has no `--help`** — probing it **dispatches a real turn** (`… task --help` starts
+   a codex thread with `--help` as the prompt and burns a turn). Read the usage string near the top
+   of `codex-companion.mjs` instead. Note its own usage line omits `--model` for
+   `adversarial-review`, but the flag **is** parsed (`valueOptions: [base, scope, model, cwd]`) —
+   keep passing it per rule 1; there is still no `--effort` there.
+7. Track via `/codex:status`. A **rejected** `Agent` tool-use can still leave a Codex job
    running — if that ever happens, tell the user the exact `/codex:cancel <id>` line to type
    (you cannot invoke `/codex:cancel` yourself).
-7. **Environment seams — match known failure shapes on the outfile BEFORE calling a round "malformed"
+8. **Environment seams — match known failure shapes on the outfile BEFORE calling a round "malformed"
    (rule 3).** These are tooling/env errors, **not review findings**; naming the cause saves the ~30-min
    "Codex did not return valid structured JSON" dead-end. These env-retries do **not** count toward the cap.
    - **`failed to initialize sqlite state runtime` / `app-server exited unexpectedly`** → a running
@@ -139,11 +144,19 @@ For round `N` = 1 .. max:
    framing requested), e.g. `grep -q REVIEW-COMPLETE <outfile>` every ~20–30s; only on the
    sentinel **read the outfile** (not the task-output file — that is empty when stdout is
    redirected with `>`). **Stall rule:** sentinel absent AND the outfile size unchanged for
-   ~3 min → stop polling and triage: **first match the content against the rule-7 env-error
-   shapes** (sqlite lock / model-not-supported) and act on the specific cause; only if none match,
-   treat it as a generic FAILED round — run one foreground diagnostic (rule 3), fix the cause,
-   retry that round once — do not count it toward the cap or loop blindly. (File still growing →
-   keep waiting.)
+   ~3 min → stop polling and triage **in this order**:
+   1. **READ the outfile and look for a written verdict** (`SPEC-SOUND` / `PLAN-SOUND` /
+      `ANGLE-SOLID` / a findings list). The reviewer sometimes writes its full verdict and stops
+      **without emitting the sentinel** (~3 of 12 rounds observed) — that round is **COMPLETE, not
+      stalled**. Confirm nothing is still writing (`pgrep -f adversarial-review` empty) and consume
+      the verdict. Calling this a FAILED round and relaunching wastes a whole round; a
+      sentinel-only poller burns the entire timeout (~17 min observed once).
+   2. Verdict absent → **match the content against the rule-8 env-error shapes** (sqlite lock /
+      model-not-supported) and act on the specific cause.
+   3. Neither → generic FAILED round: one foreground diagnostic (rule 3), fix the cause, retry that
+      round once — do not count it toward the cap or loop blindly.
+
+   (File still growing → keep waiting.)
 3. **Route every finding — FOLD / DISCUSS / DROP** — this is the core discipline. A codex finding
    is usually **not** a bug; it is often pressure to close or harden a point that does not need
    it. Exactly ONE disposition per finding, announced. **Execute the gates in order — do not

@@ -88,7 +88,16 @@ effects+branches (FLAG behavior-sensitive) / edges_out / edges_in / tests / disp
 
 **Minimize model-generated bulk:** in Path A the script already emits the deterministic columns — do not re-transcribe them; edit the skeleton in place, adding only the judgment columns. Reserve your generation for judgment.
 
-**Return:** the census table + a self-audit (in-scope symbol count; boundary-coupling total; any symbol you could not resolve + why). Confirm the file paths written.
+**Behavioral surfaces need a NOUN grep, not a symbol grep.** The harvest and the coverage floor are
+symbol-keyed — their blind spot is the integration-style test that drives the changed behavior through
+an HTTP/CLI/queue path and names **none** of the symbols. So also run a **domain-noun** grep from the
+Scope's `### Behavioral nouns` (vendor / provider / feature / entity names, not identifiers), e.g.
+`rg -irln <noun> <pkg>/test/`, and map every hit to a row or an explicit out-of-scope line. *(A real
+run's symbol reconciliation reported 101 hits, 100% mapped, zero drops — and still missed a test file
+that exercised the change, which then blocked implementation.)* If the Scope has no nouns section,
+derive the nouns from the spec and **say so in the self-audit**.
+
+**Return:** the census table + a self-audit (in-scope symbol count; boundary-coupling total; any symbol you could not resolve + why). **State which surfaces you searched by NOUN and which by SYMBOL** — if you searched by symbol only, say so plainly: that is a known blind spot for integration tests, and the reader must weight your coverage claim accordingly. Confirm the file paths written.
 
 **Model / tiering:** Sonnet single-tier default. **Haiku cannot own this** — it satisfices the judgment (frontier/behavior) and produces a fraction of the surface (proven: ~13 rows vs ~330). Haiku is viable only for pure mechanical extraction over a *given* list, which Path A already automates.
 

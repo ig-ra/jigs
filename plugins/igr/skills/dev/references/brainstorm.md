@@ -102,10 +102,20 @@ Model changeset inventory is already the signal, so this costs nothing extra:
 
 **The owner confirms the route at the Drift-A stop** (already there): e.g. "read as FOCUSED — 3
 angles, low blast; census + 3 parallel angle loops + fresh-rewrite + critic + drift, no re-census,
-~minutes. Override to FULL?" **Guard:**
-any high-blast class forces FULL (or at minimum ≥ 1 dedicated round on that class) regardless of
-angle count; the owner may always override upward. FOCUSED still runs **real** adversarial review
-on the named angles — it drops the exhaustive ceremony, not the review.
+~minutes. Override to FULL?"
+
+**Guard — TWO branches, do not compress them into one sentence.** When a high-blast class
+(data-loss / isolation / concurrency / security / migration / tenant-boundary) is present in the
+Mental Model:
+- **Default → route FULL**, regardless of angle count; or
+- **the owner may hold the route at FOCUSED** — and then that class gets **≥ 1 dedicated angle
+  round of its own**, named as such in the backlog.
+
+FOCUSED with no round on the high-blast class is not an available option. The owner may always
+override upward. (Stated as branches because the single-sentence form — "forces FULL (or at minimum
+one round)" — reliably gets paraphrased down to "forces FULL", which wrongly tells the owner they
+cannot route down at all.) FOCUSED still runs **real** adversarial review on the named angles — it
+drops the exhaustive ceremony, not the review.
 
 ## Reviewer recipe (EXPLORATORY)
 
@@ -145,7 +155,7 @@ Per round:
    it emits findings + a per-angle verdict and does **not** edit the spec. Focus text per lane =
    the one failure-class + code location + standard framing (verify against actual code; no
    codegraph; flag over-engineering; no backticks/`$`). Cap at **5 concurrent lanes**; on a
-   companion rate-limit (`at capacity` / L1 rule-7 shapes) back that lane off and serialize the
+   companion rate-limit (`at capacity` / the L1 environment-seam shapes) back that lane off and serialize the
    overflow — never spin.
 2. **Poll every lane** for `REVIEW-COMPLETE` (invariant 4 — never read on the early launch-notify).
 3. **Route SERIALLY into the one spec** as lanes return: run each finding through the
@@ -313,6 +323,19 @@ Generalizes across specs — but let the census discover doc-specific angles too
 - **fallibility / contract** — a method that does I/O must return a fallible/Result-shaped
   contract, not infallible
 - **scope / over-engineering** — flag anything broadening beyond the stated goal (as a defect)
+- **data reality / stored state** — every claim about *what data exists* or *which states are
+  reachable* ("no bindings of this shape exist", "that field is always set", "nothing is mid-flight
+  during a deploy") is verified by **querying the stored state**, never by reasoning about the code
+  that writes it. Reasoning tells you what the code *can* produce; the store tells you what it
+  *did* — including rows written by versions of the code that no longer exist. This class carries
+  outsized blast radius: it is exactly the assumption that fails silently for existing records.
+  *(Real run: static reasoning concluded a vendor could have no bindings; a prod query found 15,002
+  live ones. Unqueried, the change would have returned 403 for every resumed run of that vendor.)*
+- **primitive / reinvention** — does the spec hand-roll something the repo or the stdlib already
+  provides? Name the existing function if so. The tell is a **growing list of hand-written rules**:
+  a helper that is a sequence of string operations, gaining one more rule per reviewer-supplied
+  input, is a parser waiting to be used. Decide the primitive HERE — nothing downstream re-opens
+  it, so a hand-rolled helper that reaches the plan just gets hardened instead of questioned.
 
 ## Why these steps (evidence the profile is shaped this way)
 

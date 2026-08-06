@@ -39,8 +39,18 @@ cheap model on this decision — a mis-scope propagates into census + plan.
 
 **P0 writes its scope to the census file.** The judgment stays inline (never a cheap model); only the
 *write* is mechanical. Create the scratch **`<prefix>-census.md`** (naming below) and write a `## Scope`
-section — entry symbols / boundary / coverage checklist. This is the P1 subagent's **input** (it reads
-`## Scope` rather than you re-transcribing it into the prompt) and it survives context compaction.
+section — entry symbols / boundary / coverage checklist / **behavioral nouns** (below). This is the P1
+subagent's **input** (it reads `## Scope` rather than you re-transcribing it into the prompt) and it
+survives context compaction.
+
+**Write `### Behavioral nouns` into the Scope — the symbol grep cannot see integration tests.** A
+*behavioral* change ("vendor X's policy now enforces Y") has a surface defined by **domain nouns**,
+not symbol names: integration-style tests drive it through an HTTP/CLI/queue path and name none of
+the code. List the nouns from the spec — vendor / provider / feature / entity names, not identifiers
+— so P1 gets a **resolve-list, not a discovery task** (same pattern as the TO-side seam roster
+below). *(Real run: a test file exercising the changed behavior through the gateway's HTTP path named
+zero of the 8 censused symbols. It was invisible to the symbol grep, therefore to the census,
+therefore to all 9 review rounds — and it blocked implementation as a hard failure.)*
 
 **Mechanize the enumeration — `census scaffold`, then prune** (kills run-to-run variance in *which candidate
 symbols exist*, which is not a judgment). For a decoupling task:
@@ -88,6 +98,12 @@ self-audit. Hand it the discipline, not just the goal:
   e.g. `rg -n -U 'boundary\s*[:.]'` — and **reconcile: table row-count vs grep hit-count** (no silent
   drops). This is what prevents blind spots (line-threshold / `&cfg`-via-helper / multiline / hidden
   branch misses).
+- run **TWO** coverage greps and reconcile against **both**: the **symbol** grep above, **and** a
+  **domain-noun** grep built from the Scope's `### Behavioral nouns` (e.g.
+  `rg -irln <noun> <pkg>/test/`). Every hit of either maps to a census row or an explicit
+  out-of-scope line. **A symbol-grep reconciliation reporting zero drops is not evidence of
+  coverage — it is evidence about symbols only.** (A real run reported 101 hits, 100% mapped, zero
+  drops — rigorous against the wrong question.)
 
 **CENSUS row schema (language-neutral):**
 
@@ -127,8 +143,9 @@ columns already carry the curated subset). Append, don't prepend — keep the pl
 ## P2 — PLAN (superpowers:writing-plans, inline)
 
 Invoke **`superpowers:writing-plans`** inline (the plan is the deliverable; judgment-heavy; carries
-into P3). It already gives task decomposition, no-placeholders, and a **Self-Review**. Two deltas
-only — because `writing-plans` doesn't know about the census:
+into P3). It already gives task decomposition, no-placeholders, and a **Self-Review**. Three deltas
+only — because `writing-plans` doesn't know about the census, and does not require a test to be
+capable of failing:
 
 1. **Feed the census as input; write from it.** **Cite census rows by symbol** (they live in the
    plan's `## Appendix: Code Census` — single source of truth, one doc, no drift). Pin only
@@ -142,6 +159,19 @@ only — because `writing-plans` doesn't know about the census:
    `effects/branches`, enumerate each branch/fallback/ordering/side-effect as a preservation
    requirement + name a test. (This is the class of the subtlest bugs — dropped fallbacks, error-path
    state, ordering.)
+3. **Every test states how it fails — a one-line `fails if:` clause.** For each test the plan
+   specifies, name the concrete mutation that breaks it (a deleted branch, a dropped `toLowerCase`,
+   an un-switched call site). **Cannot name one → the test is vacuous; rewrite it.** `writing-plans`
+   requires real code and no placeholders; it does **not** require that a test be *capable of
+   failing*, and nothing downstream executes it — P3a diffs signatures and the codex angles read
+   assertions rather than running them. Two traps seen in the field:
+   - **Normalizing input eats the thing under test.** `new URL(...)` lowercases hosts per WHATWG, so
+     a case-sensitivity test whose uppercase lives in the URL is inert — it passed with the matcher's
+     `.toLowerCase()` deleted. Put the difference on the side no parser touches.
+   - **Calling the helper instead of the call site.** A test that invokes a new helper directly goes
+     green the moment the helper exists (an earlier task) and proves nothing about the call site a
+     later task switches. For a task that changes a call site, **drive the call site** (fixture /
+     fake inventory), not the helper. *(Cost in a real run: this one class, 4 review rounds.)*
 
 **Plan altitude — pin decisions, not the code.** Delta 2 does NOT mean transcribe every branch into
 the plan (unbounded, staleness-prone, the implementer's job). State only what reading the body at HEAD
@@ -161,7 +191,7 @@ alive for out-of-surface callers so every commit stays green; a change is "addit
 un-updated caller remains. `writing-plans` can **aim** for this but cannot **verify** it (no
 build/dep-graph) — it catches plan-visible forward-refs; the code-aware guarantee (visibility, existing
 callers) is the P3a green-ordering check.
-3. **Exit gate = extend the Self-Review with census-coverage AND buildable order:** every census row
+4. **Exit gate = extend the Self-Review with census-coverage AND buildable order:** every census row
    has a task/disposition, **and** the task order is buildable-at-every-commit (definitions before
    uses; test-before-code; no plan-visible forward-reference). Cheap inline check; kills easy gaps
    before spending any codex round.
@@ -183,7 +213,14 @@ reasoning:
   dropped-`Result`, omitted swallow-to-`Ok(None)`. This is the highest-yield mechanical check: a real
   run leaked **5 fallibility defects into codex** because the pre-pass scoped itself to the pinned
   block and skipped the prose — every one would have died here for free.
-- **coverage** — re-run the boundary grep; every hit has a census row (and a plan task).
+- **coverage** — re-run **both** greps (symbol **and** behavioral-noun, §P1); every hit has a census
+  row and a plan task, or an explicit out-of-scope line.
+- **red-stage validity** — for every `Expected: FAIL` in the plan, check the failure is real *and for
+  the stated reason*. The mechanical core: **intersect the symbols the test invokes with the symbols
+  its own task modifies — an empty intersection is vacuous by construction** (the test only exercises
+  what an earlier task already landed, so it is green, not red). Then confirm each cited symbol exists
+  at HEAD and the `fails if:` mutation would actually break the assertion. Deterministic from the plan
+  text alone; skipping it cost 4 review rounds and still leaked one vacuous test to implementation.
 
 **Scope principle: these checks diff EVERY factual claim in the plan (pins + prose) vs ground truth**
 — return types, signatures, anchors, field counts — not only the claims that happen to sit in a
@@ -217,6 +254,16 @@ angle-discovery), in dependency order (a fold in one can shift the next):
    surface → the likeliest to reach the cap).
 3. **green-ordering / rollback** — each task leaves the tree buildable; strangler/bridge soundness.
 
+**Stored-state probe (behavior angle) — never reason about data you can query.** Any plan claim about
+**what data exists** or **which states are reachable** ("no rows of this shape exist", "that field is
+always populated", "nothing is mid-flight during rollout") must be backed by a **query against the
+stored state**, not by reading the code that writes it. Code tells you what it *can* produce; the
+store tells you what it *did* — including rows written by versions that no longer exist. Flag every
+unbacked existence/reachability claim and go query it; a wrong one fails silently and only for
+pre-existing records, which is why it outranks most findings by blast radius. *(Real run: static
+reasoning concluded a vendor could have no bindings of the relevant shape; a prod query returned
+15,002 live ones — unqueried, the change would have 403'd every resumed run of that vendor.)*
+
 **Evaluation-semantics probe (behavior angle).** Preserve not just a dependency's **type** but **when
 it is obtained, how often, and from which source.** Routing a dependency through an indirection
 (port/interface/callback) silently changes behavior when it flips *once-and-reused ↔ re-obtained-per-call*
@@ -236,6 +283,16 @@ finding through the **FOLD / DISCUSS / DROP router** (SKILL.md invariant 6 — v
 Q1-new / Q2-settled; unsure → DISCUSS). Focus-string rules: **no backticks, no `$`, no codegraph** (it
 hangs — rg/sed only); tell it to **enumerate EVERY instance in the lens, not the top one**, and verify
 each against code (LSP/rg).
+
+**After every fold batch, re-check the plan's INTERNAL consistency before spending another round.**
+Folds routinely contradict each other and their neighbours — a codex round spent finding *your own*
+inconsistency is a wasted round. (Measured: 2 of angle 1's 4 rounds went to contradictions earlier
+folds had introduced — a fold added a barrel re-export while a later task still asserted "exactly six
+files"; another added a test that could not run and asserted something impossible.) This is a script,
+not a judgment: step numbering `1..N` per task with no gaps; the union of every task's `git add`
+equals the declared scope guard; every file in a task's **Files** list appears in that task's
+`git add`; every type/helper used in a task is defined in an earlier one. It costs zero rounds and it
+has caught real defects.
 
 **Class-generalization (every codex round — angles AND the broad pass).** A codex finding is an
 *instance*, not the bug — do **not** fix just it and re-run. Name its defect **class**, then enumerate
@@ -314,6 +371,16 @@ Two nested budgets:
 
 Per-angle passes needn't be perfect — the final full pass mops residual.
 
+**Where the marginal round is worth spending — review reads the plan, it cannot run it.** Measured on
+one full run: **9 codex review rounds found 21 defects, nearly all plan-authoring bookkeeping**, while
+**a single 24-minute TDD implementation pass found 2** that review was structurally incapable of
+finding — a test file the census never enumerated, and a test that passed with the code under test
+deleted. Review is blind to (a) whatever the census never enumerated, and (b) tests that pass for the
+wrong reason, because it reads assertions instead of executing them. So **prefer front-loading the
+deterministic P3a checks** (red-stage validity, noun-grep coverage, self-consistency) over a tenth
+review round — they kill the same classes for zero rounds. **If budget must be cut, cut a broad-pass
+round before cutting P3a.**
+
 ## Review status block (write on convergence)
 
 When the method finishes (P3c `PLAN-SOUND`, or it stops at the cap), append a **`## Review status`**
@@ -321,7 +388,11 @@ block to the plan — the audit signal that otherwise stays trapped in ephemeral
 It is **method-audit, not implementation** — place it at the end, clearly labeled. Contents:
 - **Convergence verdict (headline):** `PLAN-SOUND (clean)` vs `CAPPED (N rounds, M open findings)` — the
   one-line "is this trustworthy / done". (A comparison or a fresh reviewer needs exactly this and cannot
-  infer it from the tasks.)
+  infer it from the tasks.) **State its scope on the same line:** `PLAN-SOUND` means the plan is
+  internally consistent and matches the census — **it does NOT mean the census was complete.** A gap in
+  the census's coverage surface is invisible to every review round that followed it, so the verdict is
+  honest and can still be wrong about the world. (A real run reported `PLAN-SOUND` with a seven-file
+  scope guard; eight was always correct.)
 - **Parked Open Questions:** count + severities + "owner resolves before/with implement" + a pointer.
 - **Per-phase table:** P1 census (rows) · P3a (verify-plan clean) · P3b each angle (rounds →
   ANGLE-/qualitative-SOLID, **FOLD/DISCUSS/DROP counts**) · P3c (rounds → verdict). A tail of
