@@ -3,10 +3,13 @@
 census — SCIP-driven code-census tool for the igr:dev plan method.
 
 Subcommands (the deterministic rails; the model fills the two judgment gaps between them):
-  doctor    preflight  : check venv/protobuf/scip_pb2 (exit 2) + the indexer for --lang (exit 1)
-  scaffold  P0 assist  : Scope template + candidate entry symbols + boundary preview
-  harvest   P1 skeleton: symbols/signatures/edges/boundary-coupling/test-flag  -> skeleton.json
-  merge     assemble   : skeleton.json + model's judgment.json -> census.md
+  doctor      preflight  : check venv/protobuf/scip_pb2 (exit 2) + the indexer for --lang (exit 1)
+  scaffold    P0 assist  : Scope template + candidate entry symbols + boundary preview
+  harvest     P1 skeleton: symbols/signatures/edges/boundary-coupling/test-flag  -> skeleton.json
+  merge       assemble   : skeleton.json + model's judgment.json -> census.md
+  verify-plan P3a        : (A) the plan's claims vs CODE — cites/sigs/return-types/fallibility;
+                           (B) the plan vs ITSELF — task/step structure, staging, forward refs,
+                           placeholders, red-stage validity.  Exit 3 = HIGH findings.
 
 Boundary is repo-agnostic: name the god-struct(s) you decouple from with --boundary-struct X.
 The tool matches SCIP symbols `/X#` (fields + inherent methods) AND `[X]` (trait/impl methods) —
@@ -482,25 +485,253 @@ def norm_rt(lang, rt):
     rt = re.sub(sep, '', rt)
     return re.sub(r'\s+', '', rt)
 
+# ---------- plan-internal lint (the structural half of P3a) ----------
+#
+# The checks above diff the plan against CODE. These check the plan against ITSELF — the
+# bookkeeping class that dominated a measured field run (9 codex rounds, 21 defects, nearly all
+# plan-authoring churn) even though every one of them is decidable from the plan text for zero
+# rounds. Two of those rounds went to contradictions the reviewer's OWN earlier folds introduced.
+#
+# Parses the `superpowers:writing-plans` task shape (### Task N / **Files:** / **Interfaces:** /
+# - [ ] **Step N** / Expected: / git add). That is a coupling to a format this tool does not own,
+# so it FAILS SOFT: no recognizable tasks -> STRUCTURE-UNRECOGNIZED and the structural half is
+# reported as NOT RUN. Never a false clean.
+
+TASK_RE     = re.compile(r'^#{2,4}\s+Task\s+(\d+)\s*[:.]\s*(.*)$')
+STEP_RE     = re.compile(r'^\s*[-*]\s*\[[ xX]?\]\s*\*\*\s*Step\s+(\d+)\s*[:.]?\s*(.*?)\*\*')
+FILES_RE    = re.compile(r'^\s*[-*]\s*(Create|Modify|Test|Delete)\s*:\s*(.+)$', re.I)
+IFACE_RE    = re.compile(r'^\s*[-*]\s*(Consumes|Produces)\s*:\s*(.*)$', re.I)
+GITADD_RE   = re.compile(r'\bgit\s+add\s+(.+)$')
+EXPECT_RE   = re.compile(r'^\s*(?:\*\*)?\s*Expected\s*(?:\*\*)?\s*:\s*(.+)$', re.I)
+FAILSIF_RE  = re.compile(r'\bfails?\s+if\s*:', re.I)
+DEFN_RE     = re.compile(r'\b(?:fn|func|function|def|class|interface|type|struct|impl|const|let|var)\s+'
+                         r'([A-Za-z_$][\w$]*)')
+IDENT_RE    = re.compile(r'[A-Za-z_$][\w$]*')
+TESTY_RE    = re.compile(r'\btest|\bspec\b', re.I)
+# keywords + assertion vocabulary: present in every test body, so they carry no signal about WHAT
+# a test exercises — dropped from the vacuity comparison and from its (human-read) evidence list.
+STOP_IDENTS = frozenset("""_ fn func function def class const let var return import from export await async
+new self this t T err error nil None True False true false if else for while match case switch
+assert assert_eq assert_ne assert_that expect describe it should toBe toEqual toBeUndefined
+require testing Error String int str usize u8 u16 u32 u64 i32 i64 bool void number string boolean""".split())
+# writing-plans' own "No Placeholders" list, as a grep. Its Self-Review asks the author to scan for
+# these; a regex does it for free and does not get tired on round 9.
+PLACEHOLDER_RES = [re.compile(p, re.I) for p in (
+    r'\bTBD\b', r'\bTODO\b', r'\bFIXME\b', r'implement later', r'fill in (?:the )?details',
+    r'add appropriate error handling', r'\badd validation\b', r'handle edge cases',
+    r'similar to task\s+\d', r'write tests for the above')]
+# name-shapes that almost always already exist in a repo or its stdlib
+REINVENT_RE = re.compile(r'normaliz|canonical|parse|valid|sanitiz|slugif|escape|format|serial', re.I)
+
+
+def _bt_names(s):
+    """Exact names from an Interfaces bullet — backticked only. writing-plans says 'exact function
+    names'; requiring backticks keeps prose out of the dependency graph (silence beats noise, and
+    the unparsed count is reported so silence stays visible)."""
+    out = []
+    for raw in re.findall(r'`([^`]+)`', s):
+        nm = re.sub(r'[(<].*', '', raw).strip().rstrip(":,.")
+        nm = nm.split("::")[-1].split(".")[-1]
+        if nm and IDENT_RE.fullmatch(nm): out.append(nm)
+    return out
+
+
+def _paths(s):
+    """File paths from a `git add ...` tail: drop flags, shell operators, and the everything-globs
+    (`.` / `-A`) — those stage more than the plan declares and can't be diffed against Files:."""
+    # `git add <confirmed command path>` — a fill-slot naming no real file. Drop the WHOLE tail, not
+    # the bracketed tokens: cherry-picking left the unbracketed middle word ("command") in the
+    # staged union. Seen in a real plan.
+    if "<" in s or ">" in s: return []
+    out = []
+    for tok in re.split(r'\s+', s.strip()):
+        tok = tok.strip("`'\"")
+        if not tok or tok in (".", "-A", "--all", "&&", ";", "\\"): continue
+        if tok.startswith("-") or tok.startswith("#"): break
+        if tok in ("&&", "||"): break
+        if any(c in tok for c in "$*"): continue          # shell var / glob — not a literal path
+        out.append(tok)
+    return out
+
+
+def _clean_path(s):
+    s = s.strip().strip("`'\"")
+    s = re.sub(r'\s*\(.*$', '', s)                  # trailing "(new file)" notes
+    return s.split(":")[0].strip().strip("`")       # drop a :123-145 line range
+
+
+def parse_plan(body):
+    """[task] for a writing-plans document; [] when the shape isn't recognized (caller must then
+    report UNRECOGNIZED, never a clean bill)."""
+    tasks, cur, step, in_fence, fence = [], None, None, False, None
+    for i, raw in enumerate(body):
+        s = raw.lstrip()
+        if s.startswith("```"):
+            if in_fence:
+                if cur is not None and fence is not None:
+                    cur["fences"].append({"lang": fence[0], "line": fence[1],
+                                          "code": "\n".join(fence[2]), "step": fence[3]})
+                in_fence, fence = False, None
+            else:
+                in_fence = True
+                fence = [s[3:].strip(), i + 1, [], (step["title"] if step else "")]
+            continue
+        if in_fence:
+            if fence is not None: fence[2].append(raw)
+            if cur is not None:
+                g = GITADD_RE.search(raw)
+                if g: cur["git_adds"] += _paths(g.group(1))
+            continue
+        m = TASK_RE.match(raw)
+        if m:
+            cur = {"n": int(m.group(1)), "title": m.group(2).strip(), "line": i + 1,
+                   "files": [], "consumes": [], "produces": [], "unparsed_iface": 0,
+                   "steps": [], "git_adds": [], "fences": []}
+            tasks.append(cur); step = None; continue
+        if cur is None: continue
+        st = STEP_RE.match(raw)
+        if st:
+            step = {"n": int(st.group(1)), "title": st.group(2).strip(), "line": i + 1,
+                    "expected": "", "fails_if": False}
+            cur["steps"].append(step); continue
+        f = FILES_RE.match(raw)
+        if f:
+            cur["files"].append((f.group(1).lower(), _clean_path(f.group(2)))); continue
+        v = IFACE_RE.match(raw)
+        if v:
+            names = _bt_names(v.group(2))
+            cur[v.group(1).lower()] += names
+            if not names and v.group(2).strip(): cur["unparsed_iface"] += 1
+            continue
+        e = EXPECT_RE.match(raw)
+        if e and step is not None:
+            step["expected"] = e.group(1).strip(); continue
+        if FAILSIF_RE.search(raw) and step is not None: step["fails_if"] = True
+        g = GITADD_RE.search(raw)
+        if g: cur["git_adds"] += _paths(g.group(1))
+    return tasks
+
+
+def _staged_match(path, staged):
+    """A Files: entry counts as staged if some `git add` token names the same file. Tolerant of
+    differing relative roots (plan paths are repo-relative; a task may cd) — suffix match both ways."""
+    for t in staged:
+        if t == path or t.endswith("/" + path) or path.endswith("/" + t): return True
+    return False
+
+
+def lint_plan(tasks, body, index_names=frozenset(), index_locs=None):
+    """Plan-vs-itself findings. index_names/index_locs are optional: without an index the
+    forward-reference check cannot tell 'consumes a pre-existing repo symbol' from 'consumes
+    something nobody defines', so it reports the softer bucket, and reinvention is skipped."""
+    L = {"task_gaps": [], "step_gaps": [], "unstaged": [], "no_staging": [], "forward_refs": [],
+         "undeclared": [], "placeholders": [], "missing_fails_if": [], "vacuous": [],
+         "reinvention": [], "staged_union": [], "unparsed_iface": 0}
+
+    nums = [t["n"] for t in tasks]
+    if nums != list(range(1, len(nums) + 1)):
+        L["task_gaps"].append({"got": nums, "want": list(range(1, len(nums) + 1))})
+
+    produced = {}                                    # name -> first task number that produces it
+    for t in tasks:
+        for nm in t["produces"]: produced.setdefault(nm, t["n"])
+
+    for t in tasks:
+        L["unparsed_iface"] += t["unparsed_iface"]
+        sn = [s["n"] for s in t["steps"]]
+        if sn and sn != list(range(1, len(sn) + 1)):
+            L["step_gaps"].append({"task": t["n"], "line": t["line"], "got": sn})
+
+        staged = t["git_adds"]; L["staged_union"] += staged
+        declared = [p for role, p in t["files"] if role in ("create", "modify", "test")]
+        if declared and not staged:
+            # one finding for the task, not one per file — a task with no `git add` at all is a
+            # single omission (the commit step), and fanning it out buries the precise cases below.
+            L["no_staging"].append({"task": t["n"], "line": t["line"], "files": declared})
+        else:
+            for p in declared:
+                if not _staged_match(p, staged):
+                    L["unstaged"].append({"task": t["n"], "line": t["line"], "path": p,
+                                          "staged": sorted(set(staged))})
+
+        for nm in t["consumes"]:
+            src = produced.get(nm)
+            if src is not None and src >= t["n"]:
+                L["forward_refs"].append({"task": t["n"], "line": t["line"], "name": nm, "from": src})
+            elif src is None and nm not in index_names:
+                L["undeclared"].append({"task": t["n"], "line": t["line"], "name": nm})
+
+        # red-stage: an `Expected: FAIL` step must say what mutation makes it fail
+        for s in t["steps"]:
+            if "FAIL" in s["expected"].upper() and not s["fails_if"]:
+                L["missing_fails_if"].append({"task": t["n"], "step": s["n"], "line": s["line"]})
+
+        # vacuous-by-construction: the test exercises nothing this task changes, so it is green
+        # from an EARLIER task's work and cannot be the red gate the plan claims.
+        changed = set(t["produces"])
+        tested = set()
+        for fc in t["fences"]:
+            names = set(DEFN_RE.findall(fc["code"]))
+            if TESTY_RE.search(fc["step"] or "") or TESTY_RE.search(fc["lang"] or ""):
+                tested |= {x for x in IDENT_RE.findall(fc["code"])
+                           if x not in STOP_IDENTS and not TESTY_RE.search(x)}
+            else:
+                changed |= names
+        if changed and tested and not (changed & tested) and \
+                any("FAIL" in s["expected"].upper() for s in t["steps"]):
+            L["vacuous"].append({"task": t["n"], "line": t["line"],
+                                 "changes": sorted(changed)[:6], "tests": sorted(tested)[:6]})
+
+        # Reinvention TRIGGER. Deliberately NOT "an existing same-shape name is nearby": the
+        # motivating field case hand-rolled `normalizeHostLabel` two functions away from
+        # `httpsOrigin` — a url.Parse-based helper doing the same job under a name matching no
+        # shape pattern. Keying on the neighbour's name would have missed the very defect this
+        # exists for. So the tool supplies the trigger (this plan adds a normalize/parse/validate-
+        # shaped helper) plus the resolve-list (its directory's existing symbols) and the MODEL
+        # decides — the same fact-vs-judgment split the rest of the method uses.
+        dirs = {os.path.dirname(p) for _r, p in t["files"] if p}
+        for nm in sorted(changed):
+            if nm in index_names or not REINVENT_RE.search(nm): continue
+            near = sorted({en for en, loc in (index_locs or {}).items()
+                           if en != nm and loc and os.path.dirname(loc[0]) in dirs})[:8]
+            L["reinvention"].append({"task": t["n"], "line": t["line"], "name": nm,
+                                     "dirs": sorted(d for d in dirs if d), "near": near})
+
+    L["staged_union"] = sorted(set(L["staged_union"]))
+
+    in_fence = False
+    for i, raw in enumerate(body):
+        if raw.lstrip().startswith("```"): in_fence = not in_fence; continue
+        for rx in PLACEHOLDER_RES:
+            m = rx.search(raw)
+            if m:
+                L["placeholders"].append({"line": i + 1, "hit": m.group(0),
+                                          "text": raw.strip()[:100], "in_code": in_fence})
+                break
+    return L
+
+
 def cmd_verify_plan(args):
     plan_lines = open(args.plan, errors="replace").read().splitlines()
-    plan_text = "\n".join(plan_lines)
-    skel = json.load(open(args.skeleton))
-    lang = skel.get("lang", "rust")
-    sig_cfg = SIG_CFG.get(lang)                       # None -> this lang gets citation checks only, no sig-diff
-    census_names = {r["name"] for r in skel["records"]}
-    idx, scip = load_index(args.index, args.deps)
-    definfo, def_loc, _, _ = build_tables(idx)
-    by_name = defaultdict(list)                       # name -> [{sig, loc}] across the WHOLE index
-    for sym, info in definfo.items():
-        # display_name-or-descriptor fallback, same as harvest records — scip-typescript leaves
-        # display_name empty, which would empty the index name-set and mislabel every
-        # exists-in-code cite as dangling.
-        nm = info.display_name or member_label(sym)
-        if not nm: continue
-        sig = sig_of(info)
-        by_name[nm].append({"sig": sig, "loc": def_loc.get(sym)})
-    index_names = set(by_name)
+    # --skeleton/--index are OPTIONAL: without them the code-diff half is skipped and the
+    # plan-vs-itself lint still runs (a cheap authoring-time pass, before a census exists).
+    skel = json.load(open(args.skeleton)) if args.skeleton else None
+    lang = skel.get("lang", "rust") if skel else args.lang
+    sig_cfg = SIG_CFG.get(lang) if (skel and args.index) else None   # None -> no sig-diff for this run
+    census_names = {r["name"] for r in skel["records"]} if skel else set()
+    by_name, index_names, index_locs = defaultdict(list), set(), {}
+    if args.index:
+        idx, scip = load_index(args.index, args.deps)
+        definfo, def_loc, _, _ = build_tables(idx)
+        for sym, info in definfo.items():             # name -> [{sig, loc}] across the WHOLE index
+            # display_name-or-descriptor fallback, same as harvest records — scip-typescript leaves
+            # display_name empty, which would empty the index name-set and mislabel every
+            # exists-in-code cite as dangling.
+            nm = info.display_name or member_label(sym)
+            if not nm: continue
+            by_name[nm].append({"sig": sig_of(info), "loc": def_loc.get(sym)})
+            index_locs.setdefault(nm, def_loc.get(sym))
+        index_names = set(by_name)
 
     dangling, cite_gap, fallib, typ, argm, ambig = [], [], [], [], [], []
 
@@ -564,10 +795,22 @@ def cmd_verify_plan(args):
     def sec(title, items, fmt=lambda x: str(x)):
         return [f"\n### {title} ({len(items)})"] + ([f"- {fmt(x)}" for x in items] or ["- none"])
 
+    # 3. plan-vs-itself: the bookkeeping class, decided from the plan text (no model, no rounds).
+    tasks = parse_plan(body)
+    lint = lint_plan(tasks, body, index_names, index_locs) if tasks else None
+
     out = ["# verify-plan report",
-           f"plan: {args.plan}  ·  index: {skel.get('index_tool','?')}  ·  census rows: {len(census_names)}  ·  cites: {len(cites)}",
-           "\n*Structured claims only (code-block sigs + [C:] cites) — deterministic. "
-           "FALLIBILITY = high-signal (Result added/dropped). Type diffs may be intended port abstraction — verify.*"]
+           f"plan: {args.plan}  ·  index: {(skel or {}).get('index_tool','?')}  ·  census rows: "
+           f"{len(census_names)}  ·  cites: {len(cites)}  ·  tasks: {len(tasks)}",
+           "\n*Deterministic checks only: (A) structured claims vs CODE — code-block sigs + [C:] cites; "
+           "(B) the plan vs ITSELF — task/step structure. FALLIBILITY = high-signal (Result added/dropped). "
+           "Type diffs may be intended port abstraction — verify.*"]
+    if not skel:
+        out.append("\n**NOTE: no --skeleton — census-coverage and citation checks were SKIPPED "
+                   "(structure-only run).**")
+    if not args.index:
+        out.append("\n**NOTE: no --index — every code-diff check was SKIPPED (structure-only run). "
+                   "Re-run with --index before treating P3a as done.**")
     if not sig_cfg:
         out.append(f"\n**NOTE: sig-diff UNSUPPORTED for lang={lang} — citations checked only; "
                    "return-type/fallibility/arg-count checks were SKIPPED. The P3b codex angles must "
@@ -582,12 +825,73 @@ def cmd_verify_plan(args):
                lambda e: f"plan:{e['line']} `{e['name']}` — plan {e['plan']} vs real {e['real']}  @{e['loc']}")
     out += sec("Ambiguous pins (multiple real defs w/ differing sigs — verify manually)", ambig,
                lambda e: f"plan:{e['line']} `{e['name']}` ({e['n']} defs)")
+
+    out.append("\n## Plan structure (plan vs itself)")
+    if lint is None:
+        out += ["\n**STRUCTURE-UNRECOGNIZED — no `### Task N:` headings found, so the structural half "
+                "did NOT run.** This is not a clean bill. Either the plan is not in "
+                "`superpowers:writing-plans` shape, or the shape changed and this parser needs "
+                "updating; check the plan by hand before treating P3a as done."]
+        nhigh_struct = 0
+    else:
+        out += sec("Task numbering gaps", lint["task_gaps"],
+                   lambda e: f"tasks are {e['got']} — expected {e['want']}")
+        out += sec("Step numbering gaps (HIGH — a task's steps must be 1..N)", lint["step_gaps"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} — steps {e['got']}")
+        out += sec("Declared file never staged (HIGH — in Files:, absent from this task's `git add`)",
+                   lint["unstaged"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} — `{e['path']}` not in {e['staged']}")
+        out += sec("Task declares files but has no `git add` at all (HIGH)", lint["no_staging"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} — {len(e['files'])} declared: {e['files']}")
+        out += sec("Forward references (HIGH — consumes a name a LATER task produces)", lint["forward_refs"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} consumes `{e['name']}` — produced by Task {e['from']}")
+        out += sec("Undeclared consumes (name not produced by any task and not found in code)",
+                   lint["undeclared"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} consumes `{e['name']}`")
+        out += sec("Placeholders (HIGH — writing-plans forbids these)", lint["placeholders"],
+                   lambda e: f"plan:{e['line']} `{e['hit']}`{' [in code block]' if e['in_code'] else ''} — {e['text']}")
+        out += sec("`Expected: FAIL` with no `fails if:` clause (HIGH — unverifiable red stage)",
+                   lint["missing_fails_if"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} Step {e['step']}")
+        out += sec("Vacuous-by-construction tests (candidates — test touches nothing this task changes)",
+                   lint["vacuous"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} — changes {e['changes']}, test names {e['tests']}")
+        out += sec("Reinvention candidates (new normalize/parse/validate-shaped helper — read the "
+                   "siblings and the stdlib BEFORE accepting it)", lint["reinvention"],
+                   lambda e: f"plan:{e['line']} Task {e['task']} adds `{e['name']}` — check {e['dirs'] or '(no dir)'}"
+                             + (f", existing there: {e['near']}" if e['near'] else " (no indexed siblings)"))
+        out += ["\n### Staged-file union (compare against the scope guard / impl handoff)",
+                f"- {len(lint['staged_union'])} files: " + (", ".join(f"`{p}`" for p in lint["staged_union"]) or "none")]
+        if lint["unparsed_iface"]:
+            out.append(f"\n*{lint['unparsed_iface']} Consumes/Produces entries had no backticked name — "
+                       "not checked for forward references. Backtick exact names to include them.*")
+        nhigh_struct = sum(len(lint[k]) for k in
+                           ("step_gaps", "unstaged", "no_staging", "forward_refs", "placeholders",
+                            "missing_fails_if"))
+
+    nhigh = len(dangling) + len(fallib) + nhigh_struct
+    out += [f"\n## Verdict\n**HIGH findings: {nhigh}** "
+            + ("— fix or explicitly justify each before P3b." if nhigh else "— none.")]
     text = "\n".join(out) + "\n"
     if args.out:
         with open(args.out, "w") as f: f.write(text)
     sys.stdout.write(text)
+    L = lint or {k: [] for k in ("step_gaps", "unstaged", "no_staging", "forward_refs",
+                                 "placeholders", "missing_fails_if", "vacuous", "reinvention")}
     sys.stderr.write(f"verify-plan: {len(dangling)} dangling, {len(cite_gap)} cite-not-in-census, "
-                     f"{len(fallib)} FALLIBILITY, {len(typ)} type-diff, {len(argm)} arg-mismatch, {len(ambig)} ambiguous\n")
+                     f"{len(fallib)} FALLIBILITY, {len(typ)} type-diff, {len(argm)} arg-mismatch, "
+                     f"{len(ambig)} ambiguous | structure: "
+                     + ("UNRECOGNIZED" if lint is None else
+                        f"{len(tasks)} tasks, {len(L['step_gaps'])} step-gaps, "
+                        f"{len(L['unstaged']) + len(L['no_staging'])} staging, "
+                        f"{len(L['forward_refs'])} forward-refs, {len(L['placeholders'])} placeholders, "
+                        f"{len(L['missing_fails_if'])} missing-fails-if, {len(L['vacuous'])} vacuous, "
+                        f"{len(L['reinvention'])} reinvention")
+                     + f" | HIGH={nhigh}\n")
+    # Exit 3 = HIGH findings present. Distinct from 1 (usage) and doctor's 1/2, so a caller can tell
+    # "the plan has defects" from "the tool broke". --no-fail restores the old always-0 behavior.
+    if nhigh and not args.no_fail:
+        sys.exit(3)
 
 # ---------- subcommand: doctor (preflight) ----------
 
@@ -695,10 +999,16 @@ def main():
     m.add_argument("--out", required=True); m.add_argument("--include-untriaged-prod", action="store_true")
     m.set_defaults(func=cmd_merge)
 
-    v = sub.add_parser("verify-plan", help="P3a: diff the plan's factual claims (cites/sigs/return-types) vs SCIP")
-    v.add_argument("--plan", required=True); v.add_argument("--skeleton", required=True)
-    v.add_argument("--index", required=True); v.add_argument("--deps", default=DEPS)
+    v = sub.add_parser("verify-plan", help="P3a: diff the plan's claims (cites/sigs/return-types) vs SCIP "
+                                           "AND lint the plan against itself (task/step structure). Exit 3 = HIGH findings.")
+    v.add_argument("--plan", required=True)
+    v.add_argument("--skeleton", help="census skeleton.json; omit for a structure-only run")
+    v.add_argument("--index", help="SCIP index; omit for a structure-only run")
+    v.add_argument("--lang", default="rust", choices=list(LANGS),
+                   help="only used when --skeleton is absent (it carries the lang otherwise)")
+    v.add_argument("--deps", default=DEPS)
     v.add_argument("--out")
+    v.add_argument("--no-fail", action="store_true", help="always exit 0, even with HIGH findings")
     v.set_defaults(func=cmd_verify_plan)
 
     dc = sub.add_parser("doctor", help="preflight: check venv/protobuf/scip_pb2 (exit 2 if broken) + the indexer for --lang (exit 1 if missing)")

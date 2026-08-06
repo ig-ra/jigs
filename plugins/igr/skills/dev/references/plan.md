@@ -194,7 +194,12 @@ callers) is the P3a green-ordering check.
 4. **Exit gate = extend the Self-Review with census-coverage AND buildable order:** every census row
    has a task/disposition, **and** the task order is buildable-at-every-commit (definitions before
    uses; test-before-code; no plan-visible forward-reference). Cheap inline check; kills easy gaps
-   before spending any codex round.
+   before spending any codex round. **Run `census verify-plan --plan <plan>` here too** (structure-only
+   — no `--skeleton`/`--index` needed): it decides the mechanical half of this gate while you are still
+   authoring, so numbering / staging / forward-reference defects never reach P3a. Declare exact names
+   in **`Interfaces: Consumes/Produces` in backticks** — that is the dependency edge the
+   forward-reference check reads; unbackticked prose is invisible to it (and the report says how many
+   entries it had to skip).
 
 ## P3 — REVIEW (mechanical pre-pass → codex angle-till-solid → codex full-till-solid)
 
@@ -215,28 +220,41 @@ reasoning:
   block and skipped the prose — every one would have died here for free.
 - **coverage** — re-run **both** greps (symbol **and** behavioral-noun, §P1); every hit has a census
   row and a plan task, or an explicit out-of-scope line.
-- **red-stage validity** — for every `Expected: FAIL` in the plan, check the failure is real *and for
-  the stated reason*. The mechanical core: **intersect the symbols the test invokes with the symbols
-  its own task modifies — an empty intersection is vacuous by construction** (the test only exercises
-  what an earlier task already landed, so it is green, not red). Then confirm each cited symbol exists
-  at HEAD and the `fails if:` mutation would actually break the assertion. Deterministic from the plan
-  text alone; skipping it cost 4 review rounds and still leaked one vacuous test to implementation.
+- **red-stage validity** — for every `Expected: FAIL`, check the failure is real *and for the stated
+  reason*. `verify-plan` does the mechanical core (below): a missing `fails if:` clause, and the
+  **vacuous-by-construction** test — its symbols do not intersect the symbols its own task changes,
+  so it is green from an earlier task's work and cannot be the red gate the plan claims. You then
+  confirm the `fails if:` mutation would actually break the assertion. Skipping this cost 4 review
+  rounds and still leaked one vacuous test to implementation.
 
 **Scope principle: these checks diff EVERY factual claim in the plan (pins + prose) vs ground truth**
 — return types, signatures, anchors, field counts — not only the claims that happen to sit in a
 pinned block. A claim in a task body is as load-bearing as one in `## Interfaces`.
 
-**Run the structured half mechanically — `census verify-plan`.** The tool parses the plan's
-code-fenced sigs + `[C:name]` citations and diffs them against the SCIP index (all symbols, incl.
-TO-side seam files not in the skeleton), emitting a divergence report — deterministic, seconds, ~0
-model tokens:
+**Run the mechanical half with `census verify-plan` — it is the gate, not a suggestion.**
 `<tool>/census verify-plan --plan <prefix>-plan.md --skeleton <prefix>-census-skeleton.json --index /tmp/<prefix>-index.scip`
-It reports: **dangling/uncensused citations**, **FALLIBILITY mismatches** (`Result` invented/dropped —
-the highest-signal class, the one that leaked to codex), **return-type diffs** (candidates — a port
-returning `dyn`/re-keyed type may be intended, verify), **arg-count mismatches**, and **ambiguous
-pins** (name resolves to several defs — verify by hand). You then only **fix** the flagged lines — no
-hand-sweep of the plan. What it can't cover (prose "returns X", behavior/branch semantics) stays for
-the model + P3b. (Structured claims → deterministic; prose + semantics → model.)
+Deterministic, seconds, ~0 model tokens, and it covers **both** directions:
+
+- **plan vs CODE** — **dangling/uncensused citations**, **FALLIBILITY mismatches** (`Result`
+  invented/dropped — the highest-signal class, the one that leaked to codex), **return-type diffs**
+  (candidates — a port returning `dyn`/re-keyed type may be intended, verify), **arg-count
+  mismatches**, **ambiguous pins** (name resolves to several defs — verify by hand).
+- **plan vs ITSELF** — step numbering `1..N` per task · a `Files:` entry missing from that task's
+  `git add` · **forward references** (Task N consumes a name a LATER task produces) · placeholders
+  (`writing-plans`' own forbidden list) · `Expected: FAIL` with no `fails if:` · vacuous-test and
+  reinvention candidates · the **staged-file union** to diff against the scope guard.
+
+**`Exit 3` = HIGH findings — P3a is not done until it exits 0** (or you have explicitly justified
+each remaining HIGH in the `## Review status` block). This replaces hand-sweeping the plan and
+replaces re-checking consistency by eye after each fold: **re-run it after every fold batch** —
+folds routinely contradict each other, and a codex round spent finding your own inconsistency is a
+wasted round. If the report says **`STRUCTURE-UNRECOGNIZED`**, the structural half did **not** run
+(the plan is not in `writing-plans` shape, or the shape drifted and the parser needs updating) —
+that is not a clean bill; check by hand and say so.
+
+What it cannot cover — prose claims ("returns X"), behavior/branch semantics, whether a *candidate*
+is really a defect — stays with you + P3b. (Structured + structural → deterministic; prose +
+semantics → model.)
 
 Fold these findings first. They are the bulk of what a broad loop wastes rounds on — killed here for
 free.
@@ -253,6 +271,9 @@ angle-discovery), in dependency order (a fold in one can shift the next):
    error-path state; **evaluation semantics** (probe below); the highest-value angle (largest semantic
    surface → the likeliest to reach the cap).
 3. **green-ordering / rollback** — each task leaves the tree buildable; strangler/bridge soundness.
+   (The *plan-visible* half — a task consuming a name only a later task produces — is now
+   front-stripped by `verify-plan`'s forward-reference check in P3a; the codex residual here is the
+   **code-aware** half: existing out-of-surface callers, visibility, strangler-bridge soundness.)
 
 **Stored-state probe (behavior angle) — never reason about data you can query.** Any plan claim about
 **what data exists** or **which states are reachable** ("no rows of this shape exist", "that field is
@@ -284,15 +305,13 @@ Q1-new / Q2-settled; unsure → DISCUSS). Focus-string rules: **no backticks, no
 hangs — rg/sed only); tell it to **enumerate EVERY instance in the lens, not the top one**, and verify
 each against code (LSP/rg).
 
-**After every fold batch, re-check the plan's INTERNAL consistency before spending another round.**
-Folds routinely contradict each other and their neighbours — a codex round spent finding *your own*
+**After every fold batch, re-run `census verify-plan` before spending another round.** Folds
+routinely contradict each other and their neighbours — a codex round spent finding *your own*
 inconsistency is a wasted round. (Measured: 2 of angle 1's 4 rounds went to contradictions earlier
 folds had introduced — a fold added a barrel re-export while a later task still asserted "exactly six
-files"; another added a test that could not run and asserted something impossible.) This is a script,
-not a judgment: step numbering `1..N` per task with no gaps; the union of every task's `git add`
-equals the declared scope guard; every file in a task's **Files** list appears in that task's
-`git add`; every type/helper used in a task is defined in an earlier one. It costs zero rounds and it
-has caught real defects.
+files"; another added a test that could not run and asserted something impossible.) The tool owns
+this check now — step numbering, staged-vs-declared files, forward references, placeholders — so it
+is a command, not a discipline you have to remember. **Exit 0 before you launch the next round.**
 
 **Class-generalization (every codex round — angles AND the broad pass).** A codex finding is an
 *instance*, not the bug — do **not** fix just it and re-run. Name its defect **class**, then enumerate

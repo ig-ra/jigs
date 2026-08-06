@@ -33,6 +33,19 @@ indexer; hand-review the golden diff before committing).
 | verify-plan: correct pin NOT flagged | ✓ | ✓ | n/a |
 | verify-plan: deferred pin (`re-resolve at HEAD`) NOT flagged | ✓ | ✓ | n/a |
 | verify-plan: loud UNSUPPORTED notice when sig-diff off | n/a | n/a | ✓ |
+| **plan lint:** step-numbering gap | ✓ | ✓ | ✓ |
+| **plan lint:** declared file never staged | ✓ | ✓ | ✓ |
+| **plan lint:** forward reference (consumes what a later task produces) | ✓ | ✓ | ✓ |
+| **plan lint:** undeclared consumes (and an in-code consume NOT flagged) | ✓ | ✓ | ✓ |
+| **plan lint:** placeholder grep | ✓ | ✓ | ✓ |
+| **plan lint:** `Expected: FAIL` with no `fails if:` | ✓ | ✓ | ✓ |
+| **plan lint:** vacuous-by-construction test | ✓ | ✓ | ✓ |
+| **plan lint:** reinvention trigger + same-dir resolve-list | ✓ | ✓ (no siblings) | ✓ |
+| **plan lint:** clean task flagged in NO defect bucket | ✓ | ✓ | ✓ |
+| **plan lint:** staged-file union reported | ✓ | ✓ | ✓ |
+| exit 3 on HIGH findings · `--no-fail` → 0 | ✓ | — | — |
+| structure-only run (no `--skeleton`/`--index`) says what it skipped | ✓ | — | — |
+| STRUCTURE-UNRECOGNIZED is loud, exits 0, never a clean bill | ✓ (synthetic doc) | — | — |
 | doctor exit 0 (deps + indexer ok) | ✓ | — | — |
 | doctor exit 1 (no indexer → Path B) | ✓ (stripped PATH) | — | — |
 | doctor exit 0 with `--lang none` | ✓ | | |
@@ -40,7 +53,11 @@ indexer; hand-review the golden diff before committing).
 Unit tests (no fixtures): `visibility` ×3 langs, `rust_test_spans` (incl.
 `cfg(any(test, feature="test-utils"))`), `parse_sig` ×3 langs + deferred pin + nested
 generics, `norm_rt` path stripping, `kind_of` descriptor inference (scip-typescript
-kind=0), `member_label` trait encoding.
+kind=0), `member_label` trait encoding. Plan lint: `parse_plan` shape, step-gap +
+unstaged, reinvention with/without an index, unrecognized shape, `_bt_names`
+(backticks required), `_paths` (flags/globs dropped), `_clean_path` (`:123-145`
+stripped), `_staged_match` (relative-root tolerance), vacuity (needs a failing stage +
+disjoint names; keywords filtered from the evidence).
 
 ## Known gaps
 
@@ -52,6 +69,15 @@ kind=0), `member_label` trait encoding.
   once: `tests/regen.sh` with it installed; the test suite reports the skip loudly).
 - **doctor exit 2** (broken venv/protobuf) — not simulated; would require breaking the
   real venv.
+- **plan-lint format coupling** — the parser targets the `superpowers:writing-plans` task
+  shape, a format this tool does not own. If that skill changes its headings, the lint
+  goes quiet. Mitigated by failing soft (`STRUCTURE-UNRECOGNIZED`, tested) rather than
+  reporting a false clean, but a shape change still needs a parser update. Re-check when
+  bumping superpowers.
+- **reinvention precision** — the trigger is the NEW helper's name-shape only; it lists
+  the directory's symbols rather than claiming a specific duplicate (keying on the
+  neighbour's name would have missed the motivating case). Expect it to fire on
+  legitimate new parsers — it is a candidate bucket, not HIGH.
 
 ## Regressions pinned (bugs these tests were built around)
 

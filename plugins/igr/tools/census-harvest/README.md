@@ -8,7 +8,7 @@ census doctor       preflight : check venv/protobuf/scip_pb2 (exit 2) + the inde
 census scaffold     P0 assist : Scope template + candidate entry symbols + boundary preview
 census harvest      P1        : symbols/signatures/edges/boundary-coupling/test-flag → skeleton.json
 census merge        assemble  : skeleton.json + model's judgment.json → census.md
-census verify-plan  P3a       : diff the plan's factual claims (sigs/return-types/cites) vs SCIP → divergences
+census verify-plan  P3a       : (A) the plan's claims vs CODE (sigs/return-types/cites) + (B) the plan vs ITSELF (structure) → divergences; exit 3 = HIGH
 ```
 The model fills the gaps between them: **scope** (which candidates are in the change surface) and **behavior/disposition** (a compact `judgment.json` — never re-typed rows).
 
@@ -20,6 +20,31 @@ After the plan is written, this diffs its **structured factual claims** against 
 - **arg-count mismatches**; **ambiguous pins** (name → several real defs, verify by hand).
 
 Deferred pins (empty `->`, or a `/*… at HEAD */` standing in for omitted args/type) are **not** flagged. Multi-line sigs + `/* */` block comments are handled. Prose ("returns X") and behavior/branch semantics are **out of scope** — those stay for the model + P3b codex.
+
+### The plan-vs-itself lint (same subcommand)
+
+The checks above diff the plan against **code**. These check the plan against **itself** — the bookkeeping class that dominated a measured field run (9 codex review rounds, 21 defects, nearly all plan-authoring churn; two of those rounds spent on contradictions the reviewer's own earlier folds had introduced) even though every one is decidable from the plan text for zero rounds. Prose asking a model to check these gets under-applied; an exit code does not.
+
+| check | severity | what it catches |
+|---|---|---|
+| step numbering `1..N` per task | HIGH | a fold that dropped or renumbered a step |
+| declared file never staged | HIGH | a `Files:` entry missing from that task's `git add` — the commit won't contain it |
+| forward reference | HIGH | Task N `Consumes:` a name only a LATER task `Produces:` — a broken commit |
+| placeholders | HIGH | `writing-plans`' own No-Placeholders list (TBD/TODO/"similar to Task N"/…) as a grep |
+| `Expected: FAIL` with no `fails if:` | HIGH | a red stage nobody can verify is really red |
+| task numbering gaps | — | tasks not `1..N` |
+| undeclared consumes | — | a name no task produces and the index doesn't have |
+| vacuous-by-construction test | candidate | the task's test names nothing the task changes → green from an earlier task's work, so it cannot be the red gate the plan claims |
+| reinvention | candidate | the plan adds a normalize/parse/validate-shaped helper — lists that directory's existing symbols to read first |
+| staged-file union | fact | every path any task stages, to diff against the scope guard / impl handoff |
+
+**Reinvention keys on the NEW name, not on finding a same-shape neighbour.** The motivating case hand-rolled `normalizeHostLabel` two functions away from `httpsOrigin` — a `url.Parse`-based helper doing the same job under a name matching no shape pattern. Matching neighbours by name would have missed the very defect it exists for. The tool supplies the trigger plus the directory's resolve-list; the model decides.
+
+**Fails soft, never a false clean.** The parser is coupled to the `superpowers:writing-plans` task shape (`### Task N:` / `**Files:**` / `**Interfaces:**` / `- [ ] **Step N**` / `Expected:` / `git add`) — a format this tool does not own. No recognizable tasks → the report says **`STRUCTURE-UNRECOGNIZED`** and states the structural half did not run.
+
+**Exit codes:** `0` clean · `3` HIGH findings present (distinct from `doctor`'s 1/2, so a caller can tell "the plan has defects" from "the tool broke") · `--no-fail` restores always-0.
+
+**`--skeleton` and `--index` are optional.** Omit both for a structure-only run while authoring (before a census exists); the report says which halves were skipped.
 
 ## Boundary — repo-agnostic
 Name the **god-struct type** you decouple from: `--boundary-struct Store`. The tool matches SCIP symbols `/Store#` (fields + inherent methods) **and** `[Store]` (trait/impl methods) — so **one type name yields the complete boundary, no trait enumeration**. Works on any Rust repo (pass that repo's god-struct). `--boundary-type` is a raw-substring fallback (e.g. a module). Omit both for non-decoupling tasks.
@@ -84,11 +109,15 @@ census harvest --index /tmp/index.scip --repo /path/to/repo \
 # 5. render
 census merge --skeleton skeleton.json --judgment judgment.json --out census-body.md
 
-# 6. (P3a) after the plan is written, verify its claims vs code
+# 6. (P3a) after the plan is written, verify its claims vs code AND its structure vs itself
 census verify-plan --plan prefix-plan.md --skeleton skeleton.json --index /tmp/index.scip
+#    exit 3 = HIGH findings. Structure-only (while authoring, no census yet):
+census verify-plan --plan prefix-plan.md
 ```
 
 ## What it does NOT do (judgment — the model's job)
 - **scope** — which harvested symbols are in the change surface.
 - **behavior?** — read the body, flag branches/ordering/side-effects.
 - **disposition** — stays / moves / seam / rename.
+- **whether a flagged candidate is a defect** — a reinvention trigger, a vacuous-test candidate, or
+  a return-type diff is a *lead with its evidence attached*, not a verdict.

@@ -21,8 +21,10 @@ regen_lang() { # <lang> <fixture-dir> <files...>
   "$CENSUS" scaffold --index "$dir/index.scip" --repo "$dir" "${files[@]}" \
     --boundary-struct Store --lang "$lang" --out "$G/scaffold.md"
   "$CENSUS" merge --skeleton "$G/skeleton.json" --judgment "$dir/judgment.json" --out "$G/census-body.md"
+  # --no-fail: the fixture plans are ALL defects by design, so verify-plan exits 3; without this
+  # the script's `set -e` would abort mid-regen.
   "$CENSUS" verify-plan --plan "$dir/plan-defects.md" --skeleton "$G/skeleton.json" \
-    --index "$dir/index.scip" --out "$G/verify-plan.md" >/dev/null
+    --index "$dir/index.scip" --no-fail --out "$G/verify-plan.md" >/dev/null
   echo "regen[$lang]: goldens -> $G"
 }
 

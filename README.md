@@ -49,10 +49,12 @@ mechanical spine in seconds — symbols, exact signatures, call edges, boundary 
 model spends tokens only on judgment (scope, behavior-sensitivity, disposition).
 Language-neutral core with adapters for **Rust** (`rust-analyzer scip`), **Go** (`scip-go`), and
 **TypeScript** (`scip-typescript` via `bunx`). Subcommands: `scaffold` (P0 scope template),
-`harvest` (skeleton), `merge` (skeleton + judgment → census), `verify-plan` (diff a plan's
-factual claims vs the index — the P3a mechanical pre-pass), `doctor` (preflight with a strict
-exit-code contract). Golden-file test suite over vendored indexes for all three languages:
-`tests/run`; coverage matrix in `tests/SCENARIOS.md`.
+`harvest` (skeleton), `merge` (skeleton + judgment → census), `verify-plan` (the P3a mechanical
+pre-pass — a plan's factual claims diffed against the index, **plus** the plan linted against
+itself: step numbering, staged-vs-declared files, forward references, placeholders, red-stage
+validity; exit 3 on HIGH findings, fails soft when the plan shape isn't recognized), `doctor`
+(preflight with a strict exit-code contract). Golden-file test suite over vendored indexes for all
+three languages: `tests/run`; coverage matrix in `tests/SCENARIOS.md`.
 
 ### The vendored review workflow (`plugins/igr/workflows/code-review-skip-simplify.js`)
 

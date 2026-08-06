@@ -2,24 +2,9 @@
 
 ## Open items
 
-- **`census verify-plan` → plan-internal linter (the durable half of the SAW-9947 field report).**
-  Nine review rounds found 21 defects, *nearly all plan-authoring bookkeeping*; a documented rule
-  (class-generalization, `plan.md` §P3b) was under-applied 4× in the same run. Prose is followed
-  stochastically; an exit code is not. Move these plan-internal structural facts into
-  `verify-plan` — it already parses the plan's markdown and diffs against the SCIP index, with a
-  golden suite:
-  - step numbering `1..N` per task, no gaps;
-  - union of task `git add` == declared scope guard; every `Files:` entry appears in its task's `git add`;
-  - every type/helper used in task N defined in a task `< N` (**also the forward-reference half of
-    P3b angle 3 — currently paid for in codex rounds**);
-  - each planned test: symbols it invokes ∩ symbols its own task modifies ≠ ∅ (vacuous-by-construction);
-  - every `Expected: FAIL` carries a `fails if:` clause (presence check);
-  - a new helper whose name-shape (`Normalize|Parse|Valid|Canonical`) already resolves in the same
-    package → reinvention candidate (better from the index than from `rg`).
-  Risk: new coupling to `superpowers:writing-plans`' markdown shape → **fail soft**
-  (`STRUCTURE-UNRECOGNIZED`, never a false clean) + fixtures in the existing golden suite. ~150–200
-  lines in `census.py`. Also: have `census scaffold` emit the `### Behavioral nouns` placeholder so
-  the noun list is a visible hole in a generated file rather than a rule to remember.
+- **`census scaffold` should emit the `### Behavioral nouns` placeholder** in its `## Scope`
+  template, so the noun list is a visible hole in a generated file rather than a rule to remember.
+  (The P0/P1 prose landed in v1.7.0; this makes it structural. Same move as the plan linter.)
 - **`CLASS:` line on every FOLD** (trimmed from the field report's `CLASS:` + `SWEEP:` proposal).
   One phrase naming the defect class, in the invariant-6 fold format — forces the abstraction
   without adding a second performative line. Land it *after* the linter, which makes the sweep
