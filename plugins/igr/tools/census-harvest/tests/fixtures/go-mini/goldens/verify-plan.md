@@ -23,6 +23,8 @@ plan: tests/fixtures/go-mini/plan-defects.md  ·  index: 0.2.7  ·  census rows:
 
 ## Plan structure (plan vs itself)
 
+recognized: 4 tasks · 4 with `Files:` · 4 with steps · 4 with `git add` · 4 with `Interfaces:`
+
 ### Task numbering gaps (0)
 - none
 

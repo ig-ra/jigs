@@ -303,6 +303,70 @@ git add src/normalize.rs
     def test_unrecognized_shape_yields_no_tasks(self):
         self.assertEqual(C.parse_plan(["# Doc", "prose only", "- [ ] a checkbox"]), [])
 
+    def _drift(self, text):
+        b = text.splitlines()
+        return [d["field"] for d in C.lint_plan(C.parse_plan(b), b)["drift"]]
+
+    def test_partial_drift_file_bullets(self):
+        # tasks parse but the file bullets don't -> staging checks are dead and would otherwise
+        # report (0), indistinguishable from clean
+        self.assertEqual(self._drift("""
+### Task 1: T
+
+**Files:**
+- New file: `a.rs`
+
+- [ ] **Step 1: Write the failing test**
+
+```rust
+fn t() {}
+```
+"""), ["- Create:/Modify:/Test: bullets"])
+
+    def test_partial_drift_step_bullets(self):
+        # no steps -> step-numbering AND red-stage validity both vanish (Expected: needs a step)
+        self.assertEqual(self._drift("""
+### Task 1: T
+
+**Files:**
+- Create: `a.rs`
+
+Run: `cargo test`
+Expected: FAIL with "nope"
+"""), ["- [ ] **Step N**"])
+
+    def test_header_rename_alone_is_not_drift(self):
+        # the parser keys on the BULLETS, not the **Files:** header — renaming the header is benign
+        # and must not raise a false drift alarm
+        self.assertEqual(self._drift("""
+### Task 1: T
+
+**Touches:**
+- Create: `a.rs`
+
+- [ ] **Step 1: Write the failing test**
+
+```rust
+fn t() {}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add a.rs
+```
+"""), [])
+
+    def test_drift_counts_as_high_and_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            plan = os.path.join(tmp, "drifted.md")
+            with open(plan, "w") as f:
+                f.write("### Task 1: T\n\n**Files:**\n- Create: `a.rs`\n\nExpected: FAIL with x\n")
+            p = run_census("verify-plan", "--plan", plan, check=False)
+            self.assertEqual(p.returncode, 3)
+            self.assertIn("PARSER-DRIFT", p.stdout)
+            self.assertIn("recognized: 1 tasks", p.stdout)
+
     def test_bt_names_requires_backticks(self):
         self.assertEqual(C._bt_names("`render_label`, `Store::persist(x)`"), ["render_label", "persist"])
         self.assertEqual(C._bt_names("the thing produced by the earlier task"), [])

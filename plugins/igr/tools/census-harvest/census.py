@@ -372,7 +372,18 @@ def cmd_scaffold(args):
         out.append(f"| `{name}` | {rp}:{ln} | `{sig[:80]}` | {bn} |")
     out += ["\n### Boundary preview (coverage floor — top members)", "| member | accesses |", "|---|---|"]
     for b in boundary_summary[:25]: out.append(f"| `{b['member']}` | {b['accesses']} |")
-    out += ["\n### Coverage checklist (FILL from the spec — what 'done' means)", "- [ ] "]
+    # Emitted as an explicit EMPTY hole rather than left to memory: the coverage floor above is
+    # SYMBOL-keyed, and an integration test that drives the changed behavior through an
+    # HTTP/CLI/queue path names none of these symbols. A real run's symbol reconciliation reported
+    # 101 hits / 100% mapped / zero drops and still missed such a file, which then blocked implement.
+    out += ["\n### Behavioral nouns (FILL from the spec — P1 greps these too)",
+            "*Domain nouns, NOT code identifiers: vendor / provider / feature / entity names. The "
+            "symbol grep above cannot see integration tests that reach the behavior without naming a "
+            "symbol; P1 runs `rg -irln <noun> <pkg>/test/` for each of these and reconciles both "
+            "sweeps. Leaving this empty means the census covers symbols only — say so if that is "
+            "deliberate.*",
+            "- [ ] ",
+            "\n### Coverage checklist (FILL from the spec — what 'done' means)", "- [ ] "]
     with open(args.out, "w") as f: f.write("\n".join(out) + "\n")
     sys.stderr.write(f"scaffold: {len(cands)} candidate entries, {len(boundary_summary)} boundary members "
                      f"-> {args.out}\n")
@@ -626,7 +637,27 @@ def lint_plan(tasks, body, index_names=frozenset(), index_locs=None):
     something nobody defines', so it reports the softer bucket, and reinvention is skipped."""
     L = {"task_gaps": [], "step_gaps": [], "unstaged": [], "no_staging": [], "forward_refs": [],
          "undeclared": [], "placeholders": [], "missing_fails_if": [], "vacuous": [],
-         "reinvention": [], "staged_union": [], "unparsed_iface": 0}
+         "reinvention": [], "staged_union": [], "unparsed_iface": 0, "drift": [], "recognized": {}}
+
+    # PARTIAL-drift guard. STRUCTURE-UNRECOGNIZED covers the case where nothing parses. The likelier
+    # failure is partial: superpowers renames `**Files:**` but keeps `### Task N:`, so tasks parse,
+    # files do not, and the staging checks report (0) — indistinguishable from clean. Same for steps:
+    # with no `- [ ] **Step N**` match, `Expected:` lines attach to no step, so step-gaps AND
+    # red-stage validity both silently vanish. A check that did not run must never read as a pass.
+    R = {"tasks": len(tasks),
+         "with_files": sum(1 for t in tasks if t["files"]),
+         "with_steps": sum(1 for t in tasks if t["steps"]),
+         "with_git_add": sum(1 for t in tasks if t["git_adds"]),
+         "with_interfaces": sum(1 for t in tasks if t["produces"] or t["consumes"])}
+    L["recognized"] = R
+    # NB the parser keys on the BULLETS (`- Create:` / `- Modify:` / `- Test:`), not the `**Files:**`
+    # header — renaming the header alone does not break it. Name the thing actually matched.
+    if tasks and not R["with_files"]:
+        L["drift"].append({"field": "- Create:/Modify:/Test: bullets",
+                           "dead": "staging checks (unstaged / no-staging)"})
+    if tasks and not R["with_steps"]:
+        L["drift"].append({"field": "- [ ] **Step N**",
+                           "dead": "step-numbering AND red-stage validity (`Expected:` needs a step)"})
 
     nums = [t["n"] for t in tasks]
     if nums != list(range(1, len(nums) + 1)):
@@ -834,6 +865,16 @@ def cmd_verify_plan(args):
                 "updating; check the plan by hand before treating P3a as done."]
         nhigh_struct = 0
     else:
+        R = lint["recognized"]
+        out.append(f"\nrecognized: {R['tasks']} tasks · {R['with_files']} with `Files:` · "
+                   f"{R['with_steps']} with steps · {R['with_git_add']} with `git add` · "
+                   f"{R['with_interfaces']} with `Interfaces:`")
+        if lint["drift"]:
+            out.append("\n**PARSER-DRIFT (HIGH) — tasks parsed but a required field did NOT, so the "
+                       "checks below that depend on it reported (0) without ever running.** Likely a "
+                       "`superpowers:writing-plans` format change; update the parser. Do NOT read "
+                       "those sections as clean:")
+            out += [f"- `{d['field']}` matched in 0 tasks → dead: {d['dead']}" for d in lint["drift"]]
         out += sec("Task numbering gaps", lint["task_gaps"],
                    lambda e: f"tasks are {e['got']} — expected {e['want']}")
         out += sec("Step numbering gaps (HIGH — a task's steps must be 1..N)", lint["step_gaps"],
@@ -867,7 +908,7 @@ def cmd_verify_plan(args):
                        "not checked for forward references. Backtick exact names to include them.*")
         nhigh_struct = sum(len(lint[k]) for k in
                            ("step_gaps", "unstaged", "no_staging", "forward_refs", "placeholders",
-                            "missing_fails_if"))
+                            "missing_fails_if", "drift"))
 
     nhigh = len(dangling) + len(fallib) + nhigh_struct
     out += [f"\n## Verdict\n**HIGH findings: {nhigh}** "
@@ -877,7 +918,8 @@ def cmd_verify_plan(args):
         with open(args.out, "w") as f: f.write(text)
     sys.stdout.write(text)
     L = lint or {k: [] for k in ("step_gaps", "unstaged", "no_staging", "forward_refs",
-                                 "placeholders", "missing_fails_if", "vacuous", "reinvention")}
+                                 "placeholders", "missing_fails_if", "vacuous", "reinvention",
+                                 "drift")}
     sys.stderr.write(f"verify-plan: {len(dangling)} dangling, {len(cite_gap)} cite-not-in-census, "
                      f"{len(fallib)} FALLIBILITY, {len(typ)} type-diff, {len(argm)} arg-mismatch, "
                      f"{len(ambig)} ambiguous | structure: "
@@ -886,6 +928,7 @@ def cmd_verify_plan(args):
                         f"{len(L['unstaged']) + len(L['no_staging'])} staging, "
                         f"{len(L['forward_refs'])} forward-refs, {len(L['placeholders'])} placeholders, "
                         f"{len(L['missing_fails_if'])} missing-fails-if, {len(L['vacuous'])} vacuous, "
+                        f"{len(L['drift'])} PARSER-DRIFT, "
                         f"{len(L['reinvention'])} reinvention")
                      + f" | HIGH={nhigh}\n")
     # Exit 3 = HIGH findings present. Distinct from 1 (usage) and doctor's 1/2, so a caller can tell

@@ -313,7 +313,9 @@ files"; another added a test that could not run and asserted something impossibl
 this check now — step numbering, staged-vs-declared files, forward references, placeholders — so it
 is a command, not a discipline you have to remember. **Exit 0 before you launch the next round.**
 
-**Class-generalization (every codex round — angles AND the broad pass).** A codex finding is an
+**Class-generalization (every codex round — angles AND the broad pass).** *(The `CLASS:` line the
+fold format requires — SKILL.md invariant 6 — is the short form of this; below is the full
+discipline plus what to do when a class keeps resurfacing.)* A codex finding is an
 *instance*, not the bug — do **not** fix just it and re-run. Name its defect **class**, then enumerate
 the class's **full surface mechanically** (`rg` every method of the trait / every ref of the symbol /
 every site of the pattern) — **not from recall** — fold every instance, then re-run to *confirm the

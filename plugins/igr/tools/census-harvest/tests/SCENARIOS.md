@@ -46,6 +46,11 @@ indexer; hand-review the golden diff before committing).
 | exit 3 on HIGH findings · `--no-fail` → 0 | ✓ | — | — |
 | structure-only run (no `--skeleton`/`--index`) says what it skipped | ✓ | — | — |
 | STRUCTURE-UNRECOGNIZED is loud, exits 0, never a clean bill | ✓ (synthetic doc) | — | — |
+| PARSER-DRIFT: file bullets stop matching → staging checks flagged dead | ✓ (unit) | — | — |
+| PARSER-DRIFT: step bullets stop matching → step-gap + red-stage flagged dead | ✓ (unit) | — | — |
+| PARSER-DRIFT counts as HIGH (exit 3) + `recognized:` line printed | ✓ | — | — |
+| header rename alone is NOT drift (parser keys on bullets) | ✓ (unit) | — | — |
+| scaffold emits the `### Behavioral nouns` hole | ✓ | ✓ | ✓ |
 | doctor exit 0 (deps + indexer ok) | ✓ | — | — |
 | doctor exit 1 (no indexer → Path B) | ✓ (stripped PATH) | — | — |
 | doctor exit 0 with `--lang none` | ✓ | | |
@@ -70,10 +75,12 @@ disjoint names; keywords filtered from the evidence).
 - **doctor exit 2** (broken venv/protobuf) — not simulated; would require breaking the
   real venv.
 - **plan-lint format coupling** — the parser targets the `superpowers:writing-plans` task
-  shape, a format this tool does not own. If that skill changes its headings, the lint
-  goes quiet. Mitigated by failing soft (`STRUCTURE-UNRECOGNIZED`, tested) rather than
-  reporting a false clean, but a shape change still needs a parser update. Re-check when
-  bumping superpowers.
+  shape, a format this tool does not own. Now guarded at both levels: total
+  non-recognition → `STRUCTURE-UNRECOGNIZED`, partial drift → `PARSER-DRIFT` (HIGH, exit
+  3), both tested, plus a `recognized:` counts line on every report. A shape change still
+  needs a parser update — the guards make it loud, not automatic. Re-check when bumping
+  superpowers. Residual: a field that matches in *some* tasks but not others is not
+  alarmed (only zero-across-all-tasks is), so the counts line is the signal there.
 - **reinvention precision** — the trigger is the NEW helper's name-shape only; it lists
   the directory's symbols rather than claiming a specific duplicate (keying on the
   neighbour's name would have missed the motivating case). Expect it to fire on

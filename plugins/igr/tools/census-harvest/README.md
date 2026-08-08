@@ -40,7 +40,12 @@ The checks above diff the plan against **code**. These check the plan against **
 
 **Reinvention keys on the NEW name, not on finding a same-shape neighbour.** The motivating case hand-rolled `normalizeHostLabel` two functions away from `httpsOrigin` — a `url.Parse`-based helper doing the same job under a name matching no shape pattern. Matching neighbours by name would have missed the very defect it exists for. The tool supplies the trigger plus the directory's resolve-list; the model decides.
 
-**Fails soft, never a false clean.** The parser is coupled to the `superpowers:writing-plans` task shape (`### Task N:` / `**Files:**` / `**Interfaces:**` / `- [ ] **Step N**` / `Expected:` / `git add`) — a format this tool does not own. No recognizable tasks → the report says **`STRUCTURE-UNRECOGNIZED`** and states the structural half did not run.
+**Fails soft, never a false clean.** The parser is coupled to the `superpowers:writing-plans` task shape (`### Task N:` / `- Create:|Modify:|Test:` bullets / `- Consumes:|Produces:` / `- [ ] **Step N**` / `Expected:` / `git add`) — a format this tool does not own. Two levels of guard:
+
+- **Total** non-recognition → **`STRUCTURE-UNRECOGNIZED`**: no tasks parsed, the structural half did not run, and the report says so.
+- **Partial** drift → **`PARSER-DRIFT` (HIGH, exit 3)**: tasks parse but a field the checks depend on matched in *zero* of them. This is the likelier and nastier case — if the file bullets stop matching, the staging checks report `(0)`, which is indistinguishable from clean; if the step bullets stop matching, `Expected:` lines attach to no step and step-numbering *and* red-stage validity both vanish silently. A check that did not run must never read as a pass. Every report also prints a `recognized:` line (tasks / with-files / with-steps / with-git-add / with-interfaces) so partial parsing is visible even below the alarm threshold.
+
+The parser keys on the **bullets**, not the `**Files:**` header — renaming the header alone is benign and does not raise a false alarm (tested).
 
 **Exit codes:** `0` clean · `3` HIGH findings present (distinct from `doctor`'s 1/2, so a caller can tell "the plan has defects" from "the tool broke") · `--no-fail` restores always-0.
 

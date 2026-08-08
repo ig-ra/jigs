@@ -23,5 +23,9 @@ SCIP match: `/X#` (fields + inherent methods) + `[X]` (trait/impl methods).
 | `Store#getObject` | 1 |
 | `Store#putObject` | 1 |
 
+### Behavioral nouns (FILL from the spec — P1 greps these too)
+*Domain nouns, NOT code identifiers: vendor / provider / feature / entity names. The symbol grep above cannot see integration tests that reach the behavior without naming a symbol; P1 runs `rg -irln <noun> <pkg>/test/` for each of these and reconciles both sweeps. Leaving this empty means the census covers symbols only — say so if that is deliberate.*
+- [ ] 
+
 ### Coverage checklist (FILL from the spec — what 'done' means)
 - [ ] 

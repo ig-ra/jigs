@@ -168,9 +168,17 @@ does not reimplement the mechanics.** Restated so every method honors them:
    **Report format, per round:**
    ```
    FOLD:    <finding> — <the wrong assumption, file:line> — <the minimal edit>
+            CLASS: <the defect class in one phrase>
    DISCUSS: <finding> — <the decision> — A) … B) … — recommend: <X, why>
    DROP:    <finding> — refuted by <file:line> | covered by <invariant> | out-of-scope <ref>
    ```
+   **`CLASS:` is required on every FOLD** — a reviewer finding is an *instance*, not the bug, and
+   naming the class is what turns one fix into a sweep of the whole class. Fix the instance only and
+   the class returns next round (measured: one class cost 4 rounds, one member per round, until the
+   full surface was enumerated). Where the class has a **mechanical** surface — every method of the
+   trait, every ref of the symbol, every task in the plan — enumerate it **by tool, not from
+   recall**, and fold every instance before re-running. For `plan`, `census verify-plan` already
+   owns the plan-structural classes; the ones that still need this are the **semantic** ones.
 
    **The mix is a convergence signal:** a round returning zero FOLD (all DISCUSS/DROP) means the
    angle is exhausted — that is the qualitative-SOLID read, not "zero findings".

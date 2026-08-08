@@ -197,9 +197,14 @@ For round `N` = 1 .. max:
    **Round report format:**
    ```
    FOLD:    <finding> — <the wrong assumption, file:line> — <the minimal edit>
+            CLASS: <the defect class in one phrase>
    DISCUSS: <finding> — <the decision> — A) … B) … — recommend: <X, why>
    DROP:    <finding> — refuted by <file:line> | covered by <invariant> | out-of-scope <ref>
    ```
+   **`CLASS:` is required on every FOLD.** A finding is an *instance*, not the bug. Name the class,
+   then enumerate its surface **by tool, not from recall** (every method of the trait, every ref of
+   the symbol) and fold every member before re-running — otherwise the class comes back next round,
+   one member at a time (measured: 4 rounds on a single class).
 
    **The mix is a convergence signal:** a round returning zero FOLD (all DISCUSS/DROP) means this
    angle is exhausted — report that, do not keep grinding for a "clean" pass.
