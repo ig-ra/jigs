@@ -21,17 +21,15 @@ Nothing in between unless I am blocked or something is irreversible. Reports fol
 ```json
 { "ticket": "<KEY>", "ticketUrl": "https://linear.app/<workspace>/issue/<KEY>",
   "pr": <number>, "prUrl": "<PR url>",
-  "rows": [
-    { "step": "Implement → rebase on main → open PR", "status": "done" },
-    { "step": "Reviews: simplify + codex + claude → fix → rebase + re-push", "status": "running" },
-    { "step": "Architect + CI", "status": "todo", "note": "optional short note" }
-  ] }
+  "implement": { "status": "done" },
+  "reviews":   { "status": "running" },
+  "checks":    { "status": "todo", "note": "optional, a few words" } }
 ```
-Statuses: `running` ⏳ (in progress or waiting), `fixing` 🔧 (codex is fixing findings), `done` ✅, `todo` ⬜ (not started), `fail` ❌ (needs Igor). The rows, in order:
-- **Implement → rebase → PR:** `running` from the implementing dispatch; `done` when the PR is open on a branch rebased on the latest `BASE`.
-- **Reviews:** `running` while the three reviews of After code step 1 run; `fixing` while codex fixes the pooled findings; `done` when the fixes are rebased and pushed, and my review covers the full final diff.
-- **Architect + CI:** `running` while waiting on CI and the review bots; `fixing` while a red check or a bot thread is being fixed; `done` when CI is green and the architect bot has approved with every thread answered.
-A new push after a row is `done` (new work, a rebase Igor asked for) sets the rows it invalidates back to `running`. `/igr:ticket finish` writes the last state, all `done`, with the merge sha as the last row's note.
+The band owns its three lines and their labels; the file holds only these keys. Never add rows, Before-code steps or later PRs: a ticket with several PRs shows the PR in progress, and the next PR's first push starts the file over. Statuses: `running` ⏳ (in progress or waiting), `fixing` 🔧 (codex is fixing findings), `done` ✅, `todo` ⬜ (not started), `fail` ❌ (needs Igor).
+- **`implement`** (Implement → rebase on main → open PR): `running` from the implementing dispatch; `done` when the PR is open on a branch rebased on the latest `BASE`.
+- **`reviews`** (simplify + codex + claude → fix → rebase + re-push): `running` while the three reviews of After code step 1 run; `fixing` while codex fixes the pooled findings; `done` when the fixes are rebased and pushed, and my review covers the full final diff.
+- **`checks`** (Architect + CI): `running` while waiting on CI and the review bots; `fixing` while a red check or a bot thread is being fixed; `done` when CI is green and the architect bot has approved with every thread answered.
+A new push after a line is `done` (new work, a rebase Igor asked for) sets the lines it invalidates back to `running`. `/igr:ticket finish` writes the last state, all `done`, with the merge sha as the `checks` note.
 
 ## Before code
 

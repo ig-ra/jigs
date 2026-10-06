@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import type { TicketLoopRow, TicketLoopState } from '../types'
+import type { TicketBandStatus, TicketBandStep, TicketLoopState } from '../types'
 
 // The ticket loop (skills/ticket) writes <loop dir>/state.json; the loop dir is named
 // after the session's worktree folder, e.g. .../worktrees/igor/saw-11847 -> saw-11847-loop.
@@ -11,7 +11,14 @@ const LOOP_ROOT = '/private/tmp/claude-501'
 const raw = atom({ plugin: 'igr', key: 'ticketBandRaw' } as const, null)
 const isHidden = atom({ plugin: 'igr', key: 'ticketBandHidden' } as const, false)
 
-const ICON: Record<TicketLoopRow['status'], string> = { done: '✅', running: '⏳', fixing: '🔧', todo: '⬜', fail: '❌' }
+const ICON: Record<TicketBandStatus, string> = { done: '✅', running: '⏳', fixing: '🔧', todo: '⬜', fail: '❌' }
+
+// Igor's three lines, fixed here so no session can add, drop or rename them.
+const LINES: ReadonlyArray<{ key: 'implement' | 'reviews' | 'checks'; label: string }> = [
+  { key: 'implement', label: 'Implement → rebase on main → open PR' },
+  { key: 'reviews', label: 'Reviews: simplify + codex + claude → fix → rebase + re-push' },
+  { key: 'checks', label: 'Architect + CI' },
+]
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -58,12 +65,15 @@ export const register: Register = on => {
           <Text>{loop.pr ? ' · ' : ' '}</Text>
           <Button key="hide" label="Hide" onPress={() => update($, isHidden, () => true)} />
         </Box>
-        {loop.rows.map(row => (
-          <Text key={row.step} dimColor={row.status === 'todo'}>
-            {ICON[row.status]} {row.step}
-            {row.note ? ` — ${row.note}` : ''}
-          </Text>
-        ))}
+        {LINES.map(({ key, label }) => {
+          const step: TicketBandStep = loop[key] ?? { status: 'todo' }
+          return (
+            <Text key={key} dimColor={step.status === 'todo'}>
+              {ICON[step.status]} {label}
+              {step.note ? ` — ${step.note}` : ''}
+            </Text>
+          )
+        })}
       </Box>
     )
   })
