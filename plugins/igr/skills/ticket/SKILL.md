@@ -86,7 +86,7 @@ Read these fully. They define how the work is done, and skipping them is how ses
 
 If the local ticket folder (`LOCAL`) exists, read it too: it holds earlier Mental Models.
 
-The codex memories (`~/.claude/memory/driving-codex.md`, `herdr-codex.md`) are read later, when the loop spawns codex; the loop says where. `herdr-codex.md` lives in the repo's project memory folder, or in `~/.claude/projects/-Users-igorr-work-condition-curator/memory/` when the repo has none. The review rule lives in `references/loop.md` itself (After code, step 1).
+The codex references (`references/driving-codex.md`, `references/herdr-codex.md`) are read later, when the loop spawns codex; the loop says where. The review rule lives in `references/loop.md` itself (After code, step 1).
 
 #### 6. Leftovers
 
@@ -156,15 +156,15 @@ Collect what was deferred, decided for later, or left out of scope. Look at the 
 #### 4. Memory and handoff
 
 - **Project memory** (the file for the ticket's project, found through `MEMORY.md`): append one short paragraph covering what shipped (PR and merge sha, or the decision), new tickets, and facts learned that a later session needs. Update its description and index line if "next" changed.
-- **Feedback:** if I was corrected on how I work during the ticket and it is not saved yet, save it where it belongs (`references/loop.md` or this file for the ticket loop, `driving-codex.md` for briefing codex, a project memory for facts) rather than a new file.
-- **Agent-time estimates:** find this ticket's rows in `~/.claude/agent-estimates.tsv` with an empty `actual_min`. Close each with `python3 ~/.claude/skills/agent-estimate/estimate.py done <id> --actual <minutes>`, taking the minutes from when that run actually ended (the codex report, or my last commit for the run), not from now. Put estimated against actual for each row in the report.
+- **Feedback:** if I was corrected on how I work during the ticket and it is not saved yet, save it where it belongs (`references/loop.md` or this file for the ticket loop, `references/driving-codex.md` for briefing codex, a project memory for facts) rather than a new file.
+- **Agent-time estimates:** find this ticket's rows in `~/.claude/agent-estimates.tsv` with an empty `actual_min`. Close each with `python3 <skill base directory>/../agent-estimate/estimate.py done <id> --actual <minutes>`, taking the minutes from when that run actually ended (the codex report, or my last commit for the run), not from now. Put estimated against actual for each row in the report.
 - **Handoff** `<REPO>/.remember/remember.md` (skip with a note if the repo has none): rewrite this track's section with a timestamp. Cover the state (ticket Done, PR and sha or the decision), next (the recommended next ticket and why), leftovers, and carried-over open items. Keep other tracks' sections untouched.
 
 #### 5. Clean up
 
 Only after steps 1-4. In this order:
 1. Stop this session's background watchers for the ticket (TaskStop).
-2. **The codex pane for this ticket** (`herdr agent get codex-<N>`; see project memory `herdr-codex.md`). Close it with `herdr pane close <pane>` only when it is idle or done and nothing is running there: read the pane first (`herdr agent read`). If it is working, blocked, or a command is still running, leave it open and report it. Never close a pane that another session or a human started.
+2. **The codex pane for this ticket** (`herdr agent get codex-<N>`; see `references/herdr-codex.md`). Close it with `herdr pane close <pane>` only when it is idle or done and nothing is running there: read the pane first (`herdr agent read`). If it is working, blocked, or a command is still running, leave it open and report it. Never close a pane that another session or a human started.
 3. Leave the worktree: `ExitWorktree` with `action: keep` (it never removes a worktree entered by path).
 4. `git -C <REPO> worktree remove .worktrees/igor/<key>`. If git refuses (dirty or locked), stop and report; never pass `--force`.
 5. Delete the local branch: `git -C <REPO> branch -D <branch>`. `-D` is needed because a squash merge does not count as merged for git; step 1 already proved nothing is lost. For a decide ticket whose branch was never pushed, the same.
