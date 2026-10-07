@@ -3,17 +3,15 @@ import type { Register } from 'claude-code'
 
 import type { TicketBandStatus, TicketBandStep, TicketLoopState } from '../types'
 
-// The ticket loop (skills/ticket) writes <loop dir>/state.json; the loop dir is named
-// after the session's worktree folder, e.g. .../worktrees/igor/saw-11847 -> saw-11847-loop.
+// The ticket loop (skills/ticket) writes <TMPDIR or /tmp>/igr-ticket/<key>/state.json, the key
+// being the session's worktree folder, e.g. .../worktrees/<owner>/saw-11847 -> igr-ticket/saw-11847.
 // No file, no band: sessions outside the ticket loop draw nothing.
-const LOOP_ROOT = '/private/tmp/claude-501'
-
 const raw = atom({ plugin: 'igr', key: 'ticketBandRaw' } as const, null)
 const isHidden = atom({ plugin: 'igr', key: 'ticketBandHidden' } as const, false)
 
 const ICON: Record<TicketBandStatus, string> = { done: '✅', running: '⏳', fixing: '🔧', todo: '⬜', fail: '❌' }
 
-// Igor's three lines, fixed here so no session can add, drop or rename them.
+// The three lines, fixed here so no session can add, drop or rename them.
 const LINES: ReadonlyArray<{ key: 'implement' | 'reviews' | 'checks'; label: string }> = [
   { key: 'implement', label: 'Implement → rebase on main → open PR' },
   { key: 'reviews', label: 'Reviews: simplify + codex + claude → fix → rebase + re-push' },
@@ -26,7 +24,8 @@ export const register: Register = on => {
       let text: string | null = null
       try {
         const base = (await $.session.cwd()).split('/').pop() ?? ''
-        text = await $.fs.read(`${LOOP_ROOT}/${base}-loop/state.json`)
+        const tmp = ((await $.env.get('TMPDIR')) || '/tmp').replace(/\/+$/, '')
+        text = await $.fs.read(`${tmp}/igr-ticket/${base}/state.json`)
       } catch {
         text = null
       }

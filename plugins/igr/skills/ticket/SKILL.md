@@ -1,6 +1,6 @@
 ---
 name: ticket
-description: "Igor's Linear ticket lifecycle for any repo, two modes. /igr:ticket start <key> prepares a Linear ticket (reads it and its comments, creates its worktree in <repo>/.worktrees from the repo's default branch or reports on an existing one, enters it, names the herdr pane and tab after the ticket, reads the handoff (when the repo has one) and working memories, lists leftovers, moves it to In Progress, reports readiness and goes straight into the loop's investigation without waiting for a go). /igr:ticket finish closes the ticket this session worked on, a code ticket after its PRs merged or a decide ticket after the decision is recorded (proves nothing is left unmerged or unrecorded, ticks proven criteria, finalizes the living comment and A-to-B, proposes follow-ups, updates memory and the .remember handoff, closes the idle codex pane, removes the worktree and branch, and only then sets Done; gives the next start prompt). Use when Igor says start ticket 12203, pick up SAW-12203, work on ticket X, resumes after compaction, or says it was merged, wrap up this ticket, save handoff and remember. The key works with or without the SAW- prefix."
+description: "Linear ticket lifecycle for any repo, two modes. /igr:ticket start <key> prepares a Linear ticket (reads it and its comments, creates its worktree in <repo>/.worktrees from the repo's default branch or reports on an existing one, enters it, names the herdr pane and tab after the ticket, reads the handoff (when the repo has one) and working memories, lists leftovers, moves it to In Progress, reports readiness and goes straight into the loop's investigation without waiting for a go). /igr:ticket finish closes the ticket this session worked on, a code ticket after its PRs merged or a decide ticket after the decision is recorded (proves nothing is left unmerged or unrecorded, ticks proven criteria, finalizes the living comment and A-to-B, proposes follow-ups, updates memory and the .remember handoff, closes the idle codex pane, removes the worktree and branch, and only then sets Done; gives the next start prompt). Use when asked to start ticket 12203, pick up SAW-12203, work on ticket X, when resuming after compaction, or when told it was merged, wrap up this ticket, save handoff and remember. The key works with or without the SAW- prefix."
 ---
 
 # Ticket lifecycle
@@ -9,27 +9,28 @@ Two modes, from the first argument:
 - `start <key>`, for example `/igr:ticket start 12203` or `/igr:ticket start SAW-12203`. If the first argument is a key with no mode, treat it as `start`.
 - `finish`, with no key: the ticket comes from the current session.
 
-If the mode is unclear, ask. Between the two modes, the work follows `references/loop.md` ("Before code", "After code", "Rules for both halves"). Igor's corrections to the loop go in that file.
+If the mode is unclear, ask. Between the two modes, the work follows `references/loop.md` ("Before code", "After code", "Rules for both halves"). Corrections to the loop go in that file.
 
 ## Which repo
 
-The skill works in any repo. Derive three values once, with plain commands (the worktree guard refuses compound shell and `$` variables, so run each command alone and paste the literal results into later commands):
+The skill works in any repo. Derive four values once, with plain commands (the worktree guard refuses compound shell and `$` variables, so run each command alone and paste the literal results into later commands):
 
-- `REPO`, the canonical checkout: run `git rev-parse --path-format=absolute --git-common-dir` in the session's cwd and drop the trailing `/.git`. It gives the same answer from the canonical checkout and from any of its worktrees. If the cwd is not inside a git repo (after a compaction), ask Igor which repo and stop.
+- `REPO`, the canonical checkout: run `git rev-parse --path-format=absolute --git-common-dir` in the session's cwd and drop the trailing `/.git`. It gives the same answer from the canonical checkout and from any of its worktrees. If the cwd is not inside a git repo (after a compaction), ask which repo and stop.
 - `BASE`, the default branch: `git -C <REPO> symbolic-ref --short refs/remotes/origin/HEAD` (for example `origin/main`). If it fails, use `origin/main` and say so.
 - `SLUG`, the GitHub repo for `gh`: `gh repo view --json nameWithOwner -q .nameWithOwner`, run in `REPO`. Pass it as `--repo <SLUG>` to every `gh` call, so the command works from a worktree too.
+- `TMP`, the temp root: `printenv TMPDIR` with the trailing `/` dropped, or `/tmp` when it prints nothing. The band hook resolves the same root.
 
-Worktrees live in `<REPO>/.worktrees/igor/<key>`. Check that `.worktrees` is git-ignored (`git -C <REPO> check-ignore .worktrees`); if it is not, tell Igor and do not edit `.gitignore` yourself.
+Worktrees live in `<REPO>/.worktrees/igor/<key>`. Check that `.worktrees` is git-ignored (`git -C <REPO> check-ignore .worktrees`); if it is not, report it and do not edit `.gitignore` yourself.
 
 Two repo-local files are optional, and the skill adapts:
 - **Handoff** `<REPO>/.remember/remember.md`: used when it exists; if not, skip those steps and say so.
-- **Local ticket folder** `LOCAL`: `<REPO>/igr/tickets/<KEY>/` when the repo has an `igr/` folder (untracked), otherwise `/private/tmp/claude-501/<key>-loop/`. It holds Mental Model A, `A-to-B.md`, `estimate-ids.md`, briefs and answers. Never the session scratchpad, which a fork or compaction can lose.
+- **Local ticket folder** `LOCAL`: `<REPO>/igr/tickets/<KEY>/` when the repo has an `igr/` folder (untracked), otherwise `<TMP>/igr-ticket/<key>/`. It holds Mental Model A, `A-to-B.md`, `estimate-ids.md`, briefs and answers. Never the session scratchpad, which a fork or compaction can lose.
 
 ## `/igr:ticket start <key>`: start a ticket
 
-The ticket loop (`references/loop.md`) begins here. `start` does the mechanical "Start" so every ticket begins the same way, then goes straight into "Before code" step 1 without waiting for a go (Igor, 2026-10-05: "I don't need to approve initial go"). It stops after the report only when Igor said "don't start yet", a blocker is not Done, or a worktree conflict needs his answer.
+The ticket loop (`references/loop.md`) begins here. `start` does the mechanical "Start" so every ticket begins the same way, then goes straight into "Before code" step 1 without waiting for a go. It stops after the report only when told "don't start yet", a blocker is not Done, or a worktree conflict needs an answer.
 
-Ticket status follows the work (Igor, 2026-10-05): `start` moves the ticket to In Progress; the first push of the ticket's branch to GitHub, by codex or by me, moves it to In Review (`references/loop.md`, Before code step 7); `finish` sets Done.
+Ticket status follows the work: `start` moves the ticket to In Progress; the first push of the ticket's branch to GitHub, by codex or by me, moves it to In Review (`references/loop.md`, Before code step 7); `finish` sets Done.
 
 ### Input
 
@@ -57,8 +58,8 @@ Then move it to In Progress with `save_issue(KEY, state: "In Progress")` (ToolSe
 Derive `REPO`, `BASE`, `SLUG` (see "Which repo"). Use plain `git -C <path>` commands.
 
 - `git -C <REPO> fetch origin --quiet`
-- **If `<REPO>/.worktrees/igor/<key>` exists** (for example, resuming after a compaction): report whether it is clean, its commits ahead (`git -C <worktree> rev-list --count <BASE>..HEAD`) and behind. Fast-forward it (`git -C <worktree> merge --ff-only <BASE>`) only when it has no commits of its own. A branch with its own commits, usually with an open PR, is rebased only when Igor asks, because a rebase rewrites the pushed head. Never discard work.
-- **If it does not exist:** `git -C <REPO> worktree add -b <gitBranchName> .worktrees/igor/<key> <BASE>`. If that branch already exists elsewhere, report it instead of forcing. If another worktree of this repo already holds this ticket's work under a different name (for example the ticket's parent), report it and ask Igor which to use.
+- **If `<REPO>/.worktrees/igor/<key>` exists** (for example, resuming after a compaction): report whether it is clean, its commits ahead (`git -C <worktree> rev-list --count <BASE>..HEAD`) and behind. Fast-forward it (`git -C <worktree> merge --ff-only <BASE>`) only when it has no commits of its own. A branch with its own commits, usually with an open PR, is rebased only on request, because a rebase rewrites the pushed head. Never discard work.
+- **If it does not exist:** `git -C <REPO> worktree add -b <gitBranchName> .worktrees/igor/<key> <BASE>`. If that branch already exists elsewhere, report it instead of forcing. If another worktree of this repo already holds this ticket's work under a different name (for example the ticket's parent), report it and ask which to use.
 - Then `git -C <worktree> branch --unset-upstream`. The new branch tracks the base, and a later plain `git push` would target the default branch.
 
 #### 3. Pane name and tab label = the ticket
@@ -67,7 +68,7 @@ Do this **before** entering the worktree: once the session is in a worktree, the
 
 Check `test "${HERDR_ENV:-}" = 1`. If it fails, skip this step. Two different names, both set here:
 - **Agent name** (what codex replies to): `herdr agent rename "$HERDR_PANE_ID" <key>`, for example `saw-12203`. Herdr agent names must start with a lowercase letter, so a bare `12203` is refused. Codex replies to this name (`herdr agent prompt saw-12203 ...`), and the codex for this ticket is named `codex-<N>` when it is spawned. If another live agent already holds the name, report it instead of renaming.
-- **Tab label** (what Igor sees in the herdr tab bar): `herdr tab rename "$HERDR_TAB_ID" <N>`, for example `12203`. Igor's tabs are labelled with the bare ticket number. The agent rename does not change the tab label.
+- **Tab label** (what shows in the herdr tab bar): `herdr tab rename "$HERDR_TAB_ID" <N>`, for example `12203`. Tabs are labelled with the bare ticket number. The agent rename does not change the tab label.
 
 If the session is already in a worktree, use literal ids instead: the agent rename returns the pane's `pane_id` and `tab_id` in its JSON, and `herdr agent list` shows them too.
 
@@ -77,7 +78,7 @@ Call `EnterWorktree` with `path` set to the worktree, so every later read, edit 
 
 #### 5. Read the working set
 
-Read these fully. They define how Igor works, and skipping them is how sessions drift:
+Read these fully. They define how the work is done, and skipping them is how sessions drift:
 - the handoff `<REPO>/.remember/remember.md` when it exists, especially the section for this track or ticket;
 - `references/loop.md` in this skill's base directory, the loop to follow;
 - the project memory for the ticket's project. Find it through `MEMORY.md`. If none matches, say so;
@@ -89,7 +90,7 @@ The codex memories (`~/.claude/memory/driving-codex.md`, `herdr-codex.md`) are r
 
 #### 6. Leftovers
 
-List leftovers from other tickets for Igor to close. Do not close or remove anything yourself.
+List leftovers from other tickets to close. Do not close or remove anything yourself.
 - `git -C <REPO> worktree list`. For each `.worktrees/igor/*` other than this one, check its branch's PR with `gh pr list --repo <SLUG> --head <branch> --state all --json number,state`. Merged or closed means it is a leftover. A worktree on a detached HEAD has no branch, so report it as a leftover candidate too.
 - `herdr agent list`: codex panes whose cwd is one of those merged worktrees.
 
@@ -102,13 +103,13 @@ Report in about five short lines, verdict first, using names rather than numbers
 - the worktree path, branch and base sha, the pane name and the tab label;
 - leftovers to close.
 
-Then, in the same turn, start `references/loop.md` "Before code" step 1 (my own investigation). Its first stop for Igor is the hidden-decisions poll. Stop after the report instead only when Igor said "don't start yet", a blocked-by ticket is not Done, or a worktree conflict needs his answer.
+Then, in the same turn, start `references/loop.md` "Before code" step 1 (my own investigation). Its first stop is the hidden-decisions poll. Stop after the report instead only when told "don't start yet", a blocked-by ticket is not Done, or a worktree conflict needs an answer.
 
 ## `/igr:ticket finish`: finish the current ticket
 
 The mirror of `start`. It runs in the session that worked on the ticket, so the ticket, the PR, the codex pane and the decisions are already in context. It closes the loop in `references/loop.md`, for code tickets and for decide tickets.
 
-The order matters (Igor, 2026-10-03): prove the work is finished, clean up the worktree, and only then set Done. A ticket marked Done with work still sitting in a worktree is how work gets lost.
+The order matters: prove the work is finished, clean up the worktree, and only then set Done. A ticket marked Done with work still sitting in a worktree is how work gets lost.
 
 ### Which ticket, and what kind
 
@@ -116,10 +117,10 @@ No argument. Work it out from the session, in this order:
 1. The current worktree's branch (`git rev-parse --abbrev-ref HEAD` in the session's worktree). Derive `REPO`, `BASE`, `SLUG` from it (see "Which repo"). Names look like `igor/saw-12203-...`, which gives `SAW-12203`.
 2. The ticket this conversation has been working on.
 
-If the two disagree, or neither gives an answer, ask Igor which ticket and stop.
+If the two disagree, or neither gives an answer, ask which ticket and stop.
 
 Then the kind:
-- **Decide ticket:** the title starts with `decide:`, or the ticket has no PR and its worktree has no commits of its own. Its deliverable is Igor's decision, recorded on the ticket.
+- **Decide ticket:** the title starts with `decide:`, or the ticket has no PR and its worktree has no commits of its own. Its deliverable is the decision, recorded on the ticket.
 - **Code ticket:** everything else. Its deliverable is merged code.
 
 ### Steps
@@ -135,7 +136,7 @@ If any check fails, stop, report what failed, and change nothing: no texts, no c
 - List the ids in `<LOCAL>/estimate-ids.md` (if the file exists) that are still open in `~/.claude/agent-estimates.tsv`; step 4 closes them.
 
 **Decide ticket:**
-- The ticket's Answer section records Igor's decision, with the date.
+- The ticket's Answer section records the decision, with the date.
 - The living "Suggested implementation" comment ends with the final Mental Model.
 - The tickets that build the decision exist and say so.
 - The worktree has no commits of its own (`git -C <worktree> rev-list --count <BASE>..HEAD` is 0) and `status --porcelain` is empty. If it has commits, stop and ask: a decide ticket that produced code needs a PR first.
@@ -146,16 +147,16 @@ Load the Linear tools if they are deferred. Re-read the description and comments
 - **Acceptance criteria:** tick each one only where a test, the merged PR or the recorded decision proves it. For any criterion you cannot prove, leave it unticked and name it in the report.
 - **Living comment:** the "Suggested implementation" comment must describe what shipped (the merged code, or the decision) and end with the final Mental Model (B). If later commits or decisions changed anything, update the comment.
 - **Local models:** make `<LOCAL>/A-to-B.md` final: model A from the same folder against final B, with the reason for each change.
-- **Duplicates:** if an older comment repeats the living one (for example an "Agreed plan"), list it in the report; deleting a comment needs Igor's OK.
+- **Duplicates:** if an older comment repeats the living one (for example an "Agreed plan"), list it in the report; deleting a comment needs approval.
 
 #### 3. Follow-ups
 
-Collect what was deferred, decided for later, or left out of scope. Look at the ticket comments, the resolved PR threads, Igor's decisions in this conversation, and known costs. For each one, check whether a ticket already covers it. Propose either a new ticket, in the style of its sibling tickets, or a note on the ticket that owns it. Create them only after Igor's OK. Already-created follow-ups just get listed.
+Collect what was deferred, decided for later, or left out of scope. Look at the ticket comments, the resolved PR threads, the decisions made in this conversation, and known costs. For each one, check whether a ticket already covers it. Propose either a new ticket, in the style of its sibling tickets, or a note on the ticket that owns it. Create them only after approval. Already-created follow-ups just get listed.
 
 #### 4. Memory and handoff
 
 - **Project memory** (the file for the ticket's project, found through `MEMORY.md`): append one short paragraph covering what shipped (PR and merge sha, or the decision), new tickets, and facts learned that a later session needs. Update its description and index line if "next" changed.
-- **Feedback:** if Igor corrected how I work during the ticket and it is not saved yet, save it where it belongs (`references/loop.md` or this file for the ticket loop, `driving-codex.md` for briefing codex, a project memory for facts) rather than a new file.
+- **Feedback:** if I was corrected on how I work during the ticket and it is not saved yet, save it where it belongs (`references/loop.md` or this file for the ticket loop, `driving-codex.md` for briefing codex, a project memory for facts) rather than a new file.
 - **Agent-time estimates:** find this ticket's rows in `~/.claude/agent-estimates.tsv` with an empty `actual_min`. Close each with `python3 ~/.claude/skills/agent-estimate/estimate.py done <id> --actual <minutes>`, taking the minutes from when that run actually ended (the codex report, or my last commit for the run), not from now. Put estimated against actual for each row in the report.
 - **Handoff** `<REPO>/.remember/remember.md` (skip with a note if the repo has none): rewrite this track's section with a timestamp. Cover the state (ticket Done, PR and sha or the decision), next (the recommended next ticket and why), leftovers, and carried-over open items. Keep other tracks' sections untouched.
 
@@ -163,16 +164,16 @@ Collect what was deferred, decided for later, or left out of scope. Look at the 
 
 Only after steps 1-4. In this order:
 1. Stop this session's background watchers for the ticket (TaskStop).
-2. **The codex pane for this ticket** (`herdr agent get codex-<N>`; see project memory `herdr-codex.md`). Close it with `herdr pane close <pane>` only when it is idle or done and nothing is running there: read the pane first (`herdr agent read`). If it is working, blocked, or a command is still running, leave it open and report it. Never close a pane another session or Igor started.
+2. **The codex pane for this ticket** (`herdr agent get codex-<N>`; see project memory `herdr-codex.md`). Close it with `herdr pane close <pane>` only when it is idle or done and nothing is running there: read the pane first (`herdr agent read`). If it is working, blocked, or a command is still running, leave it open and report it. Never close a pane that another session or a human started.
 3. Leave the worktree: `ExitWorktree` with `action: keep` (it never removes a worktree entered by path).
 4. `git -C <REPO> worktree remove .worktrees/igor/<key>`. If git refuses (dirty or locked), stop and report; never pass `--force`.
 5. Delete the local branch: `git -C <REPO> branch -D <branch>`. `-D` is needed because a squash merge does not count as merged for git; step 1 already proved nothing is lost. For a decide ticket whose branch was never pushed, the same.
 
-Brief and answer files (`<LOCAL>` and `/private/tmp/claude-501/<key>-loop/`) stay; list them in the report.
+Brief and answer files (`<LOCAL>` and `<TMP>/igr-ticket/<key>/`) stay; list them in the report.
 
 #### 6. Set Done
 
-Only if steps 1-5 succeeded: set the ticket's status to Done, and only when every acceptance criterion is proven (step 2). Otherwise leave the status as it is, report the gap, and wait for Igor.
+Only if steps 1-5 succeeded: set the ticket's status to Done, and only when every acceptance criterion is proven (step 2). Otherwise leave the status as it is, report the gap, and wait.
 
 #### 7. Report once
 
@@ -181,6 +182,6 @@ Verdict first, in short lines, following `~/.claude/memory/talking-to-igor.md`:
 - follow-ups created or proposed;
 - memory and handoff updated;
 - cleaned up: worktree, branch, codex pane (or why a pane stayed open);
-- other leftovers for Igor to close, such as merged worktrees from other tickets;
+- other leftovers to close, such as merged worktrees from other tickets;
 - the recommended next ticket, in one line with its reason;
 - the prompt for after compaction: `/igr:ticket start <next key>`, plus "say go" if more is needed.
