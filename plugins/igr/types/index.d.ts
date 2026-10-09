@@ -15,6 +15,6 @@ export type TicketLoopState = {
 
 declare module 'claude-code' {
   interface PluginState {
-    igr: { ticketBandRaw: string | null; ticketBandHidden: boolean }
+    igr: { ticketBandRaw: string | null }
   }
 }
