@@ -1,0 +1,48 @@
+{
+  "rules": [{"type": "required_status_checks", "parameters": {"required_status_checks": [
+    {"context": "CI", "integration_id": 1}, {"context": "Review", "integration_id": 2}
+  ]}}],
+  "data": {"repository": {"pullRequest": {
+    "id": "PR_fixture_2", "number": 2, "url": "https://example.invalid/pr/2",
+    "state": "OPEN", "headRefOid": "2222222222222222222222222222222222222222",
+    "headRefName": "owner/team-2", "baseRefName": "main", "mergeStateStatus": "CLEAN",
+    "reviewDecision": null, "mergeCommit": null, "mergeQueueEntry": null,
+    "baseRef": {"branchProtectionRule": null},
+    "commits": {"nodes": [{"commit": {"oid": "2222222222222222222222222222222222222222",
+      "statusCheckRollup": {"state": "SUCCESS", "contexts": {
+        "nodes": [
+          {"__typename": "CheckRun", "name": "CI", "status": "COMPLETED", "conclusion": "FAILURE",
+           "isRequired": true, "databaseId": 11,
+           "detailsUrl": "https://example.invalid/job/11",
+           "checkSuite": {"app": {"databaseId": 1}, "workflowRun": {"databaseId": 1, "workflow": {"id": "workflow-ci"}}}},
+          {"__typename": "CheckRun", "name": "CI", "status": "COMPLETED", "conclusion": "FAILURE",
+           "isRequired": true, "databaseId": 12,
+           "detailsUrl": "https://example.invalid/job/12",
+           "checkSuite": {"app": {"databaseId": 1}, "workflowRun": {"databaseId": 2, "workflow": {"id": "workflow-ci"}}}},
+          {"__typename": "CheckRun", "name": "CI", "status": "COMPLETED", "conclusion": "SUCCESS",
+           "isRequired": true, "databaseId": 13,
+           "detailsUrl": "https://example.invalid/job/13",
+           "checkSuite": {"app": {"databaseId": 1}, "workflowRun": {"databaseId": 3, "workflow": {"id": "workflow-ci"}}}},
+          {"__typename": "CheckRun", "name": "CI", "status": "COMPLETED", "conclusion": "FAILURE",
+           "isRequired": false, "databaseId": 14,
+           "detailsUrl": "https://example.invalid/job/14",
+           "checkSuite": {"app": {"databaseId": 3}, "workflowRun": {"databaseId": 4, "workflow": {"id": "workflow-ci"}}}},
+          {"__typename": "CheckRun", "name": "Review", "status": "COMPLETED", "conclusion": "SUCCESS",
+           "isRequired": true, "databaseId": 15,
+           "detailsUrl": "https://example.invalid/review/15",
+           "checkSuite": {"app": {"databaseId": 2}, "workflowRun": null}}
+        ], "pageInfo": {"hasNextPage": false, "endCursor": "check-15"}
+      }}}}]},
+    "reviewThreads": {"nodes": [
+      {"id": "THREAD_fixture_1", "isResolved": false, "path": "sample/module.py", "line": 7, "originalLine": 7,
+       "comments": {"totalCount": 1, "nodes": [{"id": "COMMENT_fixture_1", "url": "https://example.invalid/comment/1",
+         "body": "Synthetic first review question.", "author": {"login": "fixture-bot"}}]},
+       "latest": {"nodes": [{"id": "COMMENT_fixture_1", "url": "https://example.invalid/comment/1",
+         "body": "Synthetic first review question.", "author": {"login": "fixture-bot"}}]}},
+      {"id": "THREAD_fixture_2", "isResolved": false, "path": "sample/config.py", "line": 8, "originalLine": 8,
+       "comments": {"totalCount": 1, "nodes": [{"id": "COMMENT_fixture_2", "url": "https://example.invalid/comment/2",
+         "body": "Synthetic second review question.", "author": {"login": "fixture-bot"}}]},
+       "latest": {"nodes": [{"id": "COMMENT_fixture_2", "url": "https://example.invalid/comment/2",
+         "body": "Synthetic second review question.", "author": {"login": "fixture-bot"}}]}}
+    ], "pageInfo": {"hasNextPage": false, "endCursor": "thread-2"}}
+  }}}}

@@ -1,0 +1,20 @@
+{
+  "rules": [],
+  "data": {"repository": {"pullRequest": {
+    "id": "PR_fixture_1", "number": 1, "url": "https://example.invalid/pr/1",
+    "state": "MERGED", "headRefOid": "1111111111111111111111111111111111111111",
+    "headRefName": "owner/team-1", "baseRefName": "main",
+    "mergeStateStatus": "UNKNOWN", "reviewDecision": "APPROVED",
+    "mergeCommit": {"oid": "4444444444444444444444444444444444444444"}, "mergeQueueEntry": null,
+    "baseRef": {"branchProtectionRule": {"requiredStatusCheckContexts": ["CI"],
+      "requiredStatusChecks": [{"context": "CI", "app": {"databaseId": 1}}]}},
+    "commits": {"nodes": [{"commit": {"oid": "1111111111111111111111111111111111111111",
+      "statusCheckRollup": {"state": "SUCCESS", "contexts": {
+        "nodes": [{"__typename": "CheckRun", "name": "CI", "status": "COMPLETED",
+          "conclusion": "SUCCESS", "isRequired": true, "databaseId": 10,
+          "startedAt": "2026-01-01T00:00:00Z", "detailsUrl": "https://example.invalid/job/10",
+          "checkSuite": {"app": {"databaseId": 1}, "workflowRun": {"databaseId": 1, "workflow": {"id": "workflow-ci"}}}}],
+        "pageInfo": {"hasNextPage": false, "endCursor": "check-10"}
+      }}}}]},
+    "reviewThreads": {"nodes": [], "pageInfo": {"hasNextPage": false, "endCursor": null}}
+  }}}}

@@ -1,0 +1,693 @@
+#!/usr/bin/env python3
+"""Ticket plumbing. Global --cwd/--repo/--json precede the subcommand.
+
+Exit: 0 ready, 1 failed/stopped, 2 usage, 3 prerequisite/API error, 8 pending,
+124 timeout. State's verdict is required checks (merged succeeds); threads' verdict
+is unresolved count. Watch timeouts/intervals are seconds. No shell command strings.
+Only reply, enqueue, close apply and step mutate anything.
+"""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Iterator
+from urllib.parse import quote
+
+JSON = dict[str, Any]
+GH = ["env", "-u", "GITHUB_TOKEN", "-u", "GH_TOKEN", "-u", "GH_ENTERPRISE_TOKEN", "gh"]
+GOOD = {"SUCCESS", "NEUTRAL", "SKIPPED"}
+BAD = {"FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE"}
+LINES = {"implement", "reviews", "checks"}
+STATUSES = {"running", "fixing", "done", "todo", "fail"}
+
+
+class TkError(Exception):
+    def __init__(self, message: str, code: int = 3, source_code: str | None = None):
+        super().__init__(message)
+        self.code = code
+        self.source_code = source_code
+
+
+def brief(text: str, limit: int = 300) -> str:
+    clean = " ".join(re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text).split())
+    return clean[:limit] + ("…" if len(clean) > limit else "")
+
+
+def run(argv: list[str], cwd: Path | None = None, data: str | None = None,
+        timeout: float = 45) -> str:
+    try:
+        p = subprocess.run(argv, cwd=cwd, input=data, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise TkError(f"{argv[0]}: {brief(str(e))}") from e
+    if p.returncode:
+        detail = p.stderr or p.stdout or 'exit ' + str(p.returncode)
+        source_code = None
+        try:
+            error = json.loads(detail).get("error")
+            if isinstance(error, dict):
+                source_code = error.get("code")
+                detail = f"{error.get('code', 'error')}: {error.get('message', '')}"
+        except (ValueError, AttributeError):
+            pass
+        label = "gh" if argv[:len(GH)] == GH else argv[0]
+        raise TkError(f"{label}: {brief(detail)}", source_code=source_code)
+    return p.stdout.strip()
+
+
+def decode(text: str) -> Any:
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        raise TkError("invalid JSON from prerequisite") from e
+
+
+def gh(args: list[str], cwd: Path, data: str | None = None) -> Any:
+    return decode(run(GH + args, cwd, data))
+
+
+def graphql(query: str, variables: JSON, cwd: Path) -> JSON:
+    result = gh(["api", "graphql", "--input", "-"], cwd,
+                json.dumps({"query": query, "variables": variables}))
+    if result.get("errors"):
+        raise TkError("GraphQL: " + brief("; ".join(e["message"] for e in result["errors"])))
+    if not result.get("data"):
+        raise TkError("GraphQL returned no data")
+    return result["data"]
+
+
+def herdr(args: list[str], timeout: float = 45) -> JSON:
+    if os.environ.get("HERDR_ENV") != "1":
+        raise TkError("not running inside Herdr")
+    result = decode(run(["herdr"] + args, timeout=timeout))
+    return result["result"]
+
+
+@dataclass
+class Context:
+    cwd: Path
+    repo: str | None = None
+
+    def git(self, *args: str, cwd: Path | None = None) -> str:
+        return run(["git", *args], cwd or self.cwd)
+
+    def slug(self) -> str:
+        if not self.repo:
+            remote = self.git("remote", "get-url", "origin")
+            m = re.search(r"[/:]([^/:]+)/([^/]+?)(?:\.git)?$", remote)
+            if not m:
+                raise TkError("cannot derive GitHub repo; use --repo OWNER/REPO")
+            self.repo = m[1] + "/" + m[2]
+        if not re.fullmatch(r"[\w.-]+/[\w.-]+", self.repo):
+            raise TkError("--repo must be OWNER/REPO", 2)
+        return self.repo
+
+    def pr_number(self, value: str | None) -> int:
+        if value:
+            if not value.isdecimal() or int(value) < 1:
+                raise TkError("PR must be a positive number", 2)
+            return int(value)
+        branch = self.git("branch", "--show-current")
+        if not branch:
+            raise TkError("detached HEAD; specify PR")
+        pr = gh(["pr", "view", branch, "--repo", self.slug(), "--json", "number"], self.cwd)
+        return pr["number"]
+
+
+COMMENT = "id url body author{login}"
+THREAD = ("id isResolved path line originalLine comments(first:1){totalCount nodes{" + COMMENT +
+          "}} latest:comments(last:1){nodes{" + COMMENT + "}}")
+CHECK = ("__typename ... on CheckRun{name status conclusion detailsUrl databaseId "
+         "checkSuite{app{databaseId} workflowRun{databaseId workflow{id}}} isRequired(pullRequestNumber:$pr)} "
+         "... on StatusContext{context state targetUrl createdAt isRequired(pullRequestNumber:$pr)}")
+PAGE = "pageInfo{hasNextPage endCursor}"
+def pr_query(thread_details: bool = False) -> str:
+    return ("query($o:String!,$r:String!,$pr:Int!,$cc:String,$tc:String){repository(owner:$o,name:$r){"
+         "pullRequest(number:$pr){id number url state headRefOid headRefName baseRefName "
+         "mergeStateStatus reviewDecision mergeCommit{oid} mergeQueueEntry{state position} "
+         "baseRef{branchProtectionRule{requiredStatusCheckContexts requiredStatusChecks{context}}} "
+         "commits(last:1){nodes{commit{oid statusCheckRollup{state contexts(first:100,after:$cc){"
+         "nodes{" + CHECK + "}" + PAGE + "}}}}} reviewThreads(first:100,after:$tc){nodes{" +
+         (THREAD if thread_details else "isResolved") + "}" + PAGE + "}}}}")
+
+
+def pr_data(ctx: Context, number: int, thread_details: bool = False) -> JSON:
+    owner, repo = ctx.slug().split("/")
+    variables: JSON = {"o": owner, "r": repo, "pr": number}
+    first: JSON | None = None
+    checks: list[JSON] = []
+    threads: list[JSON] = []
+    check_more = thread_more = True
+    while check_more or thread_more:
+        data = graphql(pr_query(thread_details), variables, ctx.cwd)
+        p = (data.get("repository") or {}).get("pullRequest")
+        if not p:
+            raise TkError(f"PR #{number} not found")
+        if first and p["headRefOid"] != first["headRefOid"]:
+            raise TkError("PR head changed during pagination; retry")
+        if first is None:
+            first = p
+        commits = p["commits"]["nodes"]
+        rollup = commits[0]["commit"]["statusCheckRollup"] if commits else None
+        if check_more:
+            conn = rollup["contexts"] if rollup else {"nodes": [], "pageInfo": {"hasNextPage": False}}
+            checks.extend(conn["nodes"])
+            check_more = conn["pageInfo"]["hasNextPage"]
+            variables["cc"] = conn["pageInfo"].get("endCursor")
+        if thread_more:
+            conn = p["reviewThreads"]
+            threads.extend(conn["nodes"])
+            thread_more = conn["pageInfo"]["hasNextPage"]
+            variables["tc"] = conn["pageInfo"].get("endCursor")
+    assert first is not None
+    first["checks"] = latest_checks(checks)
+    first["threads"] = threads
+    first["rules"] = gh(["api", f"repos/{ctx.slug()}/rules/branches/{quote(first['baseRefName'], safe='')}"], ctx.cwd)
+    return first
+
+
+def check_name(check: JSON) -> str:
+    return check.get("name") or check.get("context") or "?"
+
+
+def check_app(check: JSON) -> int | None:
+    return (((check.get("checkSuite") or {}).get("app") or {}).get("databaseId"))
+
+
+def latest_checks(checks: list[JSON]) -> list[JSON]:
+    latest: dict[tuple[Any, ...], JSON] = {}
+    rank = lambda c: c.get("databaseId") or c.get("createdAt") or ""
+    for c in checks:
+        workflow = (((c.get("checkSuite") or {}).get("workflowRun") or {}).get("workflow") or {}).get("id")
+        key = (c.get("__typename"), check_name(c), check_app(c), workflow)
+        # Run IDs order creation, including queued runs.
+        if key not in latest or rank(c) > rank(latest[key]):
+            latest[key] = c
+    return list(latest.values())
+
+
+def requirements(p: JSON) -> set[str]:
+    protection = (p.get("baseRef") or {}).get("branchProtectionRule") or {}
+    legacy = protection.get("requiredStatusChecks") or [
+        {"context": name} for name in protection.get("requiredStatusCheckContexts", [])]
+    expected = {r["context"] for r in legacy}
+    for rule in p.get("rules", []):
+        if rule["type"] == "required_status_checks":
+            expected.update(r["context"] for r in rule["parameters"]["required_status_checks"])
+    return expected
+
+
+def required_checks(p: JSON) -> list[JSON]:
+    return [c for c in p["checks"] if c.get("isRequired")]
+
+
+def check_verdict(check: JSON) -> int:
+    if check.get("__typename") == "CheckRun" and check["status"] != "COMPLETED":
+        return 8
+    state = check.get("conclusion") or check.get("state")
+    if state in GOOD:
+        return 0
+    if state in BAD:
+        return 1
+    if state in {None, "PENDING", "EXPECTED"}:
+        return 8
+    raise TkError(f"unknown check state: {state}")
+
+
+def summary(p: JSON) -> JSON:
+    required = required_checks(p)
+    missing = requirements(p) - {check_name(c) for c in required}
+    failed = sorted({check_name(c) for c in required if check_verdict(c) == 1})
+    pending = sum(check_verdict(c) == 8 for c in required) + len(missing)
+    known = bool(p["checks"])
+    queue = p.get("mergeQueueEntry")
+    return {"pr": p["number"], "state": p["state"], "head": p["headRefOid"],
+            "merge": p["mergeStateStatus"], "review": p.get("reviewDecision"), "queue": queue,
+            "required_failures": failed, "required_pending": pending, "checks_known": known,
+            "unresolved": sum(not t["isResolved"] for t in p["threads"]),
+            "merge_commit": (p.get("mergeCommit") or {}).get("oid")}
+
+
+def state_line(s: JSON) -> str:
+    queue = s["queue"] or {}
+    names = [brief(n, 60).replace(" ", "_") for n in s["required_failures"][:5]]
+    if len(s["required_failures"]) > 5:
+        names.append(f"+{len(s['required_failures']) - 5}")
+    return (f"{s['state']} head={s['head'][:8]} merge={s['merge']} review={s['review'] or '-'} "
+            f"queue={queue.get('state', '-')}#{queue.get('position', '-')} "
+            f"req_fail={','.join(names) or '-'} req_pending={s['required_pending']} "
+            f"checks={'known' if s['checks_known'] else 'unknown'} unresolved={s['unresolved']} "
+            f"mergeCommit={(s['merge_commit'] or '-')[:8]}")
+
+
+def verdict(s: JSON, target: str = "checks", was_queued: bool = False) -> int:
+    if s["state"] == "MERGED":
+        return 8 if target == "threads" and s["unresolved"] else 0
+    if s["state"] == "CLOSED" or s["required_failures"]:
+        return 1
+    if (s["queue"] or {}).get("state") == "UNMERGEABLE":
+        return 1
+    if was_queued and not s["queue"]:
+        return 1
+    if target == "threads":
+        return 0 if s["unresolved"] == 0 else 8
+    if target == "queue":
+        return 0 if s["queue"] else 8
+    if target == "merged":
+        return 8
+    return 0 if s["checks_known"] and not s["required_pending"] else 8
+
+
+def output(value: Any, line: str, as_json: bool) -> None:
+    print(json.dumps(value, separators=(",", ":")) if as_json else line, flush=True)
+
+
+def say(a: argparse.Namespace, word: str, code: int, detail: str = "", **fields: Any) -> int:
+    output({"result": word, **fields}, word + (" " + detail if detail else ""), a.json)
+    return code
+
+
+def watch(ctx: Context, a: argparse.Namespace) -> int:
+    number = ctx.pr_number(a.pr)
+    deadline = time.monotonic() + a.timeout
+    previous = None
+    queued = False
+    while True:
+        s = summary(pr_data(ctx, number))
+        line = state_line(s)
+        if line != previous:
+            output(s, line, a.json)
+            previous = line
+        code = verdict(s, a.until, queued)
+        if code != 8:
+            return code
+        queued |= bool(s["queue"])
+        left = deadline - time.monotonic()
+        if left <= 0:
+            return say(a, "TIMEOUT", 124)
+        time.sleep(min(a.interval, left))
+
+
+def thread_lines(threads: list[JSON], limit: int) -> list[str]:
+    unresolved = [t for t in threads if not t["isResolved"]]
+    lines = []
+    for t in unresolved[:limit]:
+        comments = t["comments"]["nodes"]
+        latest = t["latest"]["nodes"]
+        lines.append(f"{t['id']} {brief(t['path'], 160)}:{t.get('line') or t.get('originalLine') or '?'}")
+        for c in comments + [c for c in latest if not comments or c["id"] != comments[0]["id"]]:
+            lines.append(f"  {(c.get('author') or {}).get('login', '?')}: {brief(c['body'])}")
+        omitted = t["comments"]["totalCount"] - len({c["id"] for c in comments + latest})
+        if omitted > 0:
+            lines.append(f"  … {omitted} intervening comments")
+    if len(unresolved) > limit:
+        lines.append(f"… {len(unresolved) - limit} more threads (use --json)")
+    return lines or ["unresolved=0"]
+
+
+def reply(ctx: Context, a: argparse.Namespace) -> int:
+    body = file_body(a.body)
+    data = graphql("mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply("
+                   "input:{pullRequestReviewThreadId:$t,body:$b}){comment{url}}}",
+                   {"t": a.thread, "b": body}, ctx.cwd)
+    url = data["addPullRequestReviewThreadReply"]["comment"]["url"]
+    # Print the receipt first: a failed resolve must never hide a successful reply.
+    output({"url": url}, url, a.json)
+    if a.resolve:
+        resolved = graphql("mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}",
+                           {"t": a.thread}, ctx.cwd)
+        if not resolved["resolveReviewThread"]["thread"]["isResolved"]:
+            raise TkError("reply posted; thread resolution not confirmed", 1)
+    return 0
+
+
+def enqueue(ctx: Context, a: argparse.Namespace) -> int:
+    number = ctx.pr_number(a.pr)
+    p = pr_data(ctx, number)
+    if p["state"] != "OPEN":
+        raise TkError("enqueue requires an open PR", 1)
+    if not p["mergeQueueEntry"]:
+        graphql("mutation($p:ID!,$h:GitObjectID!){enqueuePullRequest(input:{pullRequestId:$p,"
+                "expectedHeadOid:$h}){mergeQueueEntry{state position}}}",
+                {"p": p["id"], "h": p["headRefOid"]}, ctx.cwd)
+    s = summary(pr_data(ctx, number))
+    output(s, state_line(s), a.json)
+    if s["state"] == "MERGED":
+        return 0
+    return 0 if s["queue"] and s["queue"]["state"] != "UNMERGEABLE" else 1
+
+
+def error_lines(log: str) -> list[str]:
+    log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
+    pattern = r"not ok|# fail [1-9]|error[: ]|err!|exit (?:code|status)|\bfail(?:ed|ure)?\b|##\[error\]"
+    return [line[:500] for line in log.splitlines() if re.search(pattern, line, re.I)][:40]
+
+
+def failures(ctx: Context, a: argparse.Namespace) -> int:
+    value = a.pr
+    if value and not value.isdecimal():
+        if not re.fullmatch(r"[0-9a-fA-F]{7,40}", value):
+            raise TkError("expected PR number or commit SHA", 2)
+        owner, repo = ctx.slug().split("/")
+        data = graphql("query($o:String!,$r:String!,$s:String!){repository(owner:$o,name:$r){"
+                       "object(expression:$s){... on Commit{oid associatedPullRequests(first:100){"
+                       "nodes{number headRefOid}" + PAGE + "}}}}}",
+                       {"o": owner, "r": repo, "s": value}, ctx.cwd)
+        obj = (data.get("repository") or {}).get("object") or {}
+        conn = obj.get("associatedPullRequests") or {}
+        prs = [p for p in conn.get("nodes", []) if p["headRefOid"] == obj.get("oid")]
+        if (conn.get("pageInfo") or {}).get("hasNextPage") or len(prs) != 1:
+            raise TkError("SHA must identify exactly one PR head; specify PR")
+        number = prs[0]["number"]
+    else:
+        number = ctx.pr_number(value)
+    p = pr_data(ctx, number)
+    failed = [c for c in required_checks(p) if check_verdict(c) == 1]
+    records = []
+    runs: dict[int, JSON] = {}
+    for c in failed[:a.limit]:
+        item: JSON = {"name": check_name(c), "url": c.get("detailsUrl") or c.get("targetUrl"), "lines": []}
+        workflow = ((c.get("checkSuite") or {}).get("workflowRun") or {}).get("databaseId")
+        job = c.get("databaseId")
+        if not workflow or not job:
+            item["note"] = "no Actions job log"
+        else:
+            if workflow not in runs:
+                runs[workflow] = gh(["api", f"repos/{ctx.slug()}/actions/runs/{workflow}"], ctx.cwd)
+            if runs[workflow]["status"] != "completed":
+                item["note"] = "run in progress; logs not fetched"
+            else:
+                try:
+                    log = run(GH + ["api", "--allow-escape-sequences",
+                                    f"repos/{ctx.slug()}/actions/jobs/{job}/logs"], ctx.cwd)
+                    item["lines"] = error_lines(log)
+                    if not item["lines"]:
+                        item["note"] = "no matching error lines"
+                except TkError as e:
+                    item["note"] = str(e)
+        records.append(item)
+    lines = []
+    for item in records:
+        lines.append(f"FAIL {brief(item['name'], 100)} {item['url'] or '-'}")
+        lines.extend("  " + brief(line, 500) for line in item["lines"])
+        if item.get("note"):
+            lines.append("  " + item["note"])
+    if len(failed) > a.limit:
+        lines.append(f"… {len(failed) - a.limit} more failures (increase --limit)")
+    output({"jobs": records, "omitted": max(0, len(failed) - a.limit)},
+           "\n".join(lines) or "req_fail=0", a.json)
+    return 1 if failed else verdict(summary(p))
+
+
+def file_body(path: str) -> str:
+    body = Path(path).read_text()
+    if not body.strip():
+        raise TkError(f"empty file: {path}", 2)
+    return body
+
+
+def temp_root() -> Path:
+    return Path(os.environ.get("TMPDIR") or "/tmp") / "igr-ticket"
+
+
+def slot(path: Path) -> tuple[str, str] | None:
+    parts = path.resolve().parts
+    for i, part in enumerate(parts):
+        if part == ".worktrees" and i + 2 < len(parts):
+            return parts[i + 1], parts[i + 2]
+    return None
+
+
+@contextmanager
+def locked(path: Path) -> Iterator[None]:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
+
+
+def atomic_json(path: Path, value: Any) -> None:
+    fd, name = tempfile.mkstemp(dir=path.parent, prefix=".tk-")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(value, f, indent=2)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def agents() -> list[JSON]:
+    return herdr(["agent", "list"])["agents"]
+
+
+def agent_cwd(agent: JSON) -> Path:
+    return Path(agent.get("foreground_cwd") or agent.get("cwd") or "/").resolve()
+
+
+def in_tree(pane: JSON, root: Path) -> bool:
+    return agent_cwd(pane).is_relative_to(root)
+
+
+def ticket_key(value: str) -> str:
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*-[0-9]+", value):
+        raise TkError("ticket key must be TEAM-123 (any case)", 2)
+    return value.upper()
+
+
+def prep(ctx: Context, a: argparse.Namespace) -> JSON:
+    key = ticket_key(a.key)
+    common = Path(ctx.git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+    root = common.parent
+    base = ctx.git("symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+    owner = a.owner
+    if not owner:
+        location = slot(ctx.cwd)
+        owner = location[0] if location else ctx.git("config", "user.name").split()[0].lower()
+    if not re.fullmatch(r"[\w.-]+", owner) or owner in {".", ".."}:
+        raise TkError("invalid owner; use --owner", 2)
+    path = root / ".worktrees" / owner / key.lower()
+    all_trees = [dict(line.split(" ", 1) if " " in line else (line, True) for line in block.splitlines())
+                 for block in ctx.git("worktree", "list", "--porcelain").split("\n\n")]
+    matching = [t for t in all_trees if Path(t["worktree"]).name.lower() == key.lower()]
+    tree = next((t for t in matching if Path(t["worktree"]).resolve() == path.resolve()), None)
+    local = root / "igr" / "tickets" / key if (root / "igr").is_dir() else temp_root() / key.lower()
+    panes = []
+    if os.environ.get("HERDR_ENV") == "1":
+        panes = [p for p in agents() if p.get("name") == key.lower() or
+                 any(in_tree(p, Path(t["worktree"]).resolve()) for t in matching)]
+    return {"key": key, "repo_root": str(root), "default_branch": base.removeprefix("origin/"),
+            "worktree": str(path), "exists": path.exists(),
+            "branch": (tree or {}).get("branch", "").removeprefix("refs/heads/") or None,
+            "local": str(local), "leftover_worktrees": matching,
+            "panes": [{k: p.get(k) for k in ("name", "pane_id", "agent", "agent_status")} for p in panes]}
+
+
+def close_proof(ctx: Context, info: JSON) -> JSON:
+    path = Path(info["worktree"]).resolve()
+    branch = info["branch"]
+    if not path.is_dir() or not branch:
+        raise TkError("registered ticket worktree/branch missing", 1)
+    if ctx.git("status", "--porcelain", cwd=path):
+        raise TkError("worktree is dirty (including untracked files)", 1)
+    head = ctx.git("rev-parse", "HEAD", cwd=path)
+    fields = "number,state,headRefOid,mergeCommit,baseRefName"
+    prs = gh(["pr", "list", "--repo", ctx.slug(), "--head", branch, "--state", "all",
+                     "--limit", "100", "--json", fields], ctx.cwd)
+    if len(prs) >= 100 or any(p["state"] == "OPEN" for p in prs):
+        raise TkError("branch has open PRs or a truncated PR list", 1)
+    merged = next((p for p in prs if p["state"] == "MERGED" and p["headRefOid"] == head), None)
+    if merged is None:
+        raise TkError("local HEAD differs from merged PR head; unpushed work", 1)
+    base = info["default_branch"]
+    # Read-only check: do not fetch/update refs. Require local origin ref to match live origin.
+    remote = ctx.git("ls-remote", "origin", f"refs/heads/{base}").split()
+    if not remote:
+        raise TkError("origin default branch missing")
+    local = ctx.git("rev-parse", f"refs/remotes/origin/{base}")
+    if local != remote[0]:
+        raise TkError("origin default ref stale; fetch origin, then retry", 1)
+    commit = (merged.get("mergeCommit") or {}).get("oid")
+    if merged["baseRefName"] != base or not commit:
+        raise TkError("PR merge is not on the origin default branch", 1)
+    try:
+        ctx.git("merge-base", "--is-ancestor", commit, local)
+    except TkError as e:
+        raise TkError("merge commit not reachable on origin default branch", 1) from e
+    inside = [p for p in herdr(["pane", "list"])["panes"] if in_tree(p, path)]
+    panes = [p for p in inside if p.get("agent") == "codex"]
+    if len(panes) > 1 or any(p["agent_status"] not in {"idle", "done"} for p in panes):
+        raise TkError("Codex pane is ambiguous or not idle/done", 1)
+    if any(p not in panes for p in inside):
+        raise TkError("other panes still use this worktree", 1)
+    return {"head": head, "merge_commit": commit,
+            "pane": panes[0]["pane_id"] if panes else None, "branch": branch, "worktree": str(path)}
+
+
+def close(ctx: Context, a: argparse.Namespace) -> int:
+    info = prep(ctx, a)
+    proof = close_proof(ctx, info)
+    if a.mode == "apply":
+        path = Path(info["worktree"]).resolve()
+        if Path.cwd().resolve().is_relative_to(path) or ctx.cwd.is_relative_to(path):
+            raise TkError("refusing caller's own worktree; run from canonical checkout", 1)
+        if proof["pane"] and proof["pane"] == os.environ.get("HERDR_PANE_ID"):
+            raise TkError("refusing caller's own pane", 1)
+        if proof["pane"]:
+            herdr(["pane", "close", proof["pane"]])
+        ctx.git("worktree", "remove", proof["worktree"], cwd=Path(info["repo_root"]))
+        # Squash merges aren't ancestors of main: -D only after exact-head/merge proof.
+        ctx.git("branch", "-D", "--", proof["branch"], cwd=Path(info["repo_root"]))
+    output(proof, f"{'CLOSED' if a.mode == 'apply' else 'PASS'} {info['key']} head={proof['head'][:8]}", a.json)
+    return 0
+
+
+def step(ctx: Context, a: argparse.Namespace) -> int:
+    key = ticket_key(a.key)
+    band = temp_root() / key.lower() / "state.json"
+    estimate = Path(__file__).resolve().parents[2] / "agent-estimate" / "estimate.py"
+    with locked(band.with_suffix(".lock")):
+        state = decode(band.read_text()) if band.exists() else {"ticket": key}
+        if not isinstance(state, dict) or state.get("ticket", key).upper() != key:
+            raise TkError("band state belongs to another ticket")
+        metadata = state.setdefault("tk", {})
+        ids = metadata.setdefault("estimates", {})
+        if a.dispatch:
+            if not (a.agent and a.rounds and a.task):
+                raise TkError("--dispatch needs --agent, --rounds, --task", 2)
+            if a.line in ids:
+                raise TkError("estimate already open for this line", 1)
+            if not re.fullmatch(r"\d+(?:\.\d+)?-\d+(?:\.\d+)?", a.rounds):
+                raise TkError("--rounds must be low-high", 2)
+            low, high = map(float, a.rounds.split("-"))
+            if not 0 < low <= high < float("inf"):
+                raise TkError("--rounds needs 0 < low <= high", 2)
+        if a.report and a.line not in ids:
+            raise TkError("no open estimate for this line", 1)
+        if a.pr:
+            pr = gh(["pr", "view", str(a.pr), "--repo", ctx.slug(), "--json", "number,url"], ctx.cwd)
+            state.update(pr=pr["number"], prUrl=pr["url"])
+        state[a.line] = {**state.get(a.line, {}), "status": a.status}
+        if a.note is not None:
+            state[a.line]["note"] = a.note
+        if a.dispatch or a.report:
+            log = Path(os.environ.get("AGENT_ESTIMATES") or Path.home() / ".claude" / "agent-estimates.tsv")
+            log.parent.mkdir(parents=True, exist_ok=True)
+            with locked(log.with_suffix(".lock")):
+                if a.dispatch:
+                    result = run([sys.executable, str(estimate), "start", a.agent, a.rounds, "--task", a.task,
+                                  "--ticket", key, "--model", a.model])
+                    match = re.search(r"id=(\S+)", result)
+                    if not match:
+                        raise TkError("estimate start returned no id")
+                    ids[a.line] = match[1]
+                else:
+                    run([sys.executable, str(estimate), "done", ids[a.line], "--wait", str(a.wait_minutes),
+                         "--note", a.note or ""])
+                    del ids[a.line]
+        atomic_json(band, state)
+    output(state, f"{key} {a.line}={a.status}" + (f" estimate={ids[a.line]}" if a.dispatch else ""), a.json)
+    return 0
+
+
+def positive(value: str) -> float:
+    number = float(value)
+    if not 0 < number < float("inf"):
+        raise argparse.ArgumentTypeError("must be positive and finite")
+    return number
+
+
+def state(ctx: Context, a: argparse.Namespace) -> int:
+    s = summary(pr_data(ctx, ctx.pr_number(a.pr)))
+    output(s, state_line(s), a.json)
+    return verdict(s)
+
+
+def threads(ctx: Context, a: argparse.Namespace) -> int:
+    p = pr_data(ctx, ctx.pr_number(a.pr), thread_details=True)
+    unresolved = [t for t in p["threads"] if not t["isResolved"]]
+    output(unresolved, "\n".join(thread_lines(p["threads"], a.limit)), a.json)
+    return 8 if unresolved else 0
+
+
+def prep_command(ctx: Context, a: argparse.Namespace) -> int:
+    print(json.dumps(prep(ctx, a), separators=(",", ":")), flush=True)
+    return 0
+
+
+def parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--cwd", type=Path, default=Path.cwd(), help="local git/Herdr context")
+    p.add_argument("--repo", help="GitHub OWNER/REPO; default: origin")
+    p.add_argument("--json", action="store_true", help="structured output")
+    sub = p.add_subparsers(dest="command", required=True)
+    prs = sub.add_parser("pr").add_subparsers(dest="action", required=True)
+    for name in ("state", "watch", "fail", "threads", "enqueue"):
+        cmd = prs.add_parser(name)
+        cmd.set_defaults(func={"state": state, "watch": watch, "fail": failures,
+                               "threads": threads, "enqueue": enqueue}[name])
+        cmd.add_argument("pr", nargs="?")
+        if name == "watch":
+            cmd.add_argument("--until", required=True, choices=["checks", "threads", "merged", "queue"])
+            cmd.add_argument("--timeout", type=positive, default=1800)
+            cmd.add_argument("--interval", type=positive, default=30)
+        if name in {"threads", "fail"}:
+            cmd.add_argument("--limit", type=int, choices=range(1, 101), default=10)
+    cmd = prs.add_parser("reply")
+    cmd.set_defaults(func=reply)
+    cmd.add_argument("thread")
+    cmd.add_argument("body")
+    cmd.add_argument("--resolve", action="store_true")
+    for name in ("prep", "close", "step"):
+        cmd = sub.add_parser(name)
+        cmd.set_defaults(func={"prep": prep_command, "close": close, "step": step}[name])
+        cmd.add_argument("key")
+        if name != "step":
+            cmd.add_argument("--owner", help="worktree owner; default: cwd owner or git user first name")
+        if name == "prep":
+            cmd.set_defaults(json=True)
+        if name == "close":
+            cmd.add_argument("mode", choices=["check", "apply"])
+        if name == "step":
+            cmd.add_argument("line", choices=sorted(LINES))
+            cmd.add_argument("status", choices=sorted(STATUSES))
+            cmd.add_argument("--pr", type=int)
+            group = cmd.add_mutually_exclusive_group()
+            group.add_argument("--dispatch", action="store_true")
+            group.add_argument("--report", action="store_true")
+            cmd.add_argument("--agent", choices=["claude", "codex"])
+            cmd.add_argument("--rounds")
+            cmd.add_argument("--task")
+            cmd.add_argument("--model", default="")
+            cmd.add_argument("--wait-minutes", type=float, default=0)
+            cmd.add_argument("--note")
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    a = parser().parse_args(argv)
+    ctx = Context(a.cwd.resolve(), a.repo)
+    try:
+        return a.func(ctx, a)
+    except Exception as e:
+        code = e.code if isinstance(e, TkError) else 3
+        output({"result": "ERROR", "message": brief(str(e)), "code": code}, "ERROR " + brief(str(e)), a.json)
+        return code
+    except KeyboardInterrupt:
+        return 130
+
+
+if __name__ == "__main__":
+    sys.exit(main())
