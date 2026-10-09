@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "igr",
   "description": "Angle-driven dev methods: harden idea->spec (census + clean-rewrite), spec->plan (code census + mechanical diffs + judgment angles-till-SOLID + broad pass), implement, review. Plus igr-workflow orchestration, the codex adversarial-review loop, and the Linear ticket loop with its progress band.",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "author": {
     "name": "Igor Rayak"
   },
