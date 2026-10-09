@@ -17,7 +17,7 @@ Nothing in between unless I am blocked or something is irreversible. Reports fol
 
 **Round trips are the cost.** Each brief → wait → re-read cycle costs 15-20 minutes of wall clock. Merge rounds that do not need to be separate; never drop an independent pass or a reviewer to do it.
 
-**The band.** The PR's progress shows in the igr band above the prompt (`hooks/ticket-band.tsx`). It draws `<TMP>/igr-ticket/<worktree folder>/state.json`, for example `igr-ticket/saw-12203` (the worktree guard refuses writes to `<REPO>/igr/`, so this path is fixed whatever `LOCAL` is). I write that file at the first push and rewrite it at every state change in After code, so nobody has to ask where the PR is:
+**The band.** The PR's progress shows in the igr band above the prompt (`hooks/ticket-band.tsx`). It draws `<TMP>/igr-ticket/<worktree folder>/state.json`, for example `igr-ticket/abc-123` (the worktree guard refuses writes to `<REPO>/igr/`, so this path is fixed whatever `LOCAL` is). I write that file at the first push and rewrite it at every state change in After code, so nobody has to ask where the PR is:
 ```json
 { "ticket": "<KEY>", "ticketUrl": "https://linear.app/<workspace>/issue/<KEY>",
   "pr": <number>, "prUrl": "<PR url>",

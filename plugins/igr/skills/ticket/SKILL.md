@@ -1,12 +1,12 @@
 ---
 name: ticket
-description: "Linear ticket lifecycle for any repo, two modes. /igr:ticket start <key> prepares a Linear ticket (reads it and its comments, creates its worktree in <repo>/.worktrees from the repo's default branch or reports on an existing one, enters it, names the herdr pane and tab after the ticket, reads the handoff (when the repo has one) and working memories, lists leftovers, moves it to In Progress, reports readiness and goes straight into the loop's investigation without waiting for a go). /igr:ticket finish closes the ticket this session worked on, a code ticket after its PRs merged or a decide ticket after the decision is recorded (proves nothing is left unmerged or unrecorded, ticks proven criteria, finalizes the living comment and A-to-B, proposes follow-ups, updates memory and the .remember handoff, closes the idle codex pane, removes the worktree and branch, and only then sets Done; gives the next start prompt). Use when asked to start ticket 12203, pick up SAW-12203, work on ticket X, when resuming after compaction, or when told it was merged, wrap up this ticket, save handoff and remember. The key works with or without the SAW- prefix."
+description: "Linear ticket lifecycle for any repo, two modes. /igr:ticket start <key> prepares a Linear ticket (reads it and its comments, creates its worktree in <repo>/.worktrees from the repo's default branch or reports on an existing one, enters it, names the herdr pane and tab after the ticket, reads the handoff (when the repo has one) and working memories, lists leftovers, moves it to In Progress, reports readiness and goes straight into the loop's investigation without waiting for a go). /igr:ticket finish closes the ticket this session worked on, a code ticket after its PRs merged or a decide ticket after the decision is recorded (proves nothing is left unmerged or unrecorded, ticks proven criteria, finalizes the living comment and A-to-B, proposes follow-ups, updates memory and the .remember handoff, closes the idle codex pane, removes the worktree and branch, and only then sets Done; gives the next start prompt). Use when asked to start ticket ABC-123, pick up ticket 123, work on ticket X, when resuming after compaction, or when told it was merged, wrap up this ticket, save handoff and remember. Any Linear key works (TEAM-123, any case); a bare number works when the team prefix is known."
 ---
 
 # Ticket lifecycle
 
 Two modes, from the first argument:
-- `start <key>`, for example `/igr:ticket start 12203` or `/igr:ticket start SAW-12203`. If the first argument is a key with no mode, treat it as `start`.
+- `start <key>`, for example `/igr:ticket start ABC-123` or `/igr:ticket start 123`. If the first argument is a key with no mode, treat it as `start`.
 - `finish`, with no key: the ticket comes from the current session.
 
 If the mode is unclear, ask. Between the two modes, the work follows `references/loop.md` ("Before code", "After code", "Rules for both halves"). Corrections to the loop go in that file.
@@ -34,12 +34,12 @@ Ticket status follows the work: `start` moves the ticket to In Progress; the fir
 
 ### Input
 
-One ticket key. Accept any of `12203`, `SAW-12203`, `saw-12203`, `Saw-12203`. Normalize:
-- `KEY` = `SAW-` plus the digits, for example `SAW-12203`. Use it for Linear and for the local ticket folder.
-- `key` = lowercase, for example `saw-12203`. Use it for the worktree folder and the pane name.
-- `N` = the digits only, for example `12203`. Use it for the herdr tab label.
+One Linear ticket key, `<TEAM>-<digits>` in any case, for example `ABC-123`, `abc-123` or `Abc-123`. A bare number (`123`) is accepted when the team prefix is known: from the current branch or worktree name, or from an earlier ticket in this session. Normalize:
+- `KEY` = the team prefix in upper case, a hyphen, and the digits, for example `ABC-123`. Use it for Linear and for the local ticket folder.
+- `key` = lowercase, for example `abc-123`. Use it for the worktree folder and the pane name.
+- `N` = the digits only, for example `123`. Use it for the herdr tab label.
 
-If no digits are given, ask for the key and stop.
+If no digits are given, or a bare number comes with no known team prefix, ask for the full key and stop.
 
 ### Steps
 
@@ -67,8 +67,8 @@ Derive `REPO`, `BASE`, `SLUG` (see "Which repo"). Use plain `git -C <path>` comm
 Do this **before** entering the worktree: once the session is in a worktree, the worktree guard refuses any command that uses `$HERDR_PANE_ID` or `$HERDR_TAB_ID`, even a plain one.
 
 Check `test "${HERDR_ENV:-}" = 1`. If it fails, skip this step. Two different names, both set here:
-- **Agent name** (what codex replies to): `herdr agent rename "$HERDR_PANE_ID" <key>`, for example `saw-12203`. Herdr agent names must start with a lowercase letter, so a bare `12203` is refused. Codex replies to this name (`herdr agent prompt saw-12203 ...`), and the codex for this ticket is named `codex-<N>` when it is spawned. If another live agent already holds the name, report it instead of renaming.
-- **Tab label** (what shows in the herdr tab bar): `herdr tab rename "$HERDR_TAB_ID" <N>`, for example `12203`. Tabs are labelled with the bare ticket number. The agent rename does not change the tab label.
+- **Agent name** (what codex replies to): `herdr agent rename "$HERDR_PANE_ID" <key>`, for example `abc-123`. Herdr agent names must start with a lowercase letter, so a bare `123` is refused. Codex replies to this name (`herdr agent prompt abc-123 ...`), and the codex for this ticket is named `codex-<N>` when it is spawned. If another live agent already holds the name, report it instead of renaming.
+- **Tab label** (what shows in the herdr tab bar): `herdr tab rename "$HERDR_TAB_ID" <N>`, for example `123`. Tabs are labelled with the bare ticket number. The agent rename does not change the tab label.
 
 If the session is already in a worktree, use literal ids instead: the agent rename returns the pane's `pane_id` and `tab_id` in its JSON, and `herdr agent list` shows them too.
 
@@ -114,7 +114,7 @@ The order matters: prove the work is finished, clean up the worktree, and only t
 ### Which ticket, and what kind
 
 No argument. Work it out from the session, in this order:
-1. The current worktree's branch (`git rev-parse --abbrev-ref HEAD` in the session's worktree). Derive `REPO`, `BASE`, `SLUG` from it (see "Which repo"). Names look like `igor/saw-12203-...`, which gives `SAW-12203`.
+1. The current worktree's branch (`git rev-parse --abbrev-ref HEAD` in the session's worktree). Derive `REPO`, `BASE`, `SLUG` from it (see "Which repo"). Names look like `<owner>/abc-123-...`, which gives `ABC-123`.
 2. The ticket this conversation has been working on.
 
 If the two disagree, or neither gives an answer, ask which ticket and stop.
