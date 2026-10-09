@@ -152,7 +152,8 @@ compare the two, and decide together what to keep, do and change. *"If they are 
 one line and do not manufacture a difference."* Handing it my design to attack is a review
 relationship, not a partnership, and it anchors its answer on mine. Codex reads Linear comments, so
 nothing of my solution goes on the ticket before its pass. The same applies to new work in the
-middle of a PR and to review findings.
+middle of a PR, to review findings, and to CI failures: a fix brief carries the log lines and the
+numbers, never "my reading" of the cause.
 
 **Rounds are free; coming back to the human is not.** Loop as many times as the work needs and report
 once, at the end. What makes a round legitimate is that *the last answer changed the question* — new

@@ -156,7 +156,7 @@ Collect what was deferred, decided for later, or left out of scope. Look at the 
 #### 4. Memory and handoff
 
 - **Project memory** (the file for the ticket's project, found through `MEMORY.md`): append one short paragraph covering what shipped (PR and merge sha, or the decision), new tickets, and facts learned that a later session needs. Update its description and index line if "next" changed.
-- **Feedback:** if I was corrected on how I work during the ticket and it is not saved yet, save it where it belongs (`references/loop.md` or this file for the ticket loop, `references/driving-codex.md` for briefing codex, a project memory for facts) rather than a new file.
+- **Feedback:** if I was corrected on how I work during the ticket and it is not saved yet, propose the exact edit in the report, naming where it belongs (`references/loop.md` or this file for the ticket loop, `references/driving-codex.md` for briefing codex) rather than a new file, and apply it only after Igor's OK. A fact for a project memory may be written directly.
 - **Agent-time estimates:** find this ticket's rows in `~/.claude/agent-estimates.tsv` with an empty `actual_min`. Close each with `python3 <skill base directory>/../agent-estimate/estimate.py done <id> --actual <minutes>`, taking the minutes from when that run actually ended (the codex report, or my last commit for the run), not from now. Put estimated against actual for each row in the report.
 - **Handoff** `<REPO>/.remember/remember.md` (skip with a note if the repo has none): rewrite this track's section with a timestamp. Cover the state (ticket Done, PR and sha or the decision), next (the recommended next ticket and why), leftovers, and carried-over open items. Keep other tracks' sections untouched.
 
