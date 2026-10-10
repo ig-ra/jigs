@@ -483,7 +483,7 @@ def prep(ctx: Context, a: argparse.Namespace) -> JSON:
                  for block in ctx.git("worktree", "list", "--porcelain").split("\n\n")]
     matching = [t for t in all_trees if Path(t["worktree"]).name.lower() == key.lower()]
     tree = next((t for t in matching if Path(t["worktree"]).resolve() == path.resolve()), None)
-    local = root / "igr" / "tickets" / key if (root / "igr").is_dir() else temp_root() / key.lower()
+    local = temp_root() / key.lower()
     panes = []
     if os.environ.get("HERDR_ENV") == "1":
         panes = [p for p in agents() if p.get("name") == key.lower() or
@@ -576,6 +576,8 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
                 raise TkError("--rounds needs 0 < low <= high", 2)
         if a.report and a.line not in ids:
             raise TkError("no open estimate for this line", 1)
+        if a.actual_minutes is not None and not a.report:
+            raise TkError("--actual-minutes needs --report", 2)
         if a.pr:
             pr = gh(["pr", "view", str(a.pr), "--repo", ctx.slug(), "--json", "number,url"], ctx.cwd)
             state.update(pr=pr["number"], prUrl=pr["url"])
@@ -594,8 +596,9 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
                         raise TkError("estimate start returned no id")
                     ids[a.line] = match[1]
                 else:
-                    run([sys.executable, str(estimate), "done", ids[a.line], "--wait", str(a.wait_minutes),
-                         "--note", a.note or ""])
+                    timing = (["--actual", str(a.actual_minutes)] if a.actual_minutes is not None else
+                              ["--wait", str(a.wait_minutes)])
+                    run([sys.executable, str(estimate), "done", ids[a.line], *timing, "--note", a.note or ""])
                     del ids[a.line]
         atomic_json(band, state)
     output(state, f"{key} {a.line}={a.status}" + (f" estimate={ids[a.line]}" if a.dispatch else ""), a.json)
@@ -672,6 +675,8 @@ def parser() -> argparse.ArgumentParser:
             cmd.add_argument("--task")
             cmd.add_argument("--model", default="")
             cmd.add_argument("--wait-minutes", type=float, default=0)
+            cmd.add_argument("--actual-minutes", type=positive,
+                             help="actual run duration for a late --report (instead of elapsed time)")
             cmd.add_argument("--note")
     return p
 

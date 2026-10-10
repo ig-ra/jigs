@@ -213,8 +213,7 @@ full suite; codex never runs them locally and never polls CI.
 
 **Ask for its estimate in rounds, and log the run myself.** When codex sends its plan or
 verification reply, ask how many rounds the work will take (low-high, per the `agent-estimate`
-skill), never hours or days. I run `estimate.py start codex <low-high> ...` when I send the go and
-`estimate.py done <id>` when it reports done, because its sandbox cannot write the log.
+skill), never hours or days. I run `<skill base directory>/scripts/tk step <KEY> <line> <status> --dispatch --agent codex --rounds <low-high> --task "<short>" --model <model>` when I send the go, and the same `tk step` with `--report --wait-minutes <minutes>` when it reports done, because its sandbox cannot write the log. The line/status and manual error fallback follow `loop.md`; timer ids live in `state.json` → `tk.estimates`.
 
 **Name a past mistake to stop its repeat.** "Do not enumerate cases in an allowlist — that already
 cost two rounds." Ends whack-a-mole immediately.

@@ -283,7 +283,7 @@ class LifecycleTests(unittest.TestCase):
                         "reviews": {"status": "done"}, "implement": {"status": "todo", "extra": True}}
             band.write_text(json.dumps(original))
             a = args(key="tEaM-7", owner="test", line="implement", status="running", pr=None,
-                     dispatch=False, report=False, note="new")
+                     dispatch=False, report=False, actual_minutes=None, note="new")
             with patch.object(tk, "prep", return_value={"worktree": "/repo/.worktrees/test/team-7"}), \
                     patch.object(tk, "temp_root", return_value=root), patch("sys.stdout", new_callable=io.StringIO):
                 self.assertEqual(tk.step(tk.Context(root), a), 0)
@@ -293,6 +293,41 @@ class LifecycleTests(unittest.TestCase):
             self.assertTrue(state["implement"]["extra"])
             self.assertEqual(state["implement"]["status"], "running")
             self.assertEqual(state["implement"]["note"], "new")
+
+    def test_prep_uses_band_folder_even_when_repo_has_igr(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {"HERDR_ENV": "0"}):
+            root = Path(folder)
+            (root / "igr").mkdir()
+            ctx = tk.Context(root)
+            def git(*cmd):
+                return {"rev-parse": str(root / ".git"), "symbolic-ref": "origin/main",
+                        "worktree": f"worktree {root}\nbranch refs/heads/main"}[cmd[0]]
+            with patch.object(ctx, "git", side_effect=git), patch.object(tk, "temp_root", return_value=root / "tmp"):
+                info = tk.prep(ctx, args(key="tEaM-7", owner="owner"))
+            self.assertEqual(info["local"], str(root / "tmp" / "team-7"))
+            self.assertEqual(Path(info["worktree"]).name, Path(info["local"]).name)
+
+    def test_dispatch_and_late_report_close_same_estimate(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
+                "TMPDIR": folder, "AGENT_ESTIMATES": str(Path(folder) / "estimates.tsv")}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            base = ["--cwd", folder, "step", "TEAM-7", "implement"]
+            self.assertEqual(tk.main(base + ["running", "--dispatch", "--agent", "codex", "--rounds", "1-2",
+                                           "--task", "synthetic change", "--model", "test"]), 0)
+            band = Path(folder) / "igr-ticket" / "team-7" / "state.json"
+            state = json.loads(band.read_text())
+            estimate_id = state["tk"]["estimates"]["implement"]
+            self.assertEqual(tk.main(base + ["done", "--report", "--actual-minutes", "7",
+                                           "--note", "late report"]), 0)
+            import csv
+            with (Path(folder) / "estimates.tsv").open() as log:
+                rows = list(csv.DictReader(log, delimiter="\t"))
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["id"], estimate_id)
+            self.assertEqual(rows[0]["actual_min"], "7")
+            self.assertEqual(rows[0]["note"], "late report")
+            self.assertEqual(json.loads(band.read_text())["tk"]["estimates"], {})
+            self.assertEqual(tk.main(base + ["done", "--actual-minutes", "7"]), 2)
 
     def test_close_proof_checks_head_merge_dirty_stale_and_unpushed(self):
         with tempfile.TemporaryDirectory() as folder, close_setup(Path(folder)) as setup:

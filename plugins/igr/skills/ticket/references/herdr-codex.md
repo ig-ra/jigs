@@ -11,7 +11,7 @@
 ## Briefs and replies
 
 - **Briefs go in files.** The prompt is "Read and follow <path>". Quoting a long brief inline breaks, and backticks execute as command substitution. Do not use `"$(cat file)"`.
-- **The brief directory must survive the session.** The session scratchpad can vanish after a fork or overnight, so use the ticket's `LOCAL` folder (see `../SKILL.md`), for example `<TMP>/igr-ticket/<key>/`.
+- **Brief directory:** use the ticket's active `LOCAL` folder (see `../SKILL.md`), `<TMP>/igr-ticket/<key>/`. It survives forks/compaction; temp cleanup can remove it, so the approved contract stays on Linear and the optional repo archive is restored/synced outside the worktree.
 - **Codex reads Linear itself** (ticket description and comments). Point it at the ticket; paste only what it cannot see, such as prod numbers or other repos.
 - **Replies come to my pane by name.** End each brief with "write your answer to <file>, then run: `herdr agent prompt <my-pane-name> '<file> ready'`". Use one line, with no quotes, backticks or `$` in the argument. Then end my turn: the reply arrives as my next message.
 - **Ask for long answers as a file.** Codex's TUI scrollback is short.
@@ -37,4 +37,4 @@
 
 - My session is isolated to its worktree. It refuses git in another worktree, `$VAR` in commands, and complex inline shell. Use plain `git -C <path>` commands; put loops in a script file.
 - Ask the codex in a worktree to do that worktree's git operations (rebase, push), or read branches via `git fetch` plus `git show origin/<branch>:path`.
-- Writing to the main checkout from inside an EnterWorktree session: the Write tool is refused for paths outside the worktree, such as `<REPO>/igr/tickets/`. Write the file to a temp folder, then copy it with a plain `cp <tmp file> <absolute path>`; `mkdir -p` and `cp` as separate plain commands pass the guard. Heredocs and `&&` chains are refused.
+- Ticket files are written directly to `LOCAL` in temp. Restore the optional repo archive before `EnterWorktree`; sync it and edit the canonical handoff only after `ExitWorktree` with `action: keep`. Call `<skill base directory>/scripts/tk` by its absolute path for band/timer updates; use separate plain commands and literal paths.
