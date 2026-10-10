@@ -5,6 +5,7 @@ No private repository recordings, IDs, paths, or comment bodies are used.
 """
 import argparse
 import copy
+import csv
 from contextlib import contextmanager
 import importlib.machinery
 import importlib.util
@@ -71,9 +72,30 @@ def close_setup(path):
     def git(*cmd, **kwargs):
         return {"status": "", "rev-parse": "head" if cmd[1] == "HEAD" else "origin",
                 "ls-remote": "origin\trefs/heads/main", "merge-base": ""}[cmd[0]]
-    with patch.object(ctx, "git", side_effect=git) as git_api, patch.object(tk, "gh", return_value=prs) as api, \
+    with patch.dict(os.environ, {"HERDR_ENV": "1"}), \
+            patch.object(ctx, "git", side_effect=git) as git_api, patch.object(tk, "gh", return_value=prs) as api, \
             patch.object(tk, "herdr", return_value={"panes": []}) as panes:
         yield ctx, info, prs, git, git_api, api, panes
+
+
+@contextmanager
+def ticket_setup():
+    with tempfile.TemporaryDirectory() as folder:
+        root = Path(folder).resolve() / "repo"
+        root.mkdir()
+        ctx = tk.Context(root)
+        ctx.git("init", "-b", "main")
+        ctx.git("config", "user.name", "Owner Example")
+        ctx.git("config", "user.email", "owner@example.invalid")
+        (root / "README.md").write_text("synthetic repo\n")
+        ctx.git("add", "README.md")
+        ctx.git("commit", "-m", "test: initial fixture")
+        ctx.git("update-ref", "refs/remotes/origin/main", "HEAD")
+        ctx.git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+        (root / ".git" / "info" / "exclude").write_text(".worktrees/\nigr/\n")
+        tree = root / ".worktrees" / "owner" / "team-7"
+        ctx.git("worktree", "add", "-b", "owner/team-7", str(tree), "main")
+        yield root, tree
 
 
 class PRTests(unittest.TestCase):
@@ -275,17 +297,15 @@ class PRTests(unittest.TestCase):
 
 class LifecycleTests(unittest.TestCase):
     def test_step_preserves_unrelated_fields_and_serializes_updates(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            band = root / "team-7" / "state.json"
+        with ticket_setup() as (root, tree):
+            band = tree / "igr" / "state.json"
             band.parent.mkdir()
             original = {"ticket": "TEAM-7", "ticketUrl": "https://example/ticket", "custom": {"keep": 1},
                         "reviews": {"status": "done"}, "implement": {"status": "todo", "extra": True}}
             band.write_text(json.dumps(original))
             a = args(key="tEaM-7", owner="test", line="implement", status="running", pr=None,
-                     dispatch=False, report=False, actual_minutes=None, note="new")
-            with patch.object(tk, "prep", return_value={"worktree": "/repo/.worktrees/test/team-7"}), \
-                    patch.object(tk, "temp_root", return_value=root), patch("sys.stdout", new_callable=io.StringIO):
+                     dispatch=False, report=False, actual_minutes=None, ticket_url="https://example/new-ticket", note="new")
+            with patch("sys.stdout", new_callable=io.StringIO):
                 self.assertEqual(tk.step(tk.Context(root), a), 0)
             state = json.loads(band.read_text())
             self.assertEqual(state["custom"], original["custom"])
@@ -293,40 +313,38 @@ class LifecycleTests(unittest.TestCase):
             self.assertTrue(state["implement"]["extra"])
             self.assertEqual(state["implement"]["status"], "running")
             self.assertEqual(state["implement"]["note"], "new")
+            self.assertEqual(state["ticketUrl"], "https://example/new-ticket")
 
-    def test_prep_uses_band_folder_even_when_repo_has_igr(self):
-        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {"HERDR_ENV": "0"}):
-            root = Path(folder)
+    def test_prep_uses_worktree_igr_from_root_or_tree(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}):
             (root / "igr").mkdir()
-            ctx = tk.Context(root)
-            def git(*cmd):
-                return {"rev-parse": str(root / ".git"), "symbolic-ref": "origin/main",
-                        "worktree": f"worktree {root}\nbranch refs/heads/main"}[cmd[0]]
-            with patch.object(ctx, "git", side_effect=git), patch.object(tk, "temp_root", return_value=root / "tmp"):
-                info = tk.prep(ctx, args(key="tEaM-7", owner="owner"))
-            self.assertEqual(info["local"], str(root / "tmp" / "team-7"))
-            self.assertEqual(Path(info["worktree"]).name, Path(info["local"]).name)
+            for cwd in (root, tree):
+                info = tk.prep(tk.Context(cwd), args(key="tEaM-7", owner=None))
+                self.assertEqual(info["worktree"], str(tree))
+                self.assertEqual(info["local"], str(tree / "igr"))
 
     def test_dispatch_and_late_report_close_same_estimate(self):
-        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
-                "TMPDIR": folder, "AGENT_ESTIMATES": str(Path(folder) / "estimates.tsv")}), \
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {
+                "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
                 patch("sys.stdout", new_callable=io.StringIO):
-            base = ["--cwd", folder, "step", "TEAM-7", "implement"]
+            base = ["--cwd", str(tree), "step", "TEAM-7", "implement"]
             self.assertEqual(tk.main(base + ["running", "--dispatch", "--agent", "codex", "--rounds", "1-2",
                                            "--task", "synthetic change", "--model", "test"]), 0)
-            band = Path(folder) / "igr-ticket" / "team-7" / "state.json"
+            band = tree / "igr" / "state.json"
             state = json.loads(band.read_text())
             estimate_id = state["tk"]["estimates"]["implement"]
+            state["implement"]["note"] = "visible progress"
+            band.write_text(json.dumps(state))
             self.assertEqual(tk.main(base + ["done", "--report", "--actual-minutes", "7",
                                            "--note", "late report"]), 0)
-            import csv
-            with (Path(folder) / "estimates.tsv").open() as log:
+            with (root / "estimates.tsv").open() as log:
                 rows = list(csv.DictReader(log, delimiter="\t"))
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["id"], estimate_id)
             self.assertEqual(rows[0]["actual_min"], "7")
             self.assertEqual(rows[0]["note"], "late report")
             self.assertEqual(json.loads(band.read_text())["tk"]["estimates"], {})
+            self.assertEqual(json.loads(band.read_text())["implement"]["note"], "visible progress")
             self.assertEqual(tk.main(base + ["done", "--actual-minutes", "7"]), 2)
 
     def test_close_proof_checks_head_merge_dirty_stale_and_unpushed(self):
@@ -362,14 +380,44 @@ class LifecycleTests(unittest.TestCase):
                     with self.assertRaisesRegex(tk.TkError, "other panes"):
                         tk.close_proof(ctx, info)
 
-    def test_step_runs_outside_git_and_prep_failure_is_json(self):
-        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {"TMPDIR": folder}), \
+    def test_close_outside_herdr_skips_pane_api(self):
+        with tempfile.TemporaryDirectory() as folder, close_setup(Path(folder)) as setup:
+            ctx, info, _, _, _, _, panes = setup
+            with patch.dict(os.environ, {"HERDR_ENV": "0"}):
+                self.assertIsNone(tk.close_proof(ctx, info)["pane"])
+            panes.assert_not_called()
+
+    def test_step_outside_git_and_prep_failure_are_json_errors(self):
+        with tempfile.TemporaryDirectory() as folder, \
                 patch("sys.stdout", new_callable=io.StringIO) as out:
-            self.assertEqual(tk.main(["--cwd", folder, "step", "TEAM-1", "checks", "done"]), 0)
-            self.assertTrue((Path(folder) / "igr-ticket" / "team-1" / "state.json").exists())
+            self.assertEqual(tk.main(["--cwd", folder, "--json", "step", "TEAM-1", "checks", "done"]), 3)
+            self.assertEqual(json.loads(out.getvalue())["result"], "ERROR")
             out.seek(0); out.truncate()
             self.assertEqual(tk.main(["--cwd", folder, "prep", "TEAM-1"]), 3)
             self.assertEqual(json.loads(out.getvalue())["result"], "ERROR")
+
+    def test_ticket_files_ignored_and_deleted_with_worktree(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            ctx = tk.Context(root)
+            local = tree / "igr"
+            local.mkdir()
+            (local / "brief.md").write_text("synthetic brief\n")
+            exclude = root / ".git" / "info" / "exclude"
+            exclude.write_text(".worktrees/\n")
+            self.assertIn("igr/", ctx.git("status", "--porcelain", cwd=tree))
+            self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "checks", "done"]), 3)
+            self.assertFalse((local / "state.json").exists())
+            exclude.write_text(".worktrees/\nigr/\n")
+            self.assertEqual(ctx.git("check-ignore", "igr", cwd=tree), "igr")
+            self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "checks", "done"]), 0)
+            self.assertEqual(ctx.git("status", "--porcelain", cwd=tree), "")
+            info = tk.prep(ctx, args(key="TEAM-7", owner=None))
+            proof = {"pane": None, "branch": info["branch"], "worktree": str(tree), "head": "synthetic-head"}
+            with patch.object(tk, "close_proof", return_value=proof):
+                self.assertEqual(tk.close(ctx, args(key="TEAM-7", owner=None, mode="apply")), 0)
+            self.assertFalse(tree.exists())
+            self.assertFalse((root / "igr").exists())
 
     def test_close_apply_never_removes_caller_worktree(self):
         info = {"worktree": str(HERE), "key": "TEAM-7"}

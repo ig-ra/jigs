@@ -415,10 +415,6 @@ def file_body(path: str) -> str:
     return body
 
 
-def temp_root() -> Path:
-    return Path(os.environ.get("TMPDIR") or "/tmp") / "igr-ticket"
-
-
 def slot(path: Path) -> tuple[str, str] | None:
     parts = path.resolve().parts
     for i, part in enumerate(parts):
@@ -467,23 +463,27 @@ def ticket_key(value: str) -> str:
     return value.upper()
 
 
-def prep(ctx: Context, a: argparse.Namespace) -> JSON:
-    key = ticket_key(a.key)
+def ticket_worktree(ctx: Context, key: str, owner: str | None = None) -> tuple[Path, Path]:
     common = Path(ctx.git("rev-parse", "--path-format=absolute", "--git-common-dir"))
     root = common.parent
-    base = ctx.git("symbolic-ref", "--short", "refs/remotes/origin/HEAD")
-    owner = a.owner
     if not owner:
         location = slot(ctx.cwd)
         owner = location[0] if location else ctx.git("config", "user.name").split()[0].lower()
     if not re.fullmatch(r"[\w.-]+", owner) or owner in {".", ".."}:
         raise TkError("invalid owner; use --owner", 2)
     path = root / ".worktrees" / owner / key.lower()
+    return root, path
+
+
+def prep(ctx: Context, a: argparse.Namespace) -> JSON:
+    key = ticket_key(a.key)
+    root, path = ticket_worktree(ctx, key, a.owner)
+    base = ctx.git("symbolic-ref", "--short", "refs/remotes/origin/HEAD")
     all_trees = [dict(line.split(" ", 1) if " " in line else (line, True) for line in block.splitlines())
                  for block in ctx.git("worktree", "list", "--porcelain").split("\n\n")]
     matching = [t for t in all_trees if Path(t["worktree"]).name.lower() == key.lower()]
     tree = next((t for t in matching if Path(t["worktree"]).resolve() == path.resolve()), None)
-    local = temp_root() / key.lower()
+    local = path / "igr"
     panes = []
     if os.environ.get("HERDR_ENV") == "1":
         panes = [p for p in agents() if p.get("name") == key.lower() or
@@ -526,7 +526,8 @@ def close_proof(ctx: Context, info: JSON) -> JSON:
         ctx.git("merge-base", "--is-ancestor", commit, local)
     except TkError as e:
         raise TkError("merge commit not reachable on origin default branch", 1) from e
-    inside = [p for p in herdr(["pane", "list"])["panes"] if in_tree(p, path)]
+    inside = ([p for p in herdr(["pane", "list"])["panes"] if in_tree(p, path)]
+              if os.environ.get("HERDR_ENV") == "1" else [])
     panes = [p for p in inside if p.get("agent") == "codex"]
     if len(panes) > 1 or any(p["agent_status"] not in {"idle", "done"} for p in panes):
         raise TkError("Codex pane is ambiguous or not idle/done", 1)
@@ -556,7 +557,11 @@ def close(ctx: Context, a: argparse.Namespace) -> int:
 
 def step(ctx: Context, a: argparse.Namespace) -> int:
     key = ticket_key(a.key)
-    band = temp_root() / key.lower() / "state.json"
+    _, worktree = ticket_worktree(ctx, key)
+    if not worktree.is_dir() or Path(ctx.git("rev-parse", "--show-toplevel", cwd=worktree)).resolve() != worktree.resolve():
+        raise TkError("ticket worktree missing; run prep/start first")
+    band = worktree / "igr" / "state.json"
+    ctx.git("check-ignore", "--quiet", str(band), cwd=worktree)
     estimate = Path(__file__).resolve().parents[2] / "agent-estimate" / "estimate.py"
     with locked(band.with_suffix(".lock")):
         state = decode(band.read_text()) if band.exists() else {"ticket": key}
@@ -581,8 +586,10 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
         if a.pr:
             pr = gh(["pr", "view", str(a.pr), "--repo", ctx.slug(), "--json", "number,url"], ctx.cwd)
             state.update(pr=pr["number"], prUrl=pr["url"])
+        if a.ticket_url is not None:
+            state["ticketUrl"] = a.ticket_url
         state[a.line] = {**state.get(a.line, {}), "status": a.status}
-        if a.note is not None:
+        if a.note is not None and not a.report:
             state[a.line]["note"] = a.note
         if a.dispatch or a.report:
             log = Path(os.environ.get("AGENT_ESTIMATES") or Path.home() / ".claude" / "agent-estimates.tsv")
@@ -667,6 +674,7 @@ def parser() -> argparse.ArgumentParser:
             cmd.add_argument("line", choices=sorted(LINES))
             cmd.add_argument("status", choices=sorted(STATUSES))
             cmd.add_argument("--pr", type=int)
+            cmd.add_argument("--ticket-url", help="Linear ticket link shown in the band")
             group = cmd.add_mutually_exclusive_group()
             group.add_argument("--dispatch", action="store_true")
             group.add_argument("--report", action="store_true")
