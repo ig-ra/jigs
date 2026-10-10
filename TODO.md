@@ -2,6 +2,7 @@
 
 ## Open items
 
+- Integrate the parked file-based send/ping commands into the Herdr layer, settle the Codex allow rule and reference location, and update brief/reply instructions; see [handoff](plugins/igr/docs/plans/wf-herdr-codex.md).
 - **TS `verify-plan` sig-diff** — unsupported (`SIG_CFG` = rust+go); on TS plans P3a checks
   citations only and prints a loud UNSUPPORTED notice. Worth building now that curator (TS) is a
   production target: return-type + arg-count diff are achievable from plan code fences
