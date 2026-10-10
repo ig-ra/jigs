@@ -155,6 +155,11 @@ nothing of my solution goes on the ticket before its pass. The same applies to n
 middle of a PR, to review findings, and to CI failures: a fix brief carries the log lines and the
 numbers, never "my reading" of the cause.
 
+**This includes my numbers.** In the independent pass, name what to measure, not what I measured: my
+evidence anchors codex as much as my design does. Point it at primary sources and say that any
+numbers already on the ticket or PR are claims to re-check. The numbers I gathered go in at the
+compare round.
+
 **Rounds are free; coming back to the human is not.** Loop as many times as the work needs and report
 once, at the end. What makes a round legitimate is that *the last answer changed the question* — new
 evidence, a real disagreement, a correction that opened something. What makes it waste is asking the
