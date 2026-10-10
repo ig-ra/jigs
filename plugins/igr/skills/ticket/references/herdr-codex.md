@@ -37,4 +37,4 @@
 
 - My session is isolated to its worktree. It refuses git in another worktree, `$VAR` in commands, and complex inline shell. Use plain `git -C <path>` commands; put loops in a script file.
 - Ask the codex in a worktree to do that worktree's git operations (rebase, push), or read branches via `git fetch` plus `git show origin/<branch>:path`.
-- Ticket files are written directly to `LOCAL` in the worktree, ignored through the common Git `info/exclude`. Edit the canonical handoff only after `ExitWorktree` with `action: keep`. Call `<skill base directory>/scripts/tk` by its absolute path for band/timer updates; use separate plain commands and literal paths.
+- Ticket files are written directly to `LOCAL` in the worktree, ignored by the root-only `/igr/` line in the common Git `info/exclude`. Edit the canonical handoff only after `ExitWorktree` with `action: keep`. Call `<skill base directory>/scripts/tk` by its absolute path for band/timer updates; use separate plain commands and literal paths.

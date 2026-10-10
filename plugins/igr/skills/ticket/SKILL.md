@@ -17,7 +17,7 @@ Run `<skill base directory>/scripts/tk --help` once; use the absolute skill base
 
 Run `<skill base directory>/scripts/tk --cwd <session cwd> prep <KEY>` before entering the worktree. JSON gives `repo_root` (`REPO`), `default_branch` (`BASE` = `origin/<default_branch>`), `worktree`, `branch`, `exists`, `local` (`LOCAL`), same-ticket worktrees and panes. It reads context; it does not fetch, create or enter a worktree. Owner comes from the cwd's worktree slot or the first word of git's user name; use `--owner` only to correct a mismatch. `tk` derives the GitHub repo from origin; use `--repo` only for an explicit different target. Derive `SLUG` for manual `gh` calls with `gh repo view --json nameWithOwner -q .nameWithOwner` in `REPO`, and pass it as `--repo <SLUG>` there. `tk` clears token environment overrides; manual `gh` calls below use the same `env -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN gh` prefix. Follow the session's auth/sandbox rules.
 
-Worktrees live in `<REPO>/.worktrees/igor/<key>`. Check that `.worktrees` is git-ignored (`git -C <REPO> check-ignore .worktrees`); if not, report it and do not edit `.gitignore` yourself.
+Save `worktree` from prep and use that absolute path verbatim for creation, resume, EnterWorktree, LOCAL and cleanup. Save its `owner` too (the directory immediately above the ticket folder), and pass that owner to canonical `tk close` calls. Check that `.worktrees` is git-ignored (`git -C <REPO> check-ignore .worktrees`); if not, report it and do not edit `.gitignore` yourself.
 
 **Ticket files:** `LOCAL` = `<worktree>/igr/`, also returned by `tk prep`. One worktree, one ticket: models, A-to-B, briefs, answers, plans and `state.json` all sit directly there. Open timer ids live in `state.json` → `tk.estimates`. Files survive forks, compaction and temp cleanup. Removing the worktree deletes them; record the approved contract and final result on Linear before cleanup. The optional canonical handoff `<REPO>/.remember/remember.md` is edited only after leaving the worktree.
 
@@ -52,14 +52,14 @@ Then move it to In Progress with `save_issue(KEY, state: "In Progress")` (ToolSe
 
 #### 2. Worktree from the latest default branch
 
-If the session is already in an entered worktree, first `ExitWorktree` with `action: keep` and return to the canonical checkout. Run `<skill base directory>/scripts/tk --cwd <session cwd> prep <KEY>` and derive `REPO`, `BASE`, `SLUG`, `LOCAL` (see "Which repo"). Use plain `git -C <path>` commands. Inspect `prep`'s same-ticket worktrees and panes before creating anything; report a conflicting location instead of forcing it.
+If the session is already in an entered worktree, first `ExitWorktree` with `action: keep` and return to the canonical checkout. Run `<skill base directory>/scripts/tk --cwd <session cwd> prep <KEY>` and derive `REPO`, `BASE`, `SLUG`, `worktree`, `owner`, `LOCAL` (see "Which repo"). Use plain `git -C <path>` commands. Inspect `prep`'s same-ticket worktrees and panes before creating anything; report a conflicting location instead of forcing it.
 
 - `git -C <REPO> fetch origin --quiet`
-- **If `<REPO>/.worktrees/igor/<key>` exists** (for example, resuming after a compaction): report whether it is clean, its commits ahead (`git -C <worktree> rev-list --count <BASE>..HEAD`) and behind. Fast-forward it (`git -C <worktree> merge --ff-only <BASE>`) only when it has no commits of its own. A branch with its own commits, usually with an open PR, is rebased only on request, because a rebase rewrites the pushed head. Never discard work.
-- **If it does not exist:** `git -C <REPO> worktree add -b <gitBranchName> .worktrees/igor/<key> <BASE>`. If that branch already exists elsewhere, report it instead of forcing. If another worktree of this repo already holds this ticket's work under a different name (for example the ticket's parent), report it and ask which to use.
+- **If the returned `<worktree>` exists** (for example, resuming after a compaction): report whether it is clean, its commits ahead (`git -C <worktree> rev-list --count <BASE>..HEAD`) and behind. Fast-forward it (`git -C <worktree> merge --ff-only <BASE>`) only when it has no commits of its own. A branch with its own commits, usually with an open PR, is rebased only on request, because a rebase rewrites the pushed head. Never discard work.
+- **If it does not exist:** `git -C <REPO> worktree add -b <gitBranchName> <worktree> <BASE>`. If that branch already exists elsewhere, report it instead of forcing. If another worktree of this repo already holds this ticket's work under a different name (for example the ticket's parent), report it and ask which to use.
 - Then `git -C <worktree> branch --unset-upstream`. The new branch tracks the base, and a later plain `git push` would target the default branch.
 
-**Local ignore, before entering:** read the common Git directory from `git -C <REPO> rev-parse --path-format=absolute --git-common-dir`. In its `info/exclude`, ensure the local line `igr/` exists, appending it if absent and preserving other lines. This is shared by every worktree and never committed. Verify `git -C <worktree> check-ignore igr/`; check `git -C <worktree> ls-files -- igr/` is empty. If ticket files are tracked, stop and report them. All ticket writes, including codex's, go to `LOCAL`; `tk step` refuses an unignored state file.
+**Local ignore, before entering:** read the common Git directory from `git -C <REPO> rev-parse --path-format=absolute --git-common-dir`. In its `info/exclude`, ensure the root-only local line `/igr/` exists, appending it if absent and preserving other lines. This is shared by every worktree and never committed. Verify `git -C <worktree> check-ignore --verbose igr/state.json` reports the `/igr/` pattern; check `git -C <worktree> ls-files -- igr/` is empty. If ticket files are tracked, stop and report them. All ticket writes, including codex's, go to `LOCAL`; `tk step` requires that same `/igr/` pattern before writing. It covers only root ticket files; nested source folders such as `plugins/igr/` stay visible to Git.
 
 #### 3. Pane name and tab label = the ticket
 
@@ -74,7 +74,7 @@ If the session is already in a worktree, use literal ids instead: the agent rena
 #### 4. Leftovers, before entering
 
 `tk prep` already reports same-ticket worktrees/panes; inspect them for conflicts or unfinished work. It does not classify other tickets' PRs. List those manually here, before `EnterWorktree`; report only, without closing or removing anything:
-- `git -C <REPO> worktree list`. For each other `.worktrees/igor/*`, check `gh pr list --repo <SLUG> --head <branch> --state all --json number,state`. Merged or closed means leftover; detached HEAD means a leftover candidate.
+- `git -C <REPO> worktree list`. For each other registered ticket worktree under `.worktrees/<owner>/*`, check `gh pr list --repo <SLUG> --head <branch> --state all --json number,state`. Merged or closed means leftover; detached HEAD means a leftover candidate.
 - `herdr agent list`: codex panes in those merged worktrees.
 
 These operations run from the canonical checkout.
@@ -118,7 +118,7 @@ No argument. Work it out from the session, in this order:
 1. The current worktree's branch (`git rev-parse --abbrev-ref HEAD` in the session's worktree). Derive `REPO`, `BASE`, `SLUG` from it (see "Which repo"). Names look like `<owner>/abc-123-...`, which gives `ABC-123`.
 2. The ticket this conversation has been working on.
 
-If the two disagree, or neither gives an answer, ask which ticket and stop. Save `KEY`, `key`, `LOCAL`, `worktree` and branch before leaving the worktree; the canonical branch is not the ticket branch.
+If the two disagree, or neither gives an answer, ask which ticket and stop. Save `KEY`, `key`, `LOCAL`, `worktree`, its `owner` and branch before leaving the worktree; the canonical branch is not the ticket branch.
 
 Then the kind:
 - **Decide ticket:** the title starts with `decide:`, or the ticket has no PR and its worktree has no commits of its own. Its deliverable is the decision, recorded on the ticket.
@@ -134,7 +134,7 @@ If any check fails, stop, report what failed, and change nothing: no texts, no c
 
 **Code ticket:**
 - `gh pr list --repo <SLUG> --search <KEY> --state all --json number,state,headRefName,headRefOid,mergeCommit`: every PR for the ticket is MERGED and none is OPEN. Some tickets ship in several PRs. Record each PR number and merge sha.
-- `<skill base directory>/scripts/tk --cwd <REPO> close <KEY> check`: require exit 0. This proves the registered worktree is clean (including untracked files), local HEAD exactly matches a merged PR head for its branch, no branch PR is open, local origin agrees with live origin, the merge is reachable on the default branch, and panes are safe when inside Herdr. Keep the ticket-wide PR list above: `close` checks this branch only. If origin is stale, fetch origin and rerun. If untracked files exist, list them and ask; never delete them silently.
+- `<skill base directory>/scripts/tk --cwd <REPO> close <KEY> check --owner <owner>`: require exit 0. This proves the registered worktree is clean (including untracked files), local HEAD exactly matches a merged PR head for its branch, no branch PR is open, local origin agrees with live origin, the merge is reachable on the default branch, and panes are safe when inside Herdr. Keep the ticket-wide PR list above: `close` checks this branch only. If origin is stale, fetch origin and rerun. If untracked files exist, list them and ask; never delete them silently.
 - Inspect `<LOCAL>/state.json` → `tk.estimates` and any legacy `<LOCAL>/estimate-ids.md` against open rows in `~/.claude/agent-estimates.tsv`; step 4 closes them.
 
 **Decide ticket:**
@@ -168,7 +168,7 @@ Only after steps 1-4, from the canonical checkout:
 1. Stop this session's background watchers for the ticket (TaskStop).
 2. **Final band, before removal:** for a code ticket, run `<skill base directory>/scripts/tk --cwd <worktree> step <KEY> implement done`, then the same for `reviews done` and `checks done --note <merge sha>`.
 3. Inside Herdr, read the codex pane (`herdr agent get codex-<N>`, `herdr agent read codex-<N>`). It must be idle/done, owned by this session, and have no running command. Otherwise stop and report; never close another session's or a human's pane. Outside Herdr, skip pane control.
-4. **Code ticket:** `<skill base directory>/scripts/tk --cwd <REPO> close <KEY> apply`. Require exit 0. It repeats the proof, closes the idle codex pane when inside Herdr, removes the worktree without force, and deletes the proven branch. On exit 3, inspect what already happened, redo step 1's proof manually, then finish the remaining pane close / `git -C <REPO> worktree remove <worktree>` / `git -C <REPO> branch -D <branch>`; never force worktree removal.
+4. **Code ticket:** `<skill base directory>/scripts/tk --cwd <REPO> close <KEY> apply --owner <owner>`. Require exit 0. It repeats the proof, closes the idle codex pane when inside Herdr, removes the worktree without force, and deletes the proven branch. On exit 3, inspect what already happened, redo step 1's proof manually, then finish the remaining pane close / `git -C <REPO> worktree remove <worktree>` / `git -C <REPO> branch -D <branch>`; never force worktree removal.
 5. **Decide ticket:** `tk close` requires a merged PR, so after step 1's decide proof, close the verified pane when inside Herdr, `git -C <REPO> worktree remove <worktree>`, then `git -C <REPO> branch -D <branch>`. Stop on any refusal.
 
 Worktree removal deletes the ignored `LOCAL` folder, including briefs, answers and band state. Nothing is copied or moved to the canonical checkout.

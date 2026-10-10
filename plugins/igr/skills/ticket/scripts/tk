@@ -561,7 +561,9 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
     if not worktree.is_dir() or Path(ctx.git("rev-parse", "--show-toplevel", cwd=worktree)).resolve() != worktree.resolve():
         raise TkError("ticket worktree missing; run prep/start first")
     band = worktree / "igr" / "state.json"
-    ctx.git("check-ignore", "--quiet", str(band), cwd=worktree)
+    ignored = ctx.git("check-ignore", "--verbose", str(band), cwd=worktree)
+    if ignored.split("\t", 1)[0].rsplit(":", 1)[-1] != "/igr/":
+        raise TkError("ticket folder must be ignored with /igr/ in common Git info/exclude")
     estimate = Path(__file__).resolve().parents[2] / "agent-estimate" / "estimate.py"
     with locked(band.with_suffix(".lock")):
         state = decode(band.read_text()) if band.exists() else {"ticket": key}

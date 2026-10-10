@@ -79,22 +79,24 @@ def close_setup(path):
 
 
 @contextmanager
-def ticket_setup():
+def ticket_setup(user_name="Owner Example"):
     with tempfile.TemporaryDirectory() as folder:
         root = Path(folder).resolve() / "repo"
         root.mkdir()
         ctx = tk.Context(root)
         ctx.git("init", "-b", "main")
-        ctx.git("config", "user.name", "Owner Example")
+        ctx.git("config", "user.name", user_name)
         ctx.git("config", "user.email", "owner@example.invalid")
         (root / "README.md").write_text("synthetic repo\n")
         ctx.git("add", "README.md")
         ctx.git("commit", "-m", "test: initial fixture")
         ctx.git("update-ref", "refs/remotes/origin/main", "HEAD")
         ctx.git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
-        (root / ".git" / "info" / "exclude").write_text(".worktrees/\nigr/\n")
-        tree = root / ".worktrees" / "owner" / "team-7"
-        ctx.git("worktree", "add", "-b", "owner/team-7", str(tree), "main")
+        (root / ".git" / "info" / "exclude").write_text(".worktrees/\n/igr/\n")
+        with patch.dict(os.environ, {"HERDR_ENV": "0"}):
+            info = tk.prep(ctx, args(key="TEAM-7", owner=None))
+        tree = Path(info["worktree"])
+        ctx.git("worktree", "add", "-b", f"{tree.parent.name}/team-7", str(tree), "main")
         yield root, tree
 
 
@@ -408,7 +410,7 @@ class LifecycleTests(unittest.TestCase):
             self.assertIn("igr/", ctx.git("status", "--porcelain", cwd=tree))
             self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "checks", "done"]), 3)
             self.assertFalse((local / "state.json").exists())
-            exclude.write_text(".worktrees/\nigr/\n")
+            exclude.write_text(".worktrees/\n/igr/\n")
             self.assertEqual(ctx.git("check-ignore", "igr", cwd=tree), "igr")
             self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "checks", "done"]), 0)
             self.assertEqual(ctx.git("status", "--porcelain", cwd=tree), "")
@@ -418,6 +420,55 @@ class LifecycleTests(unittest.TestCase):
                 self.assertEqual(tk.close(ctx, args(key="TEAM-7", owner=None, mode="apply")), 0)
             self.assertFalse(tree.exists())
             self.assertFalse((root / "igr").exists())
+
+    def test_root_ticket_exclude_keeps_nested_plugin_source_visible(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            ctx = tk.Context(tree)
+            local = tree / "igr"
+            local.mkdir()
+            (local / "brief.md").write_text("synthetic brief\n")
+            source = tree / "plugins" / "igr" / "new-hook.ts"
+            source.parent.mkdir(parents=True)
+            source.write_text("export const synthetic = true\n")
+            exclude = root / ".git" / "info" / "exclude"
+            exclude.write_text(".worktrees/\nigr/\n")
+            self.assertEqual(ctx.git("status", "--porcelain"), "")
+            self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "checks", "done"]), 3)
+            self.assertFalse((local / "state.json").exists())
+            exclude.write_text(".worktrees/\n/igr/\n")
+            self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "checks", "done"]), 0)
+            self.assertEqual(ctx.git("status", "--porcelain"), "?? plugins/")
+            with self.assertRaises(tk.TkError):
+                ctx.git("check-ignore", "--quiet", str(source))
+            info = tk.prep(ctx, args(key="TEAM-7", owner=None))
+            with patch.object(tk, "gh") as api, self.assertRaisesRegex(tk.TkError, "dirty"):
+                tk.close_proof(ctx, info)
+            api.assert_not_called()
+            ctx.git("add", "plugins/igr/new-hook.ts")
+            self.assertEqual(ctx.git("diff", "--cached", "--name-only"), "plugins/igr/new-hook.ts")
+
+    def test_non_igor_worktree_path_from_prep_through_close(self):
+        with ticket_setup("Alex Example") as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            ctx = tk.Context(root)
+            info = tk.prep(ctx, args(key="TEAM-7", owner=None))
+            self.assertEqual(tree, root / ".worktrees" / "alex" / "team-7")
+            self.assertEqual(info["worktree"], str(tree))
+            self.assertEqual(info["local"], str(tree / "igr"))
+            self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "checks", "done"]), 0)
+            self.assertTrue((Path(info["local"]) / "state.json").exists())
+            self.assertFalse((root / ".worktrees" / "igor").exists())
+            owner = tree.parent.name
+            ctx.git("config", "user.name", "Different Example")
+            def proof(_ctx, selected):
+                self.assertEqual(selected["worktree"], str(tree))
+                return {"pane": None, "branch": selected["branch"], "worktree": str(tree), "head": "synthetic-head"}
+            with patch.object(tk, "close_proof", side_effect=proof):
+                self.assertEqual(tk.close(ctx, args(key="TEAM-7", owner=owner, mode="check")), 0)
+                self.assertTrue(tree.exists())
+                self.assertEqual(tk.close(ctx, args(key="TEAM-7", owner=owner, mode="apply")), 0)
+            self.assertFalse(tree.exists())
 
     def test_close_apply_never_removes_caller_worktree(self):
         info = {"worktree": str(HERE), "key": "TEAM-7"}
