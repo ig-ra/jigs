@@ -22,7 +22,9 @@ If it cannot be done as stated, STOP and tell me — that is the finding, not so
    writing a procedure means I am doing its job badly.
 
    **This applies to every message, not the first.** A correction, a disagreement, a request to cut
-   scope — each is a new brief and gets the same shape. Familiarity with the problem is not a reason
+   scope — each is a new brief and gets the same shape. That includes my reasons: a mechanism I
+   mention while arguing a point reads as a requirement. In a cut brief, name what to cut and the
+   evidence, never a mechanism. Familiarity with the problem is not a reason
    to switch to instructions; it is when I am most likely to. The test: *if my message names what to
    change rather than what must be true, I am directing.*
 2. **Verify before implement, always.** One round trip, never wasted. It catches *my* wrong premises
