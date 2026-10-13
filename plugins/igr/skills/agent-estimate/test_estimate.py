@@ -3,7 +3,6 @@ import csv
 import argparse
 import importlib.util
 import io
-import json
 import os
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
@@ -23,10 +22,6 @@ SPEC.loader.exec_module(estimate)
 def row(x, actual, agent="codex", **extra):
     return {"agent": agent, "rounds_low": str(x), "rounds_high": str(x),
             "actual_min": str(actual), **extra}
-
-
-def review_data(row):
-    return json.loads(row["note"].removeprefix(estimate.REVIEW_PREFIX))
 
 
 class MathTests(unittest.TestCase):
@@ -54,9 +49,10 @@ class MathTests(unittest.TestCase):
     def test_agents_reviews_and_unfinished_rows_are_separate(self):
         codex = [row(x, 4 + 2 * x) for x in range(1, 9)]
         unrelated = [row(x, 999, "claude") for x in range(1, 9)]
-        unrelated += [row("", "", "claude", note='review:{"actual_min":"999","note":""}'), row(1, "")]
+        reviews = [row(1, 999, "claude-review") for _ in range(6)]
+        unrelated += reviews + [row(1, "")]
         self.assertEqual(estimate.calibration("codex", codex + unrelated), estimate.calibration("codex", codex))
-        self.assertEqual(estimate.calibration("claude", unrelated[-2:-1])[-2:], (0, False))
+        self.assertEqual(estimate.calibration("claude", unrelated), estimate.calibration("claude", unrelated[:8]))
 
     def test_uncalibrated_fallback_and_rounding(self):
         model = estimate.calibration("claude", [row(2, 10, "claude")] * 4)
@@ -76,9 +72,14 @@ class MathTests(unittest.TestCase):
         self.assertLessEqual(model[3], 1.1)
 
     def test_bad_rounds(self):
-        for value in ["0-2", "3-2", "nan-2", "1-inf", "-1-2", "1", "1-2-3"]:
-            with self.subTest(value=value), self.assertRaises(Exception):
+        for value in ["0-2", "3-2", "nan-2", "1-inf", "-1-2", "0", "nan", "inf", "1-2-3", "1e2", ""]:
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
                 estimate.rounds(value)
+
+    def test_single_and_range_rounds(self):
+        for value, expected in [("2", (2, 2)), ("0.5", (.5, .5)), ("2-3", (2, 3))]:
+            with self.subTest(value=value):
+                self.assertEqual(estimate.rounds(value), expected)
 
 
 class LogTests(unittest.TestCase):
@@ -115,13 +116,30 @@ class LogTests(unittest.TestCase):
         self.cli("done", ident, "--actual", "7", "--note", "synthetic review")
         old, review = self.rows()
         self.assertEqual({k: old[k] for k in legacy}, legacy)
-        self.assertEqual(review["agent"], "claude")
+        self.assertEqual(review["agent"], "claude-review")
         self.assertEqual(review["ticket"], "TEAM-1")
         self.assertIn("PR #42", review["task"])
-        self.assertEqual(review_data(review), {"actual_min": "7", "note": "synthetic review"})
-        for field in ["rounds_low", "rounds_high", "est_min", "actual_min"]:
-            self.assertEqual(review[field], "")
-        self.assertIn("claude: 3.0 min/round, uncalibrated n=0", self.cli().stdout)
+        self.assertEqual((review["actual_min"], review["note"]), ("7", "synthetic review"))
+        self.assertEqual((review["rounds_low"], review["rounds_high"], review["est_min"]), ("1", "1", ""))
+        self.assertIn("claude-review: count=1, median 7 min/pass, total 7 min", self.cli().stdout)
+
+    def test_review_stats_count_only_completed_passes(self):
+        ids = [self.start("claude", review=True) for _ in range(4)]
+        self.assertIn("claude-review: count=0, median n/a min/pass, total 0 min", self.cli().stdout)
+        for ident, actual in zip(ids, [7, 3, 11]):
+            self.cli("done", ident, "--actual", str(actual))
+        implementing = self.start("claude")
+        self.cli("done", implementing, "--actual", "99")
+        stats = self.cli().stdout
+        self.assertIn("claude-review: count=3, median 7 min/pass, total 21 min", stats)
+        self.assertIn("claude: 3.0 min/round, uncalibrated n=1", stats)
+        self.assertNotIn("min/round", next(line for line in stats.splitlines() if line.startswith("claude-review:")))
+
+    def test_single_rounds_estimate_and_start_match_equal_range(self):
+        self.assertEqual(self.cli("est", "codex", "2").stdout, self.cli("est", "codex", "2-2").stdout)
+        self.cli("start", "codex", "2", "--task", "synthetic")
+        entry = self.rows()[0]
+        self.assertEqual((entry["rounds_low"], entry["rounds_high"]), ("2", "2"))
 
     def test_parallel_starts_and_mixed_completions_keep_every_row(self):
         with ThreadPoolExecutor(max_workers=8) as pool:
@@ -134,7 +152,7 @@ class LogTests(unittest.TestCase):
         rows = self.rows()
         self.assertEqual(len(rows), 18)
         self.assertEqual({r["id"] for r in rows if r["actual_min"] == "9"}, set(ids))
-        self.assertEqual(sum(r["note"].startswith(estimate.REVIEW_PREFIX) for r in rows), 6)
+        self.assertEqual(sum(r["agent"] == "claude-review" for r in rows), 6)
 
     def test_review_elapsed_time_subtracts_human_wait(self):
         ident = self.start("claude", review=True)
@@ -145,7 +163,8 @@ class LogTests(unittest.TestCase):
             clock.now.return_value = finished
             clock.fromisoformat.side_effect = datetime.fromisoformat
             estimate.cmd_done(argparse.Namespace(id=ident, actual=None, wait=2, note="human wait"))
-        self.assertEqual(review_data(self.rows()[0]), {"actual_min": "7", "note": "human wait"})
+        review = self.rows()[0]
+        self.assertEqual((review["actual_min"], review["note"]), ("7", "human wait"))
 
     def test_cli_waits_for_held_lock(self):
         # Probe the real child's requested lock without waiting for a timeout.
@@ -212,6 +231,10 @@ runpy.run_path(sys.argv[0], run_name="__main__")
             entry = {field: "" for field in estimate.FIELDS}
             entry.update(id=f"legacy-{i}", started="2026-01-01T00:00+00:00", **row(2, 8 if i < 4 else "", "claude"))
             legacy.append(entry)
+        for i in range(5):
+            entry = {field: "" for field in estimate.FIELDS}
+            entry.update(id=f"codex-{i}", started="2026-01-01T00:00+00:00", **row(2, 8))
+            legacy.append(entry)
         self.log.parent.mkdir(parents=True)
         with self.log.open("w") as f:
             writer = csv.DictWriter(f, estimate.FIELDS, delimiter="\t")
@@ -222,19 +245,27 @@ runpy.run_path(sys.argv[0], run_name="__main__")
             ident = self.start("claude", review=True)
             self.cli("done", ident, "--actual", str(i + 2), "--note", 'synthetic "quoted"\nreview')
             review_ids.append(ident)
+        old("done", review_ids[0], "--actual", "2", "--note", 'synthetic "quoted"\nreview')
         before = {r["id"]: r for r in self.rows() if r["id"] in review_ids}
         self.assertIn("uncalibrated n=4", old("est", "claude", "1-2"))
         self.assertIn("claude: 3.0 min/round, uncalibrated n=4", old())
         self.assertIn("uncalibrated n=4", self.cli("est", "claude", "1-2").stdout)
+        self.assertIn("4.0 min/round, calibrated n=5", old("est", "codex", "1-2"))
+        self.assertIn("calibrated n=5", self.cli("est", "codex", "1-2").stdout)
         old("start", "claude", "1-2", "--task", "synthetic old run after reviews")
         old("done", old_id, "--actual", "9")
         old("done", "legacy-4", "--actual", "8")
         self.assertIn("4.0 min/round, calibrated n=5", old("est", "claude", "1-2"))
         self.assertIn("claude: 4.0 min/round, calibrated n=5", old())
+        self.assertIn("codex: 4.0 min/round, calibrated n=6", old())
+        self.assertIn("claude-review: 4.5 min/round, calibrated n=6", old())
         self.assertIn("calibrated n=5", self.cli("est", "claude", "1-2").stdout)
+        self.assertIn("calibrated n=6", self.cli("est", "codex", "1-2").stdout)
         rows = self.rows()
         self.assertEqual({r["id"]: r for r in rows if r["id"] in review_ids}, before)
-        self.assertEqual([review_data(before[ident])["actual_min"] for ident in review_ids], [str(i + 2) for i in range(6)])
+        self.assertEqual([before[ident]["actual_min"] for ident in review_ids], [str(i + 2) for i in range(6)])
+        self.assertTrue(all(r["agent"] == "claude-review" and r["rounds_low"] == r["rounds_high"] == "1"
+                            and not r["est_min"] for r in before.values()))
         self.assertEqual(next(r for r in rows if r["id"] == old_id)["actual_min"], "9")
         self.assertEqual(set(rows[0]), set(estimate.FIELDS))
 

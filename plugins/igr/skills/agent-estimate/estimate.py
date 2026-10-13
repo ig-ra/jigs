@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Agent-time estimates and run logging (standard library only).
 
-  estimate.py est   <agent> <low-high>
-  estimate.py start <agent> [<low-high> | --review] --task T [--ticket K] [--model M]
+  estimate.py est   <agent> <N|low-high>
+  estimate.py start <agent> [<N|low-high> | --review] --task T [--ticket K] [--model M]
   estimate.py done  <id> [--wait MIN | --actual MIN] [--note TEXT]
   estimate.py                                               calibration per agent
 """
 import argparse
 import csv
 import fcntl
-import json
 import math
 import os
 import re
@@ -23,7 +22,7 @@ from pathlib import Path
 LOG = Path(os.environ.get("AGENT_ESTIMATES") or Path.home() / ".claude/agent-estimates.tsv")
 FIELDS = ["id", "started", "agent", "model", "ticket", "task",
           "rounds_low", "rounds_high", "est_min", "actual_min", "note"]
-REVIEW_PREFIX = "review:"
+REVIEW_AGENT = "claude-review"
 DEFAULT_PACE = 3.0
 MIN_ROWS = 5
 UNCALIBRATED_WIDEN = 1.5
@@ -97,9 +96,10 @@ def basis(model):
 
 
 def rounds(value):
-    if not re.fullmatch(r"\d+(?:\.\d+)?-\d+(?:\.\d+)?", value):
-        raise argparse.ArgumentTypeError("rounds must be low-high")
-    low, high = map(float, value.split("-"))
+    if not re.fullmatch(r"\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?", value):
+        raise argparse.ArgumentTypeError("rounds must be N or low-high")
+    bounds = list(map(float, value.split("-")))
+    low, high = bounds[0], bounds[-1]
     if not 0 < low <= high < math.inf:
         raise argparse.ArgumentTypeError("rounds needs 0 < low <= high")
     return low, high
@@ -134,25 +134,25 @@ def validate_start(agent, bounds, task, ticket, review):
 def cmd_start(a):
     with locked():
         rows = read_rows()
+        agent = REVIEW_AGENT if a.review else a.agent
         if a.review:
-            est, rounds_low, rounds_high, detail = "", "", "", "review, actual time only"
-            # Legacy readers only calibrate nonblank actual_min. Keep review
-            # actuals in the existing note column so old writers preserve them.
-            note = REVIEW_PREFIX + json.dumps({"actual_min": "", "note": ""})
+            # One pass keeps old stats numeric; the separate agent keeps these
+            # actuals out of Claude's implementing calibration in both versions.
+            est, rounds_low, rounds_high, detail = "", "1", "1", "review, actual time only"
         else:
             est, source, (low, high) = minutes(a.agent, a.rounds, rows)
             rounds_low, rounds_high = f"{low:g}", f"{high:g}"
-            detail, note = f"{est} min ({low:g}-{high:g} rounds, {a.agent}, {source})", ""
+            detail = f"{est} min ({low:g}-{high:g} rounds, {a.agent}, {source})"
         now = datetime.now().astimezone()
-        prefix = f"{now:%Y%m%d-%H%M%S}-{a.agent}"
+        prefix = f"{now:%Y%m%d-%H%M%S}-{agent}"
         ident = f"{prefix}-{secrets.token_hex(3)}"
         while any(r["id"] == ident for r in rows):
             ident = f"{prefix}-{secrets.token_hex(3)}"
         row = {"id": ident,
-               "started": now.isoformat(timespec="seconds"), "agent": a.agent,
+               "started": now.isoformat(timespec="seconds"), "agent": agent,
                "model": a.model, "ticket": a.ticket, "task": a.task,
                "rounds_low": rounds_low, "rounds_high": rounds_high,
-               "est_min": est, "actual_min": "", "note": note}
+               "est_min": est, "actual_min": "", "note": ""}
         write_rows(rows + [row])
     print(f"Agent time: {detail}. id={row['id']}")
 
@@ -169,10 +169,7 @@ def cmd_done(a):
             elapsed = (datetime.now().astimezone() - datetime.fromisoformat(row["started"])).total_seconds() / 60
             actual = elapsed - a.wait
         actual_min = f"{max(1, actual):.0f}"
-        if not row["rounds_low"] and row["note"].startswith(REVIEW_PREFIX):
-            row["note"] = REVIEW_PREFIX + json.dumps({"actual_min": actual_min, "note": a.note})
-        else:
-            row["actual_min"], row["note"] = actual_min, a.note
+        row["actual_min"], row["note"] = actual_min, a.note
         write_rows(rows)
     print(f"{row['id']}: estimated {row['est_min'] or 'unestimated review'} min, actual {actual_min} min")
 
@@ -180,7 +177,12 @@ def cmd_done(a):
 def cmd_stats(_):
     rows = read_rows()
     for agent in sorted({r["agent"] for r in rows}):
-        print(f"{agent}: {basis(calibration(agent, rows))}")
+        if agent == REVIEW_AGENT:
+            actuals = [float(r["actual_min"]) for r in rows if r["agent"] == agent and r["actual_min"]]
+            median = f"{statistics.median(actuals):g}" if actuals else "n/a"
+            print(f"{agent}: count={len(actuals)}, median {median} min/pass, total {sum(actuals):g} min")
+        else:
+            print(f"{agent}: {basis(calibration(agent, rows))}")
     print(f"log: {LOG}")
 
 
@@ -205,7 +207,7 @@ def main():
     s = sub.add_parser("start")
     for p in (e, s):
         p.add_argument("agent", choices=["claude", "codex"])
-        p.add_argument("rounds", type=rounds, nargs="?" if p is s else None, help="low-high, for example 8-14")
+        p.add_argument("rounds", type=rounds, nargs="?" if p is s else None, help="N or low-high, for example 2 or 8-14")
     s.add_argument("--review", action="store_true", help="Claude review; log actual time without estimating rounds")
     s.add_argument("--task", required=True)
     s.add_argument("--ticket", default="")

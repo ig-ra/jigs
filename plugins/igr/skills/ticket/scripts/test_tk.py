@@ -380,10 +380,11 @@ class LifecycleTests(unittest.TestCase):
             with (root / "estimates.tsv").open() as f:
                 rows = list(csv.DictReader(f, delimiter="\t"))
             self.assertEqual(len(rows), 3)
-            reviews = [r for r in rows if r["note"].startswith("review:")]
-            self.assertEqual([json.loads(r["note"].removeprefix("review:"))["actual_min"] for r in reviews], ["7", "3"])
-            self.assertTrue(all(r["agent"] == "claude" and r["ticket"] == "TEAM-7" and
-                                r["task"] == "PR #42: After-code review" and not r["rounds_low"] for r in reviews))
+            reviews = [r for r in rows if r["agent"] == "claude-review"]
+            self.assertEqual([r["actual_min"] for r in reviews], ["7", "3"])
+            self.assertTrue(all(r["ticket"] == "TEAM-7" and r["task"] == "PR #42: After-code review"
+                                and r["rounds_low"] == r["rounds_high"] == "1"
+                                and not r["est_min"] and not r["note"] for r in reviews))
             run = next(r for r in rows if r not in reviews)
             self.assertEqual((run["id"], run["actual_min"]), (fix_id, "11"))
 
@@ -418,12 +419,22 @@ class LifecycleTests(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO):
             base = ["--cwd", str(tree), "step", "TEAM-7", "implement", "running", "--dispatch",
                     "--agent", "codex", "--task", "synthetic", "--rounds"]
-            for value in ["0-2", "3-2", "1", "1-inf"]:
+            for value in ["0-2", "3-2", "0", "1-inf"]:
                 with self.subTest(value=value):
                     self.assertEqual(tk.main(base + [value]), 2)
             self.assertTrue(all(call.args[0][0] == "git" for call in commands.call_args_list))
             self.assertFalse((tree / "igr" / "state.json").exists())
             self.assertFalse((root / "estimates.tsv").exists())
+
+    def test_dispatch_single_rounds_logs_equal_bounds(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {
+                "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "implement", "running",
+                                      "--dispatch", "--agent", "codex", "--task", "synthetic", "--rounds", "2"]), 0)
+            with (root / "estimates.tsv").open() as f:
+                run = next(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual((run["rounds_low"], run["rounds_high"]), ("2", "2"))
 
     def test_dispatch_preserves_valid_decimal_rounds_across_cli_boundary(self):
         with ticket_setup() as (root, tree), patch.dict(os.environ, {
