@@ -155,7 +155,8 @@ one line and do not manufacture a difference."* Handing it my design to attack i
 relationship, not a partnership, and it anchors its answer on mine. Codex reads Linear comments, so
 nothing of my solution goes on the ticket before its pass. The same applies to new work in the
 middle of a PR, to review findings, and to CI failures: a fix brief carries the log lines and the
-numbers, never "my reading" of the cause.
+numbers, never "my reading" of the cause. A batch of review or bot findings counts as a problem: sort
+it per `loop.md` After code step 2, and give judgment-track findings to codex without my verdict.
 
 **This includes my numbers.** In the independent pass, name what to measure, not what I measured: my
 evidence anchors codex as much as my design does. Point it at primary sources and say that any
