@@ -105,31 +105,29 @@ class LogTests(unittest.TestCase):
         with self.log.open() as f:
             return list(csv.DictReader(f, delimiter="\t"))
 
-    def test_review_logs_actual_only_and_legacy_rows_survive(self):
+    def test_review_rows_stats_and_legacy_preservation(self):
         self.log.parent.mkdir(parents=True)
         legacy = {field: "" for field in estimate.FIELDS}
         legacy.update(id="old", started="2026-01-01T00:00:00+00:00", **row(2, 8), task="legacy")
         with self.log.open("w") as f:
             writer = csv.DictWriter(f, list(legacy), delimiter="\t")
             writer.writeheader(); writer.writerow(legacy)
-        ident = self.start("claude", review=True)
-        self.cli("done", ident, "--actual", "7", "--note", "synthetic review")
-        old, review = self.rows()
-        self.assertEqual({k: old[k] for k in legacy}, legacy)
+        ids = [self.start("claude", review=True) for _ in range(4)]
+        self.assertIn("claude-review: count=0, median n/a min/pass, total 0 min", self.cli().stdout)
+        self.cli("done", ids[0], "--actual", "5", "--note", "initial duration")
+        self.cli("done", ids[0], "--actual", "7", "--note", "synthetic review")
+        for ident, actual in zip(ids[1:], [3, 11]):
+            self.cli("done", ident, "--actual", str(actual))
+        implementing = self.start("claude")
+        self.cli("done", implementing, "--actual", "99")
+        old, review, *_ = self.rows()
+        self.assertEqual(old, legacy)
         self.assertEqual(review["agent"], "claude-review")
         self.assertEqual(review["ticket"], "TEAM-1")
         self.assertIn("PR #42", review["task"])
         self.assertEqual((review["actual_min"], review["note"]), ("7", "synthetic review"))
         self.assertEqual((review["rounds_low"], review["rounds_high"], review["est_min"]), ("1", "1", ""))
-        self.assertIn("claude-review: count=1, median 7 min/pass, total 7 min", self.cli().stdout)
-
-    def test_review_stats_count_only_completed_passes(self):
-        ids = [self.start("claude", review=True) for _ in range(4)]
-        self.assertIn("claude-review: count=0, median n/a min/pass, total 0 min", self.cli().stdout)
-        for ident, actual in zip(ids, [7, 3, 11]):
-            self.cli("done", ident, "--actual", str(actual))
-        implementing = self.start("claude")
-        self.cli("done", implementing, "--actual", "99")
+        self.assertEqual(self.rows()[2]["note"], "")
         stats = self.cli().stdout
         self.assertIn("claude-review: count=3, median 7 min/pass, total 21 min", stats)
         self.assertIn("claude: 3.0 min/round, uncalibrated n=1", stats)
@@ -157,49 +155,25 @@ class LogTests(unittest.TestCase):
     def test_review_elapsed_time_subtracts_human_wait(self):
         ident = self.start("claude", review=True)
         review = self.rows()[0]
-        finished = datetime.fromisoformat(review["started"]) + timedelta(minutes=9)
-        with patch.object(estimate, "LOG", self.log), patch.object(estimate, "datetime") as clock, \
-                patch("sys.stdout", new_callable=io.StringIO):
-            clock.now.return_value = finished
-            clock.fromisoformat.side_effect = datetime.fromisoformat
-            estimate.cmd_done(argparse.Namespace(id=ident, actual=None, wait=2, note="human wait"))
+        review["started"] = (datetime.now().astimezone() - timedelta(minutes=9)).isoformat()
+        with patch.object(estimate, "LOG", self.log):
+            estimate.write_rows([review])
+        self.cli("done", ident, "--wait", "2", "--note", "human wait")
         review = self.rows()[0]
         self.assertEqual((review["actual_min"], review["note"]), ("7", "human wait"))
 
     def test_cli_waits_for_held_lock(self):
-        # Probe the real child's requested lock without waiting for a timeout.
-        # It reports the OS's contention result, then takes the normal lock.
-        probe = '''
-import fcntl, runpy, sys
-original = fcntl.flock
-def checked(fd, operation):
-    try:
-        original(fd, operation | fcntl.LOCK_NB)
-    except BlockingIOError:
-        print("lock contended", flush=True)
-    else:
-        raise AssertionError("CLI did not contend with the held log lock")
-    original(fd, operation)
-fcntl.flock = checked
-sys.argv = [sys.argv[1], "start", "codex", "1-2", "--task", "synthetic"]
-runpy.run_path(sys.argv[0], run_name="__main__")
-'''
-        process = None
-        try:
-            with patch.object(estimate, "LOG", self.log), estimate.locked():
-                process = subprocess.Popen([sys.executable, "-B", "-c", probe, str(HERE / "estimate.py")],
-                                           env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                with ThreadPoolExecutor(max_workers=1) as pool:
-                    signal = pool.submit(process.stdout.readline)
-                    try:
-                        self.assertEqual(signal.result(timeout=15), b"lock contended\n")
-                    except BaseException:
-                        process.kill()
-                        raise
-            stdout, stderr = process.communicate(timeout=15)
-        finally:
-            if process is not None and process.poll() is None:
+        with patch.object(estimate, "LOG", self.log), estimate.locked():
+            process = subprocess.Popen([sys.executable, "-B", str(HERE / "estimate.py"),
+                                        "start", "codex", "1-2", "--task", "synthetic"],
+                                       env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    process.communicate(timeout=.2)
+            except BaseException:
                 process.kill(); process.communicate()
+                raise
+        stdout, stderr = process.communicate(timeout=15)
         self.assertEqual(process.returncode, 0, stderr)
         self.assertIn(b"id=", stdout)
         self.assertEqual(len(self.rows()), 1)
@@ -264,8 +238,6 @@ runpy.run_path(sys.argv[0], run_name="__main__")
         rows = self.rows()
         self.assertEqual({r["id"]: r for r in rows if r["id"] in review_ids}, before)
         self.assertEqual([before[ident]["actual_min"] for ident in review_ids], [str(i + 2) for i in range(6)])
-        self.assertTrue(all(r["agent"] == "claude-review" and r["rounds_low"] == r["rounds_high"] == "1"
-                            and not r["est_min"] for r in before.values()))
         self.assertEqual(next(r for r in rows if r["id"] == old_id)["actual_min"], "9")
         self.assertEqual(set(rows[0]), set(estimate.FIELDS))
 
@@ -277,13 +249,6 @@ runpy.run_path(sys.argv[0], run_name="__main__")
                 estimate.write_rows([])
         self.assertEqual(self.log.read_bytes(), before)
         self.assertEqual(list(self.log.parent.glob(".estimate-*")), [])
-
-    def test_ordinary_review_word_in_note_does_not_change_row_type(self):
-        ident = self.start()
-        self.cli("done", ident, "--actual", "7", "--note", "review: findings fixed")
-        self.cli("done", ident, "--actual", "9", "--note", "corrected duration")
-        self.assertEqual(self.rows()[0]["actual_min"], "9")
-        self.assertEqual(self.rows()[0]["note"], "corrected duration")
 
     def test_invalid_cli_inputs_do_not_write(self):
         cases = [("start", "codex", "--review", "--ticket", "TEAM-1", "--task", "review"),

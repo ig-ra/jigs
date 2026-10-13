@@ -115,11 +115,12 @@ def interval(model, low, high):
 def minutes(agent, bounds, rows=None):
     low, high = bounds
     model = calibration(agent, read_rows() if rows is None else rows)
-    return interval(model, low, high), basis(model), (low, high)
+    return interval(model, low, high), basis(model)
 
 
 def cmd_est(a):
-    est, source, (low, high) = minutes(a.agent, a.rounds)
+    est, source = minutes(a.agent, a.rounds)
+    low, high = a.rounds
     print(f"Agent time: {est} min ({low:g}-{high:g} rounds, {a.agent}, {source})")
 
 
@@ -128,7 +129,7 @@ def validate_start(agent, bounds, task, ticket, review):
         if agent != "claude" or bounds or not ticket or not task:
             raise argparse.ArgumentTypeError("--review needs claude, --ticket and --task, with no rounds")
     elif not (agent and bounds and task):
-        raise argparse.ArgumentTypeError("start needs --agent, rounds and --task")
+        raise argparse.ArgumentTypeError("start needs agent, rounds and task")
 
 
 def cmd_start(a):
@@ -140,7 +141,8 @@ def cmd_start(a):
             # actuals out of Claude's implementing calibration in both versions.
             est, rounds_low, rounds_high, detail = "", "1", "1", "review, actual time only"
         else:
-            est, source, (low, high) = minutes(a.agent, a.rounds, rows)
+            est, source = minutes(a.agent, a.rounds, rows)
+            low, high = a.rounds
             rounds_low, rounds_high = f"{low:g}", f"{high:g}"
             detail = f"{est} min ({low:g}-{high:g} rounds, {a.agent}, {source})"
         now = datetime.now().astimezone()

@@ -13,7 +13,7 @@ Agents learned their sense of time from human developers, so they say "2-3 days"
 
 One **run**: one agent (Claude or codex) working on its own, from start to "done, ready for review". Human review and decisions are not agent time. Say them separately when the plan has them ("your review: about 15 minutes").
 
-A ticket that codex implements and Claude reviews has separate runs. Claude's After-code review passes log actual time only; they do not need a rounds estimate.
+A ticket that codex implements and Claude reviews has separate runs.
 
 ## Count rounds
 
@@ -30,17 +30,15 @@ A **round** is one cycle: change something (edit or command), run or check it, r
    | Unknown root cause, several systems, possible dead ends | 8-15 |
 
 3. **Add the parts people forget:** reading the ticket and code, the test gate and build, review findings and their fixes, CI. For a fix dispatch, count running the repo's gate and pushing as at least 2 additional rounds, plus 1 for a likely gate failure.
-4. Give a **range** (low-high), never one number. Uncertainty widens the range; do not pad by feel.
+4. Use a single **N** for a fixed-size step (it means N-N), or a **range** (low-high) for uncertain work. Uncertainty widens the range; do not pad by feel.
 
 ## Convert to minutes
 
 Never do this arithmetic yourself. Run:
 
 ```bash
-python3 <skill dir>/estimate.py est <claude|codex> <low-high>
+python3 <skill dir>/estimate.py est <claude|codex> <N|low-high>
 ```
-
-The shared rounds input also accepts a single `N` as `N-N`, including `tk step --rounds 2`. Give a range when sizing uncertain work.
 
 It fits overhead plus minutes per round separately per agent from completed implementing runs, with an empirical spread and a nonzero range (method in `estimate.py`). Aim for roughly 70% coverage and check against actuals; with fewer than 5 such runs it uses 3 minutes per round and widens the high end by 1.5×, so say "uncalibrated".
 
@@ -52,11 +50,11 @@ Answer in one line, from the script's output:
 
 The log is `~/.claude/agent-estimates.tsv` (override with `AGENT_ESTIMATES`), one row per run, created on first use. Whoever starts the work logs it; when Claude dispatches codex, Claude logs the codex run.
 
-- **When the run starts:** `estimate.py start <agent> <low-high> --task "<short>" --ticket <KEY> --model <model>`. It prints the estimate and an `id`. Keep the id (put it in the ticket's working notes if the session may be compacted).
+- **When the run starts:** `estimate.py start <agent> <N|low-high> --task "<short>" --ticket <KEY> --model <model>`. It prints the estimate and an `id`. Keep the id (put it in the ticket's working notes if the session may be compacted).
 - **When the run is done:** `estimate.py done <id> --wait <minutes spent waiting on a human> --note "<why it differed, if by more than half>"`.
-- **Late report:** `estimate.py done <id> --actual <minutes at the run's end> --note "<reason>"`; use actual duration rather than elapsed time since a report that arrived earlier.
-- **Claude After-code review:** follow [ticket loop, After code step 1](../ticket/references/loop.md#after-code). Review rows use `agent=claude-review`, `rounds_low=rounds_high=1` for one pass, blank `est_min`, plain minutes in `actual_min` and an ordinary free-text `note`. The separate agent keeps reviews out of implementing calibration even for sessions on the previous plugin.
-- **Calibration check:** `estimate.py` with no arguments prints overhead, pace and empirical band for implementing agents; review rows do not count toward their 5-run thresholds. For `claude-review`, it prints completed pass count, median minutes per pass and total minutes.
+- **Late report:** `estimate.py done <id> --actual <minutes the run took> --note "<reason>"`; use the duration from start to finish, excluding time between finish and this late report.
+- **Claude After-code review:** follow [ticket loop, After code step 1](../ticket/references/loop.md#after-code). Passes log as `claude-review` with actual minutes only and stay out of implementing calibration in both plugin versions.
+- **Calibration check:** `estimate.py` with no arguments prints overhead, pace and empirical band for implementing agents. For `claude-review`, it prints completed pass count, median minutes per pass and total minutes.
 
 Current `start` and `done` calls are safe to run concurrently.
 

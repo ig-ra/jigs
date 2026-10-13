@@ -579,22 +579,21 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
             raise TkError("band state belongs to another ticket")
         metadata = state.setdefault("tk", {})
         ids = metadata.setdefault("estimates", {})
-        review = a.review
-        slot = "claude-review" if review else a.line
-        if review and (a.line != "reviews" or not (a.dispatch or a.report)):
+        timer = "claude-review" if a.review else a.line
+        if a.review and (a.line != "reviews" or not (a.dispatch or a.report)):
             raise TkError("--review needs reviews --dispatch or --report", 2)
         if a.dispatch:
             try:
                 engine = estimate_engine()
                 bounds = engine.rounds(a.rounds) if a.rounds else None
-                engine.validate_start(a.agent, bounds, a.task, key, review)
+                engine.validate_start(a.agent, bounds, a.task, key, a.review)
             except argparse.ArgumentTypeError as error:
                 raise TkError(str(error), 2) from error
-            if review and not (a.pr or state.get("pr")):
+            if a.review and not (a.pr or state.get("pr")):
                 raise TkError("Claude review needs PR metadata (--pr)", 2)
-            if slot in ids:
+            if timer in ids:
                 raise TkError("estimate already open for this line", 1)
-        if a.report and slot not in ids:
+        if a.report and timer not in ids:
             raise TkError("no open estimate for this line", 1)
         if a.actual_minutes is not None and not a.report:
             raise TkError("--actual-minutes needs --report", 2)
@@ -608,21 +607,21 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
             state[a.line]["note"] = a.note
         if a.dispatch or a.report:
             if a.dispatch:
-                task = f"PR #{state['pr']}: {a.task}" if review else a.task
-                mode = ["--review"] if review else [a.rounds]
+                task = f"PR #{state['pr']}: {a.task}" if a.review else a.task
+                mode = ["--review"] if a.review else [a.rounds]
                 result = run([sys.executable, str(ESTIMATE), "start", a.agent, *mode, "--task", task,
                               "--ticket", key, "--model", a.model])
                 match = re.search(r"id=(\S+)", result)
                 if not match:
                     raise TkError("estimate start returned no id")
-                ids[slot] = match[1]
+                ids[timer] = match[1]
             else:
                 timing = (["--actual", str(a.actual_minutes)] if a.actual_minutes is not None else
                           ["--wait", str(a.wait_minutes)])
-                run([sys.executable, str(ESTIMATE), "done", ids[slot], *timing, "--note", a.note or ""])
-                del ids[slot]
+                run([sys.executable, str(ESTIMATE), "done", ids[timer], *timing, "--note", a.note or ""])
+                del ids[timer]
         atomic_json(band, state)
-    output(state, f"{key} {a.line}={a.status}" + (f" estimate={ids[slot]}" if a.dispatch else ""), a.json)
+    output(state, f"{key} {a.line}={a.status}" + (f" estimate={ids[timer]}" if a.dispatch else ""), a.json)
     return 0
 
 
