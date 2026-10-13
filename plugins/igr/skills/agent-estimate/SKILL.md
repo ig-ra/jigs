@@ -40,9 +40,7 @@ Never do this arithmetic yourself. Run:
 python3 <skill dir>/estimate.py est <claude|codex> <low-high>
 ```
 
-It fits `overhead + pace × rounds` separately per agent, using completed runs with rounds. For each integer overhead from zero through the median actual duration, pace is the nonnegative median of `(actual - overhead) / mid-rounds`. It chooses the pair with the least mean absolute log error, so relative errors count equally for small and large runs. The 20th/80th percentiles of `actual / predicted-midpoint` widen the predicted low/high rounds into a range. Outliers stay in the data; medians and percentiles limit their influence.
-
-The band plus rounds uncertainty aims to cover most runs (roughly 70%); future coverage needs checking against actuals, not a promise from the fit. Bounds round outward to five-minute marks, with a one-minute lower minimum and an upper bound at least at the next five-minute mark. This adds coverage, especially for short runs. With fewer than 5 completed runs with rounds it keeps the fallback: 3 minutes per round and 1.5 times the high end; say "uncalibrated" when it does.
+It fits overhead plus minutes per round separately per agent from completed implementing runs, with an empirical spread and a nonzero range (method in `estimate.py`). Aim for roughly 70% coverage and check against actuals; with fewer than 5 such runs it uses 3 minutes per round and widens the high end by 1.5×, so say "uncalibrated".
 
 Answer in one line, from the script's output:
 
@@ -55,10 +53,10 @@ The log is `~/.claude/agent-estimates.tsv` (override with `AGENT_ESTIMATES`), on
 - **When the run starts:** `estimate.py start <agent> <low-high> --task "<short>" --ticket <KEY> --model <model>`. It prints the estimate and an `id`. Keep the id (put it in the ticket's working notes if the session may be compacted).
 - **When the run is done:** `estimate.py done <id> --wait <minutes spent waiting on a human> --note "<why it differed, if by more than half>"`.
 - **Late report:** `estimate.py done <id> --actual <minutes at the run's end> --note "<reason>"`; use actual duration rather than elapsed time since a report that arrived earlier.
-- **Claude After-code review:** `estimate.py start claude --review --task "PR #<PR>: After-code review" --ticket <KEY> --model <model>`, then `done <id>` as soon as that pass ends. Each rerun gets a fresh row. `kind=review`, blank rounds and blank estimate distinguish actual-only rows and exclude them from calibration (including Claude's). Ticket-loop callers use `tk step ... --review` as described in `../ticket/references/loop.md` so the review id survives compaction independently of Codex fix ids.
+- **Claude After-code review:** follow [ticket loop, After code step 1](../ticket/references/loop.md#after-code). Review rows have blank rounds, estimate and ordinary `actual_min`; their actual minutes and reason live in `note` as `review:{"actual_min":"7","note":"..."}`. This keeps reviews out of calibration even for sessions on the previous plugin.
 - **Calibration check:** `estimate.py` with no arguments prints overhead, pace and empirical band for each agent; review rows do not count toward the 5-run threshold.
 
-`start` and `done` lock a stable sidecar `.lock` file around the entire read/modify/write and atomically replace the TSV. This applies to direct calls and `tk`; callers must not hold that same lock around the subprocess. Older rows without `kind` remain ordinary runs. New ids include a random suffix, so simultaneous same-agent starts stay distinct.
+Current `start` and `done` calls are safe to run concurrently.
 
 If you cannot write the file (for example, inside codex's sandbox), print the `start` command and let the orchestrator run it.
 

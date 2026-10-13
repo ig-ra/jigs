@@ -9,19 +9,21 @@
 import argparse
 import csv
 import fcntl
+import json
 import math
 import os
 import re
+import secrets
 import statistics
 import tempfile
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from uuid import uuid4
 
 LOG = Path(os.environ.get("AGENT_ESTIMATES") or Path.home() / ".claude/agent-estimates.tsv")
 FIELDS = ["id", "started", "agent", "model", "ticket", "task",
-          "rounds_low", "rounds_high", "est_min", "actual_min", "note", "kind"]
+          "rounds_low", "rounds_high", "est_min", "actual_min", "note"]
+REVIEW_PREFIX = "review:"
 DEFAULT_PACE = 3.0
 MIN_ROWS = 5
 UNCALIBRATED_WIDEN = 1.5
@@ -64,15 +66,8 @@ def mid(r):
 
 def samples(agent, rows):
     return [(mid(r), float(r["actual_min"])) for r in rows
-            if r["agent"] == agent and r.get("kind") != "review" and r["actual_min"]
+            if r["agent"] == agent and r["actual_min"]
             and r["rounds_low"] and r["rounds_high"]]
-
-
-def percentile(values, fraction):
-    values = sorted(values)
-    position = (len(values) - 1) * fraction
-    index = int(position)
-    return values[index] + (values[min(index + 1, len(values) - 1)] - values[index]) * (position - index)
 
 
 def calibration(agent, rows):
@@ -89,7 +84,8 @@ def calibration(agent, rows):
         candidates.append((error, overhead, pace))
     _, overhead, pace = min(candidates)
     ratios = [y / (overhead + pace * x) for x, y in data]
-    return overhead, pace, percentile(ratios, .2), percentile(ratios, .8), len(data), True
+    quantiles = statistics.quantiles(ratios, n=5, method="inclusive")
+    return overhead, pace, quantiles[0], quantiles[3], len(data), True
 
 
 def basis(model):
@@ -116,8 +112,8 @@ def interval(model, low, high):
     return f"{lo}-{hi}"
 
 
-def minutes(agent, value, rows=None):
-    low, high = rounds(value)
+def minutes(agent, bounds, rows=None):
+    low, high = bounds
     model = calibration(agent, read_rows() if rows is None else rows)
     return interval(model, low, high), basis(model), (low, high)
 
@@ -127,27 +123,37 @@ def cmd_est(a):
     print(f"Agent time: {est} min ({low:g}-{high:g} rounds, {a.agent}, {source})")
 
 
+def validate_start(agent, bounds, task, ticket, review):
+    if review:
+        if agent != "claude" or bounds or not ticket or not task:
+            raise argparse.ArgumentTypeError("--review needs claude, --ticket and --task, with no rounds")
+    elif not (agent and bounds and task):
+        raise argparse.ArgumentTypeError("start needs --agent, rounds and --task")
+
+
 def cmd_start(a):
-    if a.review:
-        if a.agent != "claude" or a.rounds or not a.ticket:
-            raise SystemExit("--review needs claude and --ticket, with no rounds")
-    elif not a.rounds:
-        raise SystemExit("start needs rounds or --review")
     with locked():
         rows = read_rows()
         if a.review:
-            est, source, low, high = "", "review, actual time only", "", ""
+            est, rounds_low, rounds_high, detail = "", "", "", "review, actual time only"
+            # Legacy readers only calibrate nonblank actual_min. Keep review
+            # actuals in the existing note column so old writers preserve them.
+            note = REVIEW_PREFIX + json.dumps({"actual_min": "", "note": ""})
         else:
             est, source, (low, high) = minutes(a.agent, a.rounds, rows)
+            rounds_low, rounds_high = f"{low:g}", f"{high:g}"
+            detail, note = f"{est} min ({low:g}-{high:g} rounds, {a.agent}, {source})", ""
         now = datetime.now().astimezone()
-        row = {"id": f"{now:%Y%m%d-%H%M%S}-{a.agent}-{uuid4().hex}",
+        prefix = f"{now:%Y%m%d-%H%M%S}-{a.agent}"
+        ident = f"{prefix}-{secrets.token_hex(3)}"
+        while any(r["id"] == ident for r in rows):
+            ident = f"{prefix}-{secrets.token_hex(3)}"
+        row = {"id": ident,
                "started": now.isoformat(timespec="seconds"), "agent": a.agent,
                "model": a.model, "ticket": a.ticket, "task": a.task,
-               "rounds_low": f"{low:g}" if low != "" else "",
-               "rounds_high": f"{high:g}" if high != "" else "",
-               "est_min": est, "actual_min": "", "note": "", "kind": "review" if a.review else "run"}
+               "rounds_low": rounds_low, "rounds_high": rounds_high,
+               "est_min": est, "actual_min": "", "note": note}
         write_rows(rows + [row])
-    detail = source if a.review else f"{est} min ({low:g}-{high:g} rounds, {a.agent}, {source})"
     print(f"Agent time: {detail}. id={row['id']}")
 
 
@@ -162,10 +168,13 @@ def cmd_done(a):
         else:
             elapsed = (datetime.now().astimezone() - datetime.fromisoformat(row["started"])).total_seconds() / 60
             actual = elapsed - a.wait
-        row["actual_min"] = f"{max(1, actual):.0f}"
-        row["note"] = a.note
+        actual_min = f"{max(1, actual):.0f}"
+        if not row["rounds_low"] and row["note"].startswith(REVIEW_PREFIX):
+            row["note"] = REVIEW_PREFIX + json.dumps({"actual_min": actual_min, "note": a.note})
+        else:
+            row["actual_min"], row["note"] = actual_min, a.note
         write_rows(rows)
-    print(f"{row['id']}: estimated {row['est_min'] or 'unestimated review'} min, actual {row['actual_min']} min")
+    print(f"{row['id']}: estimated {row['est_min'] or 'unestimated review'} min, actual {actual_min} min")
 
 
 def cmd_stats(_):
@@ -196,7 +205,7 @@ def main():
     s = sub.add_parser("start")
     for p in (e, s):
         p.add_argument("agent", choices=["claude", "codex"])
-        p.add_argument("rounds", nargs="?" if p is s else None, help="low-high, for example 8-14")
+        p.add_argument("rounds", type=rounds, nargs="?" if p is s else None, help="low-high, for example 8-14")
     s.add_argument("--review", action="store_true", help="Claude review; log actual time without estimating rounds")
     s.add_argument("--task", required=True)
     s.add_argument("--ticket", default="")
@@ -208,9 +217,9 @@ def main():
     timing.add_argument("--actual", type=positive, help="actual minutes, when closing a run after it ended")
     d.add_argument("--note", default="")
     a = ap.parse_args()
-    if a.cmd in {"est", "start"} and a.rounds:
+    if a.cmd == "start":
         try:
-            rounds(a.rounds)
+            validate_start(a.agent, a.rounds, a.task, a.ticket, a.review)
         except argparse.ArgumentTypeError as error:
             ap.error(str(error))
     {"est": cmd_est, "start": cmd_start, "done": cmd_done}.get(a.cmd, cmd_stats)(a)

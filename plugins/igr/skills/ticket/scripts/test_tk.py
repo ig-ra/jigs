@@ -306,7 +306,7 @@ class LifecycleTests(unittest.TestCase):
                         "reviews": {"status": "done"}, "implement": {"status": "todo", "extra": True}}
             band.write_text(json.dumps(original))
             a = args(key="tEaM-7", owner="test", line="implement", status="running", pr=None,
-                     dispatch=False, report=False, actual_minutes=None, ticket_url="https://example/new-ticket", note="new")
+                     dispatch=False, report=False, review=False, actual_minutes=None, ticket_url="https://example/new-ticket", note="new")
             with patch("sys.stdout", new_callable=io.StringIO):
                 self.assertEqual(tk.step(tk.Context(root), a), 0)
             state = json.loads(band.read_text())
@@ -380,22 +380,20 @@ class LifecycleTests(unittest.TestCase):
             with (root / "estimates.tsv").open() as f:
                 rows = list(csv.DictReader(f, delimiter="\t"))
             self.assertEqual(len(rows), 3)
-            reviews = [r for r in rows if r["kind"] == "review"]
-            self.assertEqual([r["actual_min"] for r in reviews], ["7", "3"])
+            reviews = [r for r in rows if r["note"].startswith("review:")]
+            self.assertEqual([json.loads(r["note"].removeprefix("review:"))["actual_min"] for r in reviews], ["7", "3"])
             self.assertTrue(all(r["agent"] == "claude" and r["ticket"] == "TEAM-7" and
                                 r["task"] == "PR #42: After-code review" and not r["rounds_low"] for r in reviews))
-            run = next(r for r in rows if r["kind"] == "run")
+            run = next(r for r in rows if r not in reviews)
             self.assertEqual((run["id"], run["actual_min"]), (fix_id, "11"))
 
-    def test_review_requires_reviews_line_claude_no_rounds_and_pr(self):
+    def test_review_requires_reviews_line_dispatch_or_report_and_pr(self):
         with ticket_setup() as (root, tree), patch.dict(os.environ, {
                 "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
                 patch("sys.stdout", new_callable=io.StringIO):
             base = ["--cwd", str(tree), "step", "TEAM-7"]
             invalid = [["implement", "running", "--dispatch", "--review", "--agent", "claude", "--task", "review"],
                        ["reviews", "running", "--review"],
-                       ["reviews", "running", "--dispatch", "--review", "--agent", "codex", "--task", "review"],
-                       ["reviews", "running", "--dispatch", "--review", "--agent", "claude", "--rounds", "1-2", "--task", "review"],
                        ["reviews", "running", "--dispatch", "--review", "--agent", "claude", "--task", "review"]]
             for command in invalid:
                 with self.subTest(command=command):
@@ -412,6 +410,31 @@ class LifecycleTests(unittest.TestCase):
             with (root / "estimates.tsv").open() as f:
                 review = next(csv.DictReader(f, delimiter="\t"))
             self.assertEqual(review["task"], "PR #43: review")
+
+    def test_dispatch_bad_rounds_are_usage_errors_without_state_or_log_writes(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {
+                "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
+                patch.object(tk, "run", wraps=tk.run) as commands, \
+                patch("sys.stdout", new_callable=io.StringIO):
+            base = ["--cwd", str(tree), "step", "TEAM-7", "implement", "running", "--dispatch",
+                    "--agent", "codex", "--task", "synthetic", "--rounds"]
+            for value in ["0-2", "3-2", "1", "1-inf"]:
+                with self.subTest(value=value):
+                    self.assertEqual(tk.main(base + [value]), 2)
+            self.assertTrue(all(call.args[0][0] == "git" for call in commands.call_args_list))
+            self.assertFalse((tree / "igr" / "state.json").exists())
+            self.assertFalse((root / "estimates.tsv").exists())
+
+    def test_dispatch_preserves_valid_decimal_rounds_across_cli_boundary(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {
+                "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
+                patch.object(tk, "run", wraps=tk.run) as commands, \
+                patch("sys.stdout", new_callable=io.StringIO):
+            value = "0.0000001-0.0000002"
+            self.assertEqual(tk.main(["--cwd", str(tree), "step", "TEAM-7", "implement", "running",
+                                      "--dispatch", "--agent", "codex", "--task", "synthetic", "--rounds", value]), 0)
+            start = next(call.args[0] for call in commands.call_args_list if call.args[0][0] == sys.executable)
+            self.assertEqual(start[4], value)
 
     def test_close_proof_checks_head_merge_dirty_stale_and_unpushed(self):
         with tempfile.TemporaryDirectory() as folder, close_setup(Path(folder)) as setup:
