@@ -97,7 +97,7 @@ Never add lines or Before-code steps. A new push resets each invalidated line wi
    - Reply: `gh api graphql --input <reply request file>` with `addPullRequestReviewThreadReply`; confirm the returned URL has the intended thread/body.
    - Resolve: `gh api graphql --input <resolve request file>` with `resolveReviewThread`; confirm `isResolved: true` and absence from `tk pr threads`. If a reply URL printed before a resolve error, inspect it and retry only the missing resolution.
 
-**When the reviews rerun.** Step 1 runs once, after the first implementation of a PR. At the end, when findings are fixed and the bots agree, I decide whether the diff since the first review is substantial; only if it is, step 1 runs once more on that diff.
+**When the reviews rerun.** Step 1 runs once, after the first implementation of a PR. At the end, when findings are fixed and the bots agree, I decide whether the diff since the first review is substantial; only if it is, step 1 runs once more on the full PR diff against the base.
 
 **Exit.** The loop ends when CI is green on the PR head, every bot thread is answered with evidence and resolved, and nothing is waiting on codex. When an implementing run's report arrives, close its timer with `<skill base directory>/scripts/tk step <KEY> <dispatch line> <current status> --report --wait-minutes <minutes waiting on a human> --note "<why it differed, if by more than half>"`; select status from actual progress, since the run ending does not itself prove review/CI done. On `--report`, `--note` goes only to the estimate log; it leaves the band note unchanged. For exit 3, inspect the estimate row before manually closing it with `estimate.py done <id> --wait <minutes> --note "<reason>"`; reconcile the failed step's state before resuming. Then I refresh the "Model B → diff" table of `<LOCAL>/review-claude.md` on the final diff and report once: the PR is ready for approval, plus any drift from contract B that table shows. Do not rewrite the contract to match the code.
 
@@ -129,7 +129,7 @@ For a repo that uses a merge queue, once its approval rules and the loop's exit 
 
 **Why rounds and the script:** agent hour estimates are human-calibrated and run several times too high; logged actuals are not.
 
-**New work goes back to "Before code".** A new feature or behaviour change during "After code", even one already decided, waits until the current batch is pushed. Then it goes through Before code steps 2-6 with the same two independent passes: I write my view, codex writes its own before reading mine, we compare and agree (new Mental Model rows), approval is needed if the contract changed beyond that decision, codex implements. The new commit gets the per-commit check and the bots; the reviews follow the rerun rule above.
+**New work goes back to "Before code".** A new feature or behaviour change during "After code", even one already decided, waits until the current batch is pushed. Then it goes through Before code steps 2-6 with the same two independent passes: I write my view, codex writes its own before reading mine, we compare and agree (new Mental Model rows), approval is needed if the contract changed beyond that decision, codex implements. The new commit gets the per-commit check and the bots. A behaviour change always counts as substantial, whatever its size, so step 1 reruns once on the full PR diff before merge.
 
 See also "Steer only what changes the current batch" in `driving-codex.md`.
 
