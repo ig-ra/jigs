@@ -349,6 +349,70 @@ class LifecycleTests(unittest.TestCase):
             self.assertEqual(json.loads(band.read_text())["implement"]["note"], "visible progress")
             self.assertEqual(tk.main(base + ["done", "--actual-minutes", "7"]), 2)
 
+    def test_claude_review_rerun_and_codex_fixes_have_independent_timers(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {
+                "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            band = tree / "igr" / "state.json"
+            band.parent.mkdir()
+            band.write_text(json.dumps({"ticket": "TEAM-7", "pr": 42, "custom": "keep"}))
+            base = ["--cwd", str(tree), "step", "TEAM-7", "reviews"]
+            review = ["--dispatch", "--review", "--agent", "claude", "--task", "After-code review"]
+            fixes = ["--dispatch", "--agent", "codex", "--rounds", "1-2", "--task", "synthetic fixes"]
+            self.assertEqual(tk.main(base + ["running", *review]), 0)
+            review_id = json.loads(band.read_text())["tk"]["estimates"]["claude-review"]
+            self.assertEqual(tk.main(base + ["fixing", *fixes]), 0)
+            ids = json.loads(band.read_text())["tk"]["estimates"]
+            self.assertEqual(ids["claude-review"], review_id)
+            fix_id = ids["reviews"]
+            # A duplicate review fails before logging; neither timer is replaced.
+            self.assertEqual(tk.main(base + ["fixing", *review]), 1)
+            self.assertEqual(json.loads(band.read_text())["tk"]["estimates"], ids)
+            self.assertEqual(tk.main(base + ["fixing", "--report", "--review", "--actual-minutes", "7"]), 0)
+            self.assertEqual(json.loads(band.read_text())["tk"]["estimates"], {"reviews": fix_id})
+            self.assertEqual(tk.main(base + ["fixing", *review]), 0)
+            # Closing Codex first also leaves the rerun's timer alone.
+            self.assertEqual(tk.main(base + ["running", "--report", "--actual-minutes", "11"]), 0)
+            self.assertEqual(tk.main(base + ["done", "--report", "--review", "--actual-minutes", "3"]), 0)
+            state = json.loads(band.read_text())
+            self.assertEqual(state["tk"]["estimates"], {})
+            self.assertEqual(state["custom"], "keep")
+            with (root / "estimates.tsv").open() as f:
+                rows = list(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual(len(rows), 3)
+            reviews = [r for r in rows if r["kind"] == "review"]
+            self.assertEqual([r["actual_min"] for r in reviews], ["7", "3"])
+            self.assertTrue(all(r["agent"] == "claude" and r["ticket"] == "TEAM-7" and
+                                r["task"] == "PR #42: After-code review" and not r["rounds_low"] for r in reviews))
+            run = next(r for r in rows if r["kind"] == "run")
+            self.assertEqual((run["id"], run["actual_min"]), (fix_id, "11"))
+
+    def test_review_requires_reviews_line_claude_no_rounds_and_pr(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {
+                "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            base = ["--cwd", str(tree), "step", "TEAM-7"]
+            invalid = [["implement", "running", "--dispatch", "--review", "--agent", "claude", "--task", "review"],
+                       ["reviews", "running", "--review"],
+                       ["reviews", "running", "--dispatch", "--review", "--agent", "codex", "--task", "review"],
+                       ["reviews", "running", "--dispatch", "--review", "--agent", "claude", "--rounds", "1-2", "--task", "review"],
+                       ["reviews", "running", "--dispatch", "--review", "--agent", "claude", "--task", "review"]]
+            for command in invalid:
+                with self.subTest(command=command):
+                    self.assertEqual(tk.main(base + command), 2)
+            self.assertFalse((root / "estimates.tsv").exists())
+
+    def test_review_with_explicit_pr_uses_verified_pr_metadata(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {
+                "AGENT_ESTIMATES": str(root / "estimates.tsv")}), \
+                patch.object(tk, "gh", return_value={"number": 43, "url": "https://example/pr/43"}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(tk.main(["--cwd", str(tree), "--repo", "example/repo", "step", "TEAM-7", "reviews", "running", "--dispatch",
+                                      "--review", "--agent", "claude", "--pr", "43", "--task", "review"]), 0)
+            with (root / "estimates.tsv").open() as f:
+                review = next(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual(review["task"], "PR #43: review")
+
     def test_close_proof_checks_head_merge_dirty_stale_and_unpushed(self):
         with tempfile.TemporaryDirectory() as folder, close_setup(Path(folder)) as setup:
             ctx, info, prs, git, git_api, api, panes = setup

@@ -571,17 +571,27 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
             raise TkError("band state belongs to another ticket")
         metadata = state.setdefault("tk", {})
         ids = metadata.setdefault("estimates", {})
+        review = getattr(a, "review", False)
+        slot = "claude-review" if review else a.line
+        if review and (a.line != "reviews" or not (a.dispatch or a.report)):
+            raise TkError("--review needs reviews --dispatch or --report", 2)
         if a.dispatch:
-            if not (a.agent and a.rounds and a.task):
+            if review:
+                if a.agent != "claude" or a.rounds or not a.task:
+                    raise TkError("--review dispatch needs --agent claude and --task, with no rounds", 2)
+                if not (a.pr or state.get("pr")):
+                    raise TkError("Claude review needs PR metadata (--pr)", 2)
+            elif not (a.agent and a.rounds and a.task):
                 raise TkError("--dispatch needs --agent, --rounds, --task", 2)
-            if a.line in ids:
+            if slot in ids:
                 raise TkError("estimate already open for this line", 1)
-            if not re.fullmatch(r"\d+(?:\.\d+)?-\d+(?:\.\d+)?", a.rounds):
+            if not review and not re.fullmatch(r"\d+(?:\.\d+)?-\d+(?:\.\d+)?", a.rounds):
                 raise TkError("--rounds must be low-high", 2)
-            low, high = map(float, a.rounds.split("-"))
-            if not 0 < low <= high < float("inf"):
-                raise TkError("--rounds needs 0 < low <= high", 2)
-        if a.report and a.line not in ids:
+            if not review:
+                low, high = map(float, a.rounds.split("-"))
+                if not 0 < low <= high < float("inf"):
+                    raise TkError("--rounds needs 0 < low <= high", 2)
+        if a.report and slot not in ids:
             raise TkError("no open estimate for this line", 1)
         if a.actual_minutes is not None and not a.report:
             raise TkError("--actual-minutes needs --report", 2)
@@ -594,23 +604,22 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
         if a.note is not None and not a.report:
             state[a.line]["note"] = a.note
         if a.dispatch or a.report:
-            log = Path(os.environ.get("AGENT_ESTIMATES") or Path.home() / ".claude" / "agent-estimates.tsv")
-            log.parent.mkdir(parents=True, exist_ok=True)
-            with locked(log.with_suffix(".lock")):
-                if a.dispatch:
-                    result = run([sys.executable, str(estimate), "start", a.agent, a.rounds, "--task", a.task,
-                                  "--ticket", key, "--model", a.model])
-                    match = re.search(r"id=(\S+)", result)
-                    if not match:
-                        raise TkError("estimate start returned no id")
-                    ids[a.line] = match[1]
-                else:
-                    timing = (["--actual", str(a.actual_minutes)] if a.actual_minutes is not None else
-                              ["--wait", str(a.wait_minutes)])
-                    run([sys.executable, str(estimate), "done", ids[a.line], *timing, "--note", a.note or ""])
-                    del ids[a.line]
+            if a.dispatch:
+                task = f"PR #{state['pr']}: {a.task}" if review else a.task
+                mode = ["--review"] if review else [a.rounds]
+                result = run([sys.executable, str(estimate), "start", a.agent, *mode, "--task", task,
+                              "--ticket", key, "--model", a.model])
+                match = re.search(r"id=(\S+)", result)
+                if not match:
+                    raise TkError("estimate start returned no id")
+                ids[slot] = match[1]
+            else:
+                timing = (["--actual", str(a.actual_minutes)] if a.actual_minutes is not None else
+                          ["--wait", str(a.wait_minutes)])
+                run([sys.executable, str(estimate), "done", ids[slot], *timing, "--note", a.note or ""])
+                del ids[slot]
         atomic_json(band, state)
-    output(state, f"{key} {a.line}={a.status}" + (f" estimate={ids[a.line]}" if a.dispatch else ""), a.json)
+    output(state, f"{key} {a.line}={a.status}" + (f" estimate={ids[slot]}" if a.dispatch else ""), a.json)
     return 0
 
 
@@ -680,6 +689,7 @@ def parser() -> argparse.ArgumentParser:
             group = cmd.add_mutually_exclusive_group()
             group.add_argument("--dispatch", action="store_true")
             group.add_argument("--report", action="store_true")
+            cmd.add_argument("--review", action="store_true", help="separate Claude After-code review timer")
             cmd.add_argument("--agent", choices=["claude", "codex"])
             cmd.add_argument("--rounds")
             cmd.add_argument("--task")

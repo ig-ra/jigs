@@ -13,7 +13,7 @@ Agents learned their sense of time from human developers, so they say "2-3 days"
 
 One **run**: one agent (Claude or codex) working on its own, from start to "done, ready for review". Human review and decisions are not agent time. Say them separately when the plan has them ("your review: about 15 minutes").
 
-A ticket that codex implements and Claude reviews is two runs, two estimates.
+A ticket that codex implements and Claude reviews has separate runs. Claude's After-code review passes log actual time only; they do not need a rounds estimate.
 
 ## Count rounds
 
@@ -40,11 +40,13 @@ Never do this arithmetic yourself. Run:
 python3 <skill dir>/estimate.py est <claude|codex> <low-high>
 ```
 
-It uses the median minutes per round from that agent's logged runs. Codex and Claude are calibrated separately, because their pace and bias differ. With fewer than 5 logged runs it uses 3 minutes per round and widens the high end; say "uncalibrated" when it does.
+It fits `overhead + pace × rounds` separately per agent, using completed runs with rounds. For each integer overhead from zero through the median actual duration, pace is the nonnegative median of `(actual - overhead) / mid-rounds`. It chooses the pair with the least mean absolute log error, so relative errors count equally for small and large runs. The 20th/80th percentiles of `actual / predicted-midpoint` widen the predicted low/high rounds into a range. Outliers stay in the data; medians and percentiles limit their influence.
+
+The band plus rounds uncertainty aims to cover most runs (roughly 70%); future coverage needs checking against actuals, not a promise from the fit. Bounds round outward to five-minute marks, with a one-minute lower minimum and an upper bound at least at the next five-minute mark. This adds coverage, especially for short runs. With fewer than 5 completed runs with rounds it keeps the fallback: 3 minutes per round and 1.5 times the high end; say "uncalibrated" when it does.
 
 Answer in one line, from the script's output:
 
-> Agent time: 25-45 min (8-14 rounds, codex, uncalibrated n=2). Your review: about 15 min.
+> Agent time: 20-65 min (8-14 rounds, codex, 3.0 min/round, uncalibrated n=2). Your review: about 15 min.
 
 ## Log every run
 
@@ -52,7 +54,11 @@ The log is `~/.claude/agent-estimates.tsv` (override with `AGENT_ESTIMATES`), on
 
 - **When the run starts:** `estimate.py start <agent> <low-high> --task "<short>" --ticket <KEY> --model <model>`. It prints the estimate and an `id`. Keep the id (put it in the ticket's working notes if the session may be compacted).
 - **When the run is done:** `estimate.py done <id> --wait <minutes spent waiting on a human> --note "<why it differed, if by more than half>"`.
-- **Pace check:** `estimate.py` with no arguments prints minutes per round for each agent.
+- **Late report:** `estimate.py done <id> --actual <minutes at the run's end> --note "<reason>"`; use actual duration rather than elapsed time since a report that arrived earlier.
+- **Claude After-code review:** `estimate.py start claude --review --task "PR #<PR>: After-code review" --ticket <KEY> --model <model>`, then `done <id>` as soon as that pass ends. Each rerun gets a fresh row. `kind=review`, blank rounds and blank estimate distinguish actual-only rows and exclude them from calibration (including Claude's). Ticket-loop callers use `tk step ... --review` as described in `../ticket/references/loop.md` so the review id survives compaction independently of Codex fix ids.
+- **Calibration check:** `estimate.py` with no arguments prints overhead, pace and empirical band for each agent; review rows do not count toward the 5-run threshold.
+
+`start` and `done` lock a stable sidecar `.lock` file around the entire read/modify/write and atomically replace the TSV. This applies to direct calls and `tk`; callers must not hold that same lock around the subprocess. Older rows without `kind` remain ordinary runs. New ids include a random suffix, so simultaneous same-agent starts stay distinct.
 
 If you cannot write the file (for example, inside codex's sandbox), print the `start` command and let the orchestrator run it.
 
