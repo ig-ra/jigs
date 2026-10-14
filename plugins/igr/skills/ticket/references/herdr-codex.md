@@ -30,7 +30,7 @@
 - **Names:** my pane is the ticket key (for example `abc-123`), and its codex is `codex-<N>` (`codex-123`). Herdr names must start with a lowercase letter; a bare number is refused. `/igr:ticket start` sets mine.
 - After a session restart or fork, herdr names clear for both me and codex. Re-run `herdr agent rename <pane-id> <name>` before briefing. A failed codex reply ("agent target ... not found") means my name is gone.
 - After `codex resume`, the agent name is gone too. Use `herdr pane run/read <pane-id>`. `codex resume --last` can pick the wrong session, so resume by explicit id.
-- When codex's context runs low, `/compact` the same codex; swapping agents changes the shape of the work and needs approval.
+- Between plan steps, `/clear` the same codex (`loop.md`, "Clear between steps"). Inside a long step, when its context runs low, `/compact` it. Swapping agents changes the shape of the work and needs approval.
 - Humans may instruct codex directly. Before calling a branch commit drift or proposing a revert, ask codex whether it was asked for.
 
 ## Worktree guard
