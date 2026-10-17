@@ -40,10 +40,10 @@ Keep detailed evidence in the existing model, plan, findings and review files. `
 
 ## Hand off to a fresh session
 
-The loop hands off at fixed points only (`loop.md`): after approval, before the implement dispatch (phase `develop`); when codex reports a PR ready, before its reviews (phase `review`); and when the next PR of a multi-PR ticket starts after the previous one merged (phase `develop`). Ordinary review/fix rounds stay in the same session. Trivial changes do not hand off.
+The loop hands off at fixed points only (`loop.md`): after approval, before the implement dispatch (phase `develop`); when codex reports a PR ready, before its reviews (phase `review`); and when the next PR of a multi-PR ticket starts after the previous one merged (phase `develop`). The PR-ready handoff happens only when the checkpoint's phase moves from `develop` to `review`; a fix report while already in `review` keeps the session, as do all ordinary review/fix rounds. Trivial changes do not hand off.
 
 1. Stop this session's own background watchers (TaskStop) and record in `Watcher:` what the next session must rearm. Codex keeps running in its own pane; never stop it for a handoff.
-2. Save the checkpoint with the new phase and its exact next action.
+2. Save the checkpoint with the new phase, and with `Loop position` and `Next action` set to the action after the handoff: the codex dispatch for `develop`, After code step 1 for `review`. A resumed session never repeats the handoff that created it.
 3. Inside Herdr, queue the reset into my own pane by its agent name (`<key>` from start step 3; the worktree guard refuses `$HERDR_PANE_ID`), as two separate submissions without `--wait`:
    - `herdr agent prompt <key> "/clear"`
    - `herdr agent prompt <key> "/igr:ticket resume <KEY>"`
@@ -61,7 +61,7 @@ Use the current Git worktree's `igr/resume.md` when present. If a key was suppli
 
 Otherwise, use the supplied key or the ticket identified by the current branch/session. Run `tk --cwd <session cwd> prep <KEY>` as described in `../SKILL.md`; inspect the returned existing same-ticket worktrees for their checkpoint. Use the checkpoint's actual registered worktree, not a newly derived path. If no key is known, inspect `git worktree list --porcelain` for existing checkpoints; use one only when it identifies a single ticket and worktree. Ambiguity needs the key or worktree from the user.
 
-A missing checkpoint, missing worktree or conflicting ticket identity is a stop with the exact missing/conflicting item. Leave existing work intact. Resume does not fall back to start, create a worktree, fetch/merge/rebase a branch, rename panes, or change ticket status during validation.
+A missing, unreadable or incomplete checkpoint, a missing worktree or a conflicting ticket identity is a stop with the exact missing/conflicting item. Leave existing work intact. Resume does not fall back to start, create a worktree, fetch/merge/rebase a branch, rename panes, or change ticket status during validation.
 
 ### 2. Verify the checkpoint against current evidence
 
@@ -69,7 +69,7 @@ Before changing anything:
 
 - Verify the recorded repository/worktree against Git's registered worktrees and common Git directory. Verify the actual branch and ticket identity. A different branch or worktree is a conflict, not a reason to rewrite the checkpoint to match it.
 - Read `git status --short`, actual HEAD, and the recorded base ref's current SHA. Preserve uncommitted work; it may belong to an active Codex run.
-- Read the ticket, its living contract comment and the comments created after the checkpoint's `Updated:` time. Read the referenced contract/plan, unresolved findings and `igr/state.json`. A `develop` or `review` checkpoint needs recorded approval, not merely a Model B file. A missing approval or a conflicting contract needs reconciliation before implementation continues; a pending decision remains pending.
+- Read the ticket, its living contract comment and the comments created or edited after the checkpoint's `Updated:` time (`list_comments` ordered by update time). Read the referenced contract/plan, unresolved findings and `igr/state.json`. A `develop` or `review` checkpoint needs recorded approval, not merely a Model B file. A missing approval or a conflicting contract needs reconciliation before implementation continues; a pending decision remains pending.
 - If there is a PR, use `tk --cwd <worktree> pr state <PR>` and read the PR's head/base refs to confirm it belongs to the recorded branch. Follow the session's GitHub auth/sandbox rules. Compare its current head and base with the checkpoint and local Git evidence; local and remote heads may legitimately differ while Codex is working.
 - Treat recorded review/check passes as evidence for their recorded inputs only. When HEAD, base, dependencies or relevant configuration changed, inspect those changes before deciding which evidence still applies. Follow the loop/repo's reuse rules; a checkpoint is not permission to skip a required check or repeat an unchanged gate.
 - When a Codex pane or watcher is recorded, read `herdr-codex.md` and the available Herdr skill. Inspect the live pane inventory, worktree, current activity and reply artifact. Agent names can disappear on restart; use recorded pane/session ids to identify the existing run. A saved task id does not prove a watcher is still running.
