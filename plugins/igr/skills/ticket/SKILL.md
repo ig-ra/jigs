@@ -43,13 +43,13 @@ If no digits are given, or a bare number comes with no known team prefix, ask fo
 
 #### 1. Read the ticket
 
-Load the Linear tools if they are deferred (ToolSearch `select:mcp__claude_ai_Linear__get_issue,mcp__claude_ai_Linear__list_comments`). Then:
+Use the session's Linear connection: each repo folder should enable exactly one. Load its tools if they are deferred (ToolSearch `linear get_issue list_comments save_issue`). If more than one Linear connection is loaded, use the one whose workspace has the ticket and say which. Then:
 - `get_issue(KEY, includeRelations: true)`: title, description, status, project, milestone, `gitBranchName`, blocks and blocked-by;
 - `list_comments(KEY)`: all of them. Decisions often live in comments, not the description.
 
 If the ticket does not exist, stop and say so.
 
-Then move it to In Progress with `save_issue(KEY, state: "In Progress")` (ToolSearch `select:mcp__claude_ai_Linear__save_issue`). Skip this when it is already In Progress, In Review or Done, or when a blocked-by ticket is not Done (step 7 reports and stops then).
+Then move it to In Progress with `save_issue(KEY, state: "In Progress")`. Skip this when it is already In Progress, In Review or Done, or when a blocked-by ticket is not Done (step 7 reports and stops then).
 
 #### 2. Worktree from the latest default branch
 
