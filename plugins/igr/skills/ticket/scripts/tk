@@ -487,6 +487,11 @@ def parse_key(value: str, worktrees: list[str]) -> str:
     return ticket_key(f"{teams.pop()}-{value}")
 
 
+def prs_for_key(key: str, prs: list[JSON]) -> list[JSON]:
+    pattern = re.compile(rf"(?:^|/){re.escape(key)}(?:-[^/]+)?(?:/|$)", re.IGNORECASE)
+    return [pr for pr in prs if pattern.search(pr["headRefName"])]
+
+
 def decide(checkpoint: bool, exists: bool, head: str | None, prs: list[JSON]) -> str:
     if checkpoint:
         return "resume"
@@ -544,7 +549,9 @@ def go(ctx: Context, a: argparse.Namespace) -> int:
             head = ctx.git("rev-parse", "HEAD", cwd=path)
             lookup = ["--head", info["branch"]]
         prs = gh(["pr", "list", "--repo", ctx.slug(), *lookup, "--state", "all",
-                  "--limit", "1000", "--json", "number,state,headRefOid"], ctx.cwd)
+                  "--limit", "1000", "--json", "number,state,headRefOid,headRefName"], ctx.cwd)
+        if not info["exists"]:
+            prs = prs_for_key(a.key, prs)
     action = decide(checkpoint, info["exists"], head, prs)
     if action == "report":
         output({"key": a.key, "result": "MERGED"}, f"{a.key}: merged work; nothing launched", a.json)

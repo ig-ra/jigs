@@ -5,7 +5,7 @@ description: "Linear ticket lifecycle for any repo. start prepares a ticket and 
 
 # Ticket lifecycle
 
-Normal shell entry: `tk go IGR-15` (full key, any case) or `tk go 15`. A bare number uses the one team shared by this repo's registered ticket worktrees under `.worktrees/<owner>/<team>-<n>`; none or mixed teams requires a full key. `go` prepares or reuses the worktree, labels the Herdr tab, then replaces itself with Claude there, passing only `/igr:ticket start KEY` or `/igr:ticket resume KEY`. A checkpoint takes precedence; otherwise merged work is reported without launching. An open PR prevents a merged report, and an existing worktree's HEAD must match a merged PR head. `go` reads worktrees and GitHub, never Linear.
+Normal shell entry: `tk go IGR-15` (full key, any case) or `tk go 15`. A bare number uses the one team shared by this repo's registered ticket worktrees under `.worktrees/<owner>/<team>-<n>`; none or mixed teams requires a full key. `go` prepares or reuses the worktree, labels the Herdr tab, then replaces itself with Claude there, passing only `/igr:ticket start KEY` or `/igr:ticket resume KEY`. A checkpoint takes precedence; otherwise merged work is reported without launching. `go` reads worktrees and GitHub, never Linear.
 
 One-time PATH setup: with `~/.local/bin` on PATH, link `tk` from the **canonical jigs checkout**, so removing a ticket worktree cannot break it. Substitute its absolute path:
 ```sh

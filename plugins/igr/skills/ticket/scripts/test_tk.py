@@ -321,6 +321,25 @@ class GoTests(unittest.TestCase):
                 tk.parse_key(value, [])
             self.assertEqual(error.exception.code, 2)
 
+    def test_branch_key_filter_applies_to_merged_and_open_mentions(self):
+        merged = {"headRefName": "owner/igr-15", "state": "MERGED", "headRefOid": "head"}
+        branches = [("owner/igr-15", True), ("owner/IgR-15-slug", True),
+                    ("owner/igr-150", False), ("owner/igr-16", False),
+                    ("owner/notigr-15", False), ("owner/igr-15-", False)]
+        for branch, belongs in branches:
+            for state in ("MERGED", "OPEN"):
+                with self.subTest(branch=branch, state=state):
+                    candidate = {"headRefName": branch, "state": state, "headRefOid": "head",
+                                 "title": "Follow-up for IGR-15", "body": "Related to IGR-15"}
+                    selected = tk.prs_for_key("IGR-15", [candidate])
+                    self.assertEqual(selected, [candidate] if belongs else [])
+                    if state == "MERGED":
+                        expected = "report" if belongs else "start"
+                    else:
+                        selected = tk.prs_for_key("IGR-15", [merged, candidate])
+                        expected = "start" if belongs else "report"
+                    self.assertEqual(tk.decide(False, False, None, selected), expected)
+
     def test_decide(self):
         merged = {"state": "MERGED", "headRefOid": "merged-head"}
         opened = {"state": "OPEN", "headRefOid": "open-head"}
