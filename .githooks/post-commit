@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# post-commit — auto-bump .claude-plugin/plugin.json from the conventional-commit type,
-# then amend the bump into HEAD (a commit-msg/pre-commit hook cannot: content staged in
-# commit-msg lands in the NEXT commit — verified).
-#   feat!: / BREAKING CHANGE  -> major
-#   feat:                     -> minor
-#   anything else             -> patch
+# post-commit — on main only, auto-bump .claude-plugin/plugin.json from the
+# conventional-commit type (see bump-version), then amend the bump into HEAD (a
+# commit-msg/pre-commit hook cannot: content staged in commit-msg lands in the NEXT
+# commit — verified). Branch and worktree commits never bump; they bump once when they
+# land on main (post-merge, or this hook for a squash commit).
 # Bumps when the commit ships plugin content (anything under plugins/igr/).
 # Skips: version already moved in HEAD (manual bump — and the recursion guard for the
 # amend below); rebase/cherry-pick/merge replays; uncommitted plugin.json edits.
@@ -14,6 +13,7 @@ set -euo pipefail
 PLUGIN=plugins/igr/.claude-plugin/plugin.json
 
 if [[ "${IGR_NO_BUMP:-}" == "1" ]]; then exit 0; fi
+if [[ $(git branch --show-current) != main ]]; then exit 0; fi
 if ! git rev-parse -q --verify HEAD^ >/dev/null 2>&1; then exit 0; fi   # initial commit
 
 g=$(git rev-parse --git-dir)
@@ -37,28 +37,6 @@ if ! git diff --quiet HEAD -- "$PLUGIN"; then
   exit 0
 fi
 
-subject=$(git log -1 --format=%s)
-body=$(git log -1 --format=%B)
-bump=patch
-if grep -qE '^[a-zA-Z]+(\([^)]*\))?!:' <<<"$subject" || grep -q 'BREAKING CHANGE' <<<"$body"; then
-  bump=major
-elif grep -qE '^feat(\([^)]*\))?:' <<<"$subject"; then
-  bump=minor
-fi
-
-BUMP=$bump python3 - <<'EOF'
-import json, os
-p = "plugins/igr/.claude-plugin/plugin.json"
-d = json.load(open(p))
-ma, mi, pa = (int(x) for x in d["version"].split("."))
-b = os.environ["BUMP"]
-if b == "major": ma, mi, pa = ma + 1, 0, 0
-elif b == "minor": mi, pa = mi + 1, 0
-else: pa += 1
-d["version"] = f"{ma}.{mi}.{pa}"
-with open(p, "w") as f:
-    json.dump(d, f, indent=2)
-    f.write("\n")
-print(f"hook: plugin version -> {d['version']} ({b}), amended into HEAD")
-EOF
+v=$("$(dirname "$0")/bump-version" -1 HEAD)
+echo "hook: plugin version -> $v, amended into HEAD"
 git commit --amend --no-edit --no-verify --only "$PLUGIN" --quiet

@@ -65,9 +65,12 @@ upstream generation it was synced from and the re-vendor recipe.
 
 ### Repo automation
 
-`.githooks/post-commit` auto-bumps the plugin version from the conventional-commit type
-(feat! → major, feat → minor, else patch) and amends the bump into HEAD — for any commit
-touching shipped plugin content (`plugins/igr/**`). **One-time setup per clone: `./setup.sh`**
+On `main` only, the git hooks auto-bump the plugin version from the conventional-commit type
+(feat! → major, feat → minor, else patch) when shipped plugin content (`plugins/igr/**`)
+changes. `.githooks/post-commit` amends the bump into a commit made on main (including a
+squash merge); `.githooks/post-merge` adds one `chore(release)` bump commit for a
+fast-forward or merge, by the strongest type landed. Branch and worktree commits never
+bump. **One-time setup per clone: `./setup.sh`**
 (git cannot auto-enable hooks on clone).
 
 ## Install / update

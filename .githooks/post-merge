@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# post-merge — on main only, bump .claude-plugin/plugin.json once for the commits a
+# fast-forward or merge just landed (git runs no post-commit there — verified), by the
+# strongest conventional-commit type in ORIG_HEAD..HEAD (see bump-version). The bump is
+# its own chore(release) commit.
+# Skips: squash merges (their commit runs post-commit); version already moved in the
+# landed range (a manual bump, or a pull of already-bumped commits); no shipped plugin
+# content (plugins/igr/); uncommitted plugin.json edits.
+# Bypass: IGR_NO_BUMP=1 git merge …
+set -euo pipefail
+PLUGIN=plugins/igr/.claude-plugin/plugin.json
+
+if [[ "${IGR_NO_BUMP:-}" == "1" || "${1:-0}" == "1" ]]; then exit 0; fi
+if [[ $(git branch --show-current) != main ]]; then exit 0; fi
+if ! git rev-parse -q --verify ORIG_HEAD >/dev/null; then exit 0; fi
+
+if ! git diff --name-only ORIG_HEAD HEAD | grep -qE '^plugins/igr/'; then
+  exit 0   # no shipped plugin content landed
+fi
+
+json_v() { python3 -c 'import json,sys;print(json.load(sys.stdin)["version"])' 2>/dev/null || true; }
+head_v=$(git show HEAD:"$PLUGIN" 2>/dev/null | json_v)
+orig_v=$(git show ORIG_HEAD:"$PLUGIN" 2>/dev/null | json_v)
+if [[ -z $head_v || -z $orig_v || $head_v != "$orig_v" ]]; then
+  exit 0   # the landed commits already moved the version
+fi
+
+if ! git diff --quiet HEAD -- "$PLUGIN"; then
+  echo "hook: $PLUGIN has uncommitted edits — skipping auto-bump (bump manually)" >&2
+  exit 0
+fi
+
+v=$("$(dirname "$0")/bump-version" ORIG_HEAD..HEAD)
+# Plumbing, not `git commit`: MERGE_HEAD still exists while post-merge runs after a
+# merge commit, and git refuses a commit then (verified, git 2.50).
+git update-index --cacheinfo "100644,$(git hash-object -w "$PLUGIN"),$PLUGIN"
+c=$(git commit-tree "$(git write-tree)" -p HEAD -m "chore(release): igr ${v%% *}")
+git update-ref -m "post-merge: plugin version bump" HEAD "$c"
+echo "hook: plugin version -> $v, committed on main"
