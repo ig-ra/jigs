@@ -122,14 +122,25 @@ arguments and a matching native `KEY line=status` success receipt. Quoted exampl
 opaque code, pipeline errors and background launches do not establish a phase.
 Closed heredoc bodies stay opaque; literal tk statements elsewhere in the command
 can supply markers. Unclosed or unsupported heredoc syntax stays unproven.
-Without a proven marker, phase remains unknown; prior proven state is retained.
-Transitions stay scoped to their session and ticket; pre-marker phase is unknown.
+Prior proven state is retained. Transitions stay scoped to their session and ticket.
+For a child call without its own proven phase, use the native parent/main scope's
+proven phase for the same ticket at that call's timestamp. Claude's containing
+main-session directory supplies this scope, including nested subagents; it need
+not be the direct dispatching agent. Codex uses its native parent thread ID.
+Own markers win; inheritance follows one link only and changes with the parent's
+phase. A child under a develop parent reads develop, even if its role says review.
+Missing/unknown parent evidence or ambiguous equal-time ordering stays unknown;
+without either own or parent evidence, pre-marker phase is unknown.
 Export retains original step/status and source path/line. Native event identity
 deduplicates copies (Claude UUID, Codex ordinal; source coordinates when absent).
 Different-time meter observations remain distinct. No checkpoint inference.
 
 Summary shows both providers, model/kind splits, raw buckets, main-thread context
-median/p90/max and phase totals. Context percentiles interpolate at `(n-1)*p`.
+median/p90/max and phase totals split by provider, actual per-call model and effort.
+Missing model/effort values form explicit unknown groups; no parent/request/default
+values are substituted. Native effort labels are not calibrated across providers.
+These detailed raw buckets reconcile to provider totals and ticket phase totals.
+Context percentiles interpolate at `(n-1)*p`.
 Shares and weighted figures include child calls; main context excludes children.
 The ticket table has one row per ticket plus unassigned, provider column groups,
 raw buckets/context/flow counts, and JSON phase totals using the same aggregate.
@@ -151,6 +162,12 @@ session timelines include linked subagent files; Codex timelines show only the
 selected **Codex thread**. All Codex child records remain in summary, tickets and
 export, with native role and parent IDs. Timeline gaps are elapsed time between
 recorded entries in each thread, not measured latency or human waiting.
+Native `guardian_review` threads assess tool approvals; that role/model name does
+not establish ticket code-review phase. They use the same parent evidence rule;
+the observed IGR-15 guardian parents have unknown phase. The standalone native
+Codex reviewer launched by `codex-companion` has no usable recorded parent link,
+and its usage file was absent under the default source root in the Oct 17 sample.
+Its tokens are missing accounting, not measured zero; no cwd/time match fills it.
 
 **IGR-14 weighted proxy, uncalibrated** is Claude-only: new input 1, 5-minute
 write 1.25, 1-hour write 2, cache read .1, output 5; Opus/Fable 1x, Sonnet .6x,

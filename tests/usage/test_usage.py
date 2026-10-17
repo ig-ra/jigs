@@ -28,6 +28,24 @@ def load():
     return usage.normalize(rows, counts), counts
 
 
+def child_phase_fixture():
+    sample = usage.read_claude(FIXTURES / 'child.jsonl', Counter())[0]
+    rows = []
+    for session, second, parent, model, effort in (
+            ('parent', 2, None, 'claude-sonnet', 'high'),
+            ('child', 3, 'parent', 'claude-opus', 'medium'),
+            ('child', 6, 'parent', 'claude-opus', None),
+            ('child', 8, 'parent', None, None)):
+        rows.append(dict(sample, id=f'{session}-{second}', session_id=session,
+            timestamp=f'2026-10-08T00:00:{second:02}Z', parent_session_id=parent,
+            model=model, effort=effort, source={'path': session + '.jsonl', 'line': second + 1}))
+    for session, second, step in (('parent', 0, 'reviews'), ('parent', 5, 'implement'), ('child', 7, 'checks')):
+        common = usage.base('claude', session, {'timestamp': f'2026-10-08T00:00:{second:02}Z'},
+                            Path(session + '.jsonl'), second + 1, '/repo/.worktrees/igr-15')
+        rows.append(usage.event(common, 'step', marker_ticket='IGR-15', step=step, status='running'))
+    return rows
+
+
 class ReaderTests(unittest.TestCase):
     def test_claude_streaming_duplicates_union_tools_and_result_sizes(self):
         rows, counts = load()
@@ -186,11 +204,16 @@ class ReaderTests(unittest.TestCase):
         self.assertNotEqual(meters[0]['timestamp'], meters[1]['timestamp'])
 
     def test_codex_native_string_subagent_role(self):
-        rows = usage.normalize(usage.read_codex(FIXTURES / 'codex-review.jsonl', Counter()), Counter())
+        raw = usage.read_codex(FIXTURES / 'codex-review.jsonl', Counter())
+        common = usage.base('codex', 'parent', {'timestamp': '2026-10-08T01:00:01Z'},
+                            Path('parent.jsonl'), 1, '/repo/.worktrees/igr-15')
+        raw.append(usage.event(common, 'step', marker_ticket='IGR-15', step='implement', status='running'))
+        rows = usage.normalize(raw, Counter())
         call = next(r for r in rows if r['type'] == 'call')
         self.assertEqual(call['native_role'], 'review')
         self.assertEqual(call['parent_session_id'], 'parent')
         self.assertEqual(call['new_input_tokens'], 100)
+        self.assertEqual(call['phase'], 'develop')  # Parent clock, not the review role.
 
     def test_child_link_malformed_unassigned_and_read_only(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -226,12 +249,49 @@ class ReaderTests(unittest.TestCase):
             child = Path(directory) / 'main/subagents/workflows/wf-example/agent-worker.jsonl'
             child.parent.mkdir(parents=True)
             child.write_bytes((FIXTURES / 'child.jsonl').read_bytes())
-            rows = usage.normalize(usage.read_claude(child, Counter()), Counter())
-            self.assertEqual(rows[0]['parent_session_id'], 'main')
+            markers = [dict(r, session_id='main') for r in usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
+                       if r['type'] == 'event']
+            rows = usage.normalize(markers + usage.read_claude(child, Counter()), Counter())
+            call = next(r for r in rows if r['type'] == 'call')
+            self.assertEqual(call['parent_session_id'], 'main')
+            self.assertEqual(call['phase'], 'finish')
             out = io.StringIO()
             usage.summary(rows, out)
             self.assertIn('main_sessions\t0\t0', out.getvalue())
             self.assertIn('child_sessions\t1\t0', out.getvalue())
+
+    def test_child_phase_uses_parent_clock_until_own_marker_and_keeps_native_dimensions(self):
+        rows = usage.normalize(child_phase_fixture(), Counter(),
+                               usage.stamp('2026-10-08T00:00:03Z'), usage.stamp('2026-10-09'))
+        calls = {r['id']: r for r in rows if r['type'] == 'call'}
+        self.assertEqual([calls[key]['phase'] for key in ('child-3', 'child-6', 'child-8')],
+                         ['review', 'develop', 'review'])
+        self.assertEqual(calls['child-3']['phase_source'], {'path': 'parent.jsonl', 'line': 1})
+        self.assertEqual(calls['child-6']['phase_source'], {'path': 'parent.jsonl', 'line': 6})
+        self.assertEqual(calls['child-8']['phase_source'], {'path': 'child.jsonl', 'line': 8})
+        self.assertEqual((calls['child-3']['model'], calls['child-3']['effort']), ('claude-opus', 'medium'))
+        self.assertIsNone(calls['child-6']['effort'])
+        self.assertIsNone(calls['child-8']['model'])
+
+    def test_child_phase_stays_unknown_without_proven_same_ticket_parent_order(self):
+        rows = child_phase_fixture()
+        sample = next(r for r in rows if r.get('id') == 'child-3')
+        cases = [
+            dict(id='missing', session_id='missing-child', parent_session_id='absent'),
+            dict(id='guardian', session_id='guardian', parent_session_id='unknown-parent', native_role='guardian_review'),
+            dict(id='other-ticket', session_id='other', cwd='/repo/.worktrees/igr-99'),
+            dict(id='unassigned', session_id='unassigned', cwd='/repo'),
+            dict(id='other-provider', session_id='codex-child', provider='codex'),
+            dict(id='no-recursion', session_id='grandchild', parent_session_id='child', timestamp='2026-10-08T00:00:06Z'),
+            dict(id='same-time', session_id='same-time', timestamp='2026-10-08T00:00:05Z'),
+        ]
+        rows.append(dict(sample, id='unknown-parent', session_id='unknown-parent', parent_session_id=None))
+        rows.extend(dict(sample, **fields) for fields in cases)
+        calls = {r['id']: r for r in usage.normalize(rows, Counter()) if r['type'] == 'call'}
+        for fields in cases:
+            with self.subTest(case=fields['id']):
+                self.assertEqual(calls[fields['id']]['phase'], 'unknown')
+                self.assertIsNone(calls[fields['id']]['phase_source'])
 
     def test_window_is_utc_end_exclusive_and_whole_file_metadata_retained(self):
         counts = Counter()
@@ -295,7 +355,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn('calls\t7\t2', rendered)
         self.assertIn(usage.PROXY_LABEL, rendered)
         self.assertIn('claude\tmixed\t1', rendered)
-        self.assertIn('Phase totals (all calls; unknown included)', rendered)
+        self.assertIn('Phase totals by model and effort (all calls; unknown included)', rendered)
         out = io.StringIO()
         usage.render('tickets', rows, out, usage.estimates(FIXTURES / 'estimates.tsv'))
         lines = out.getvalue().splitlines()
@@ -318,6 +378,30 @@ class ReportTests(unittest.TestCase):
         exported = [json.loads(line) for line in out.getvalue().splitlines()]
         self.assertEqual(exported, rows)
         self.assertTrue(all('_steps' not in action for r in exported for action in r.get('tools', [])))
+
+    def test_summary_phase_model_effort_groups_reconcile_all_raw_buckets(self):
+        raw = child_phase_fixture()
+        codex = usage.read_codex(FIXTURES / 'codex.jsonl', Counter())
+        rows = usage.normalize(raw + codex, Counter())
+        out = io.StringIO()
+        usage.summary(rows, out)
+        block = out.getvalue().split('Phase totals by model and effort (all calls; unknown included)\n')[1]
+        lines = block.splitlines()
+        headers = lines[0].split('\t')
+        parsed = [dict(zip(headers, line.split('\t'))) for line in lines[1:]]
+        dimensions = {(r['provider'], r['phase'], r['model'], r['effort']): r for r in parsed}
+        self.assertEqual(dimensions[('claude', 'review', 'claude-opus', 'medium')]['calls'], '1')
+        self.assertEqual(dimensions[('claude', 'develop', 'claude-opus', 'unknown')]['calls'], '1')
+        self.assertEqual(dimensions[('claude', 'review', 'unknown', 'unknown')]['calls'], '1')
+        for provider in ('claude', 'codex'):
+            selected = [r for r in rows if r['provider'] == provider]
+            phases = usage.phase_totals(selected)
+            for phase, total in phases.items():
+                groups = [r for r in parsed if (r['provider'], r['phase']) == (provider, phase)]
+                for key in ('calls',) + usage.BUCKETS:
+                    self.assertEqual(sum(int(r[key]) if r[key] != 'null' else 0 for r in groups), total[key] or 0)
+            for key in ('calls',) + usage.BUCKETS:
+                self.assertEqual(sum(v[key] or 0 for v in phases.values()), usage.aggregate(selected)[key] or 0)
 
     def test_estimate_only_tickets_show_observed_zeros_and_nullable_metadata(self):
         rows, _ = load()

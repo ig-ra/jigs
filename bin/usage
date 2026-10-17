@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only Claude/Codex usage. Python standard library only."""
 import argparse
+from bisect import bisect_left
 from collections import Counter, defaultdict
 import csv
 from datetime import datetime, timedelta, timezone
@@ -381,6 +382,7 @@ def normalize(rows, counts, start=None, end=None):
         else:
             unique[key] = row
     intake, phases, first_commands = {}, {}, set()
+    phase_history = defaultdict(list)
     result = []
     for row in sorted(list(unique.values()) + list(events.values()), key=lambda r: (r['timestamp'], r['source']['line'])):
         scope = row['provider'], row['session_id']
@@ -396,13 +398,16 @@ def normalize(rows, counts, start=None, end=None):
             if action in ('start', 'resume'):
                 intake[scope] = ticket
             if ticket and action in ('start', 'finish'):
-                phases[scope + (ticket,)] = (('design' if action == 'start' else 'finish'), row['source'])
+                key = scope + (ticket,)
+                phases[key] = (('design' if action == 'start' else 'finish'), row['source'])
+                phase_history[key].append((row['timestamp'], *phases[key]))
         if row.get('event') == 'step' and row['status'] in ('running', 'fixing', 'done'):
             key = scope + (row['ticket'],)
             current = phases.get(key, ('unknown', None))[0]
             if not (current == 'finish' and row['status'] == 'done'):
                 phase = 'develop' if row['step'] == 'implement' else 'review'
                 phases[key] = phase, row['source']
+                phase_history[key].append((row['timestamp'], *phases[key]))
         row['phase'], row['phase_source'] = phases.get(scope + (row['ticket'],), ('unknown', None))
         if row['type'] == 'call':
             if row['model'] == '<synthetic>':
@@ -416,6 +421,14 @@ def normalize(rows, counts, start=None, end=None):
         result.append(row)
     # Resume events copy the already-tagged command, without changing its action.
     for row in result:
+        if (row['type'] == 'call' and row['phase'] == 'unknown' and row['ticket']
+                and row['parent_session_id']):
+            # Only native parent/main markers, never another inherited call's phase.
+            history = phase_history.get((row['provider'], row['parent_session_id'], row['ticket']), [])
+            index = bisect_left(history, (row['timestamp'],))
+            # Equal-time records in separate sessions have no proven ordering.
+            if index and (index == len(history) or history[index][0] != row['timestamp']):
+                row['phase'], row['phase_source'] = history[index - 1][1:]
         if row.get('event') == 'resume_start':
             row['ticket'] = row['marker_ticket']
             row['ticket_basis'] = 'cwd' if ticket_from_cwd(row.get('cwd')) == row['ticket'] else 'via intake'
@@ -582,10 +595,17 @@ def summary(rows, out):
                 split.append((provider, label, len(selected), share(len(selected), len(calls)),
                     share(sum(weighted(r) or 0 for r in selected), denominator) if provider == 'claude' else None))
         table(('provider', field, 'calls', 'call_share_pct', 'weighted_proxy_share_pct'), split, out)
-    print('\nPhase totals (all calls; unknown included)', file=out)
-    table(('provider', 'phase', 'calls') + BUCKETS,
-        ([provider, phase, values['calls']] + [values[b] for b in BUCKETS]
-         for provider, group in groups.items() for phase, values in phase_totals(group).items()), out)
+    print('\nPhase totals by model and effort (all calls; unknown included)', file=out)
+    phase_groups = defaultdict(list)
+    for row in rows:
+        if row['type'] == 'call':
+            phase_groups[(row['provider'], row['phase'], row.get('model') or 'unknown',
+                          row.get('effort') or 'unknown')].append(row)
+    split = []
+    for key, group in sorted(phase_groups.items()):
+        values = aggregate(group)
+        split.append([*key, values['calls']] + [values[b] for b in BUCKETS])
+    table(('provider', 'phase', 'model', 'effort', 'calls') + BUCKETS, split, out)
 
 
 def tickets(rows, estimate_rows, out):
