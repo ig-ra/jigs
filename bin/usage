@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+"""Read-only Claude/Codex usage. Python standard library only."""
+import argparse
+from collections import Counter, defaultdict
+import csv
+from datetime import datetime, timedelta, timezone
+import json
+from pathlib import Path
+import re
+import sys
+
+UTC = timezone.utc
+PHASES = ('design', 'develop', 'review', 'finish', 'unknown')
+WEIGHTS = {'input': 1, 'cw5m': 1.25, 'cw1h': 2, 'read': .1, 'output': 5,
+           'sonnet': .6, 'haiku': .2, 'opus': 1}
+PROXY_LABEL = 'IGR-14 weighted proxy, uncalibrated'
+TICKET = r'[A-Za-z][A-Za-z0-9]*-\d+'
+INTAKE = re.compile(r'^(?:/igr:ticket|/ticket|ticket)\s+(start|resume|finish)\s+(' + TICKET + r')\b', re.I)
+STEP = re.compile(r'''(?:^|[;|&\n"']\s*)(?:[^\s"';()]+/)?tk\s+(?:--cwd\s+\S+\s+)?step\s+(''' + TICKET + r')\s+(implement|reviews|checks)\s+(running|fixing|done|todo|fail)\b', re.I)
+
+
+def stamp(value):
+    parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    return (parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)).astimezone(UTC)
+
+
+def ticket_from_cwd(cwd):
+    parts = Path(cwd or '').parts
+    for i, part in enumerate(parts[:-1]):
+        if part in ('.worktrees', 'worktrees'):
+            for folder in parts[i + 1:]:
+                match = re.match(r'^(' + TICKET + r')(?:-|$)', folder)
+                if match:
+                    return match[1].upper()
+    return None
+
+
+def text_content(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return '\n'.join(b.get('text', '') for b in value if isinstance(b, dict))
+    return json.dumps(value, ensure_ascii=False)
+
+
+def arguments(value):
+    if isinstance(value, dict):
+        return value
+    try:
+        parsed = json.loads(value)
+        return parsed if isinstance(parsed, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def category(name, command=''):
+    value = (name + ' ' + command).lower()
+    for kind, pattern in (
+        ('herdr', r'\bherdr\b'), ('tk', r'\btk\b|agent.estimat'),
+        ('linear', r'linear|mcp__.*(?:issue|comment)'),
+        ('wait', r'\b(?:sleep|wait|poll)\b'), ('github', r'\bgh\b|github'),
+        ('git', r'\bgit\b'), ('test/build', r'\b(?:pytest|unittest|npm|yarn|make|go test|trunk)\b'),
+        ('edit', r'edit|write|apply_patch'), ('read/search', r'read|search|grep|\brg\b|\bcat\b|\bsed\b|\bhead\b|\btail\b|\bls\b'),
+        ('agent', r'agent|task|spawn')):
+        if re.search(pattern, value):
+            return kind
+    return 'other'
+
+
+def tool(identifier, name, value, source):
+    args = arguments(value)
+    command = args.get('command') or args.get('cmd') or ''
+    # Custom code tools carry their input as source; never execute it.
+    if not args and isinstance(value, str):
+        command = value
+    return {'id': identifier, 'name': name, 'kind': category(name, command),
+            'source': source, 'result_chars': None, '_command': command}
+
+
+def base(provider, session, record, path, line, cwd=None, parent=None):
+    return {'provider': provider, 'session_id': session, 'timestamp': record.get('timestamp'),
+            'cwd': cwd, 'parent_session_id': parent,
+            'source': {'path': str(path), 'line': line}}
+
+
+def event(common, name, **fields):
+    return dict(common, type='event', event=name, **fields)
+
+
+def command_event(common, content):
+    value = text_content(content).strip()
+    # Claude's native slash-command envelope is a command, not quoted prose.
+    name = re.search(r'<command-name>(.*?)</command-name>', value)
+    args = re.search(r'<command-args>(.*?)</command-args>', value, re.S)
+    if name and args:
+        value = name[1] + ' ' + args[1]
+    match = INTAKE.match(value)
+    if match:
+        return event(common, 'ticket_command', action=match[1].lower(),
+                     marker_ticket=match[2].upper(), status='recorded')
+
+
+def step_events(common, command):
+    return [event(common, 'step', marker_ticket=m[1].upper(), step=m[2].lower(),
+                  status=m[3].lower()) for m in STEP.finditer(command)]
+
+
+def successful(output, is_error=False, require_exit=False):
+    if is_error:
+        return False
+    # Codex shell output includes the process exit code. No result means no marker.
+    codes = re.findall(r'(?:Process exited with code|exit[_ ]code["\s:]*|Exit code:)\s*(-?\d+)', output, re.I)
+    return all(int(code) == 0 for code in codes) if codes else not require_exit
+
+
+def json_lines(path, counts, provider):
+    with path.open(encoding='utf-8') as stream:
+        for number, line in enumerate(stream, 1):
+            # Skip large Claude request blobs/history before JSON decoding.
+            if provider == 'claude' and any('\"' + tag + '\"' in line[:150] for tag in
+                    ('api-request', 'api-request-blob', 'api-request-shape', 'file-history-snapshot',
+                     'file-history-delta', 'progress')):
+                continue
+            try:
+                record = json.loads(line)
+            except ValueError:
+                counts['malformed'] += 1
+                continue
+            if not isinstance(record, dict):
+                counts['malformed'] += 1
+                continue
+            yield number, record
+
+
+def read_claude(path, counts):
+    child = path.parent.name == 'subagents'
+    session = path.stem
+    parent = path.parent.parent.name if child else None
+    rows, calls, tools = [], {}, {}
+    for number, record in json_lines(path, counts, 'claude'):
+        common = base('claude', session, record, path, number, record.get('cwd'), parent)
+        kind = record.get('type')
+        message = record.get('message') or {}
+        content = message.get('content', [])
+        if kind == 'assistant' and message.get('id') and message.get('usage'):
+            identifier = message['id']
+            usage = message['usage']
+            ttl = usage.get('cache_creation') or {}
+            write = usage.get('cache_creation_input_tokens', 0)
+            one_hour = ttl.get('ephemeral_1h_input_tokens', 0)
+            call = dict(common, type='call', id=identifier, model=message.get('model'),
+                        effort=record.get('effort') or record.get('perTurnEffort'),
+                        native_input_tokens=usage.get('input_tokens', 0),
+                        new_input_tokens=usage.get('input_tokens', 0),
+                        cache_read_tokens=usage.get('cache_read_input_tokens', 0),
+                        cache_write_tokens=write, cache_write_5m_tokens=write - one_hour,
+                        cache_write_1h_tokens=one_hour, output_tokens=usage.get('output_tokens', 0),
+                        reasoning_tokens=(usage.get('output_tokens_details') or {}).get('thinking_tokens'),
+                        tools=[])
+            old = calls.get(identifier)
+            if old:
+                counts['duplicate'] += 1
+            if old is None or call['output_tokens'] >= old['output_tokens']:
+                call['tools'] = old['tools'] if old else []
+                # Keep the call's first timestamp for exact interval filtering.
+                call['timestamp'] = old['timestamp'] if old else call['timestamp']
+                calls[identifier] = call
+            current = calls[identifier]
+            for block in content if isinstance(content, list) else []:
+                if block.get('type') != 'tool_use' or block['id'] in tools:
+                    continue
+                action = tool(block['id'], block['name'], block.get('input', {}), common['source'])
+                tools[block['id']] = action
+                current['tools'].append(action)
+        elif kind == 'user':
+            marker = command_event(common, content)
+            if marker:
+                rows.append(marker)
+            for block in content if isinstance(content, list) else []:
+                if block.get('type') != 'tool_result':
+                    continue
+                action = tools.get(block.get('tool_use_id'))
+                if action:
+                    output = text_content(block.get('content', ''))
+                    action['result_chars'] = len(output)
+                    if successful(output, block.get('is_error', False)):
+                        rows.extend(step_events(common, action['_command']))
+        elif kind == 'system' and record.get('subtype') == 'compact_boundary':
+            rows.append(event(common, 'compaction', details=record.get('compactMetadata')))
+    rows.extend(calls.values())
+    return rows
+
+
+def read_codex(path, counts):
+    session, cwd, model, effort, parent, role = path.stem, None, None, None, None, None
+    rows, pending, tools = [], [], {}
+    for number, record in json_lines(path, counts, 'codex'):
+        kind, payload = record.get('type'), record.get('payload') or {}
+        if kind == 'session_meta':
+            session, cwd = payload['id'], payload.get('cwd')
+            parent = payload.get('parent_thread_id')
+            source = payload.get('source')
+            role = source if isinstance(source, str) else payload.get('thread_source')
+            if isinstance(source, dict):
+                spawn = source.get('subagent', {}).get('thread_spawn', {})
+                role = spawn.get('agent_role') or role
+                parent = parent or spawn.get('parent_thread_id')
+        elif kind == 'turn_context':
+            cwd, model, effort = payload.get('cwd', cwd), payload.get('model'), payload.get('effort')
+        common = base('codex', session, record, path, number, cwd, parent)
+        common['native_role'] = role
+        if kind == 'response_item':
+            item = payload.get('type', '')
+            if item in ('message', 'agent_message') and payload.get('role', payload.get('author')) == 'user':
+                marker = command_event(common, payload.get('content', []))
+                if marker:
+                    rows.append(marker)
+            elif item in ('function_call', 'custom_tool_call'):
+                action = tool(payload['call_id'], payload['name'],
+                              payload.get('arguments', payload.get('input', '')), common['source'])
+                tools[action['id']] = action
+                pending.append(action)
+            elif item in ('function_call_output', 'custom_tool_call_output'):
+                action = tools.get(payload.get('call_id'))
+                if action:
+                    output = text_content(payload.get('output', ''))
+                    action['result_chars'] = len(output)
+                    if successful(output, require_exit=True):
+                        rows.extend(step_events(common, action['_command']))
+        if kind == 'event_msg' and payload.get('type') == 'token_count':
+            limits = payload.get('rate_limits') or {}
+            for window in ('primary', 'secondary'):
+                snapshot = limits.get(window)
+                if snapshot:
+                    rows.append(event(common, 'meter', window=window, limit_id=limits.get('limit_id'),
+                                      plan_type=limits.get('plan_type'), **snapshot))
+        if kind == 'compacted':
+            rows.append(event(common, 'compaction'))
+        usage_record = payload if kind == 'token_usage_record' else (
+            payload.get('latest_token_usage_record') if kind == 'compacted' else None)
+        if usage_record:
+            usage = usage_record['usage']
+            rows.append(dict(common, type='call', id=usage_record['response_id'],
+                session_id=usage_record['thread_id'], model=model, effort=effort,
+                native_input_tokens=usage['input_tokens'],
+                new_input_tokens=usage['input_tokens'] - usage.get('cached_input_tokens', 0),
+                cache_read_tokens=usage.get('cached_input_tokens', 0),
+                cache_write_tokens=usage.get('cache_write_input_tokens', 0),
+                cache_write_5m_tokens=None, cache_write_1h_tokens=None,
+                output_tokens=usage['output_tokens'], reasoning_tokens=usage.get('reasoning_output_tokens'),
+                turn_id=usage_record.get('turn_id'), tools=pending))
+            pending = []
+    return rows
+
+
+def normalize(rows, counts, start=None, end=None):
+    unique, events = {}, []
+    for row in rows:
+        if not row.get('timestamp'):
+            continue
+        if row['type'] != 'call':
+            events.append(row)
+            continue
+        key = row['provider'], row['id']
+        old = unique.get(key)
+        if old:
+            counts['duplicate'] += 1
+            actions = {a['id']: a for a in old['tools'] + row['tools']}
+            if row['output_tokens'] >= old['output_tokens']:
+                row['timestamp'] = old['timestamp']
+                unique[key] = row
+            unique[key]['tools'] = list(actions.values())
+        else:
+            unique[key] = row
+    intake, phases, first_commands = {}, {}, set()
+    result = []
+    for row in sorted(list(unique.values()) + events, key=lambda r: (r['timestamp'], r['source']['line'])):
+        scope = row['provider'], row['session_id']
+        if row.get('event') == 'ticket_command':
+            action, ticket = row['action'], row['marker_ticket']
+            if scope not in first_commands and action == 'resume':
+                result.append(event(row, 'resume_start'))
+            first_commands.add(scope)
+            intake[scope] = ticket
+            if action in ('start', 'finish'):
+                phases[scope + (ticket,)] = (('design' if action == 'start' else 'finish'), row['source'])
+        if row.get('event') == 'step' and row['status'] in ('running', 'fixing', 'done'):
+            phase = 'develop' if row['step'] == 'implement' else 'review'
+            phases[scope + (row['marker_ticket'],)] = phase, row['source']
+        cwd_ticket = ticket_from_cwd(row.get('cwd'))
+        row['ticket'] = row.get('marker_ticket') or cwd_ticket or intake.get(scope)
+        row['ticket_basis'] = 'cwd' if cwd_ticket == row['ticket'] and cwd_ticket else (
+            'via intake' if row['ticket'] else 'unassigned')
+        row['phase'], row['phase_source'] = phases.get(scope + (row['ticket'],), ('unknown', None))
+        if row['type'] == 'call':
+            if row['model'] == '<synthetic>':
+                counts['synthetic'] += int(in_window(row, start, end))
+                continue
+            row['context_tokens'] = (row['native_input_tokens'] if row['provider'] == 'codex' else
+                row['new_input_tokens'] + row['cache_read_tokens'] + row['cache_write_tokens'])
+            kinds = {a['kind'] for a in row['tools']}
+            row['kind'] = 'text' if not kinds else next(iter(kinds)) if len(kinds) == 1 else 'mixed'
+            row['result_chars'] = sum(a['result_chars'] or 0 for a in row['tools'])
+        result.append(row)
+    # Resume events copy the already-tagged command, without changing its action.
+    for row in result:
+        if row.get('event') == 'resume_start':
+            row['ticket'] = row['marker_ticket']
+            row['ticket_basis'] = 'cwd' if ticket_from_cwd(row.get('cwd')) == row['ticket'] else 'via intake'
+            row['phase'], row['phase_source'] = 'unknown', None
+        for action in row.get('tools', []):
+            action.pop('_command', None)
+    result = [r for r in result if in_window(r, start, end)]
+    counts['unassigned'] = sum(r.get('ticket') is None for r in result)
+    return result
+
+
+def in_window(row, start, end):
+    time = stamp(row['timestamp'])
+    return (start is None or start <= time) and (end is None or time < end)
+
+
+def candidates(root, start=None):
+    margin = (start - timedelta(days=1)).timestamp() if start else None
+    return sorted(p for p in root.rglob('*.jsonl') if margin is None or p.stat().st_mtime >= margin)
+
+
+def collect(start=None, end=None, claude_root=None, codex_root=None, session=None):
+    roots = {'claude': claude_root or Path.home() / '.claude/projects',
+             'codex': codex_root or Path.home() / '.codex/sessions'}
+    counts = Counter({name: 0 for name in ('malformed', 'duplicate', 'synthetic', 'unassigned')})
+    rows = []
+    for provider, root in roots.items():
+        if session and session[0] != provider:
+            continue
+        for path in candidates(root, start):
+            if session and session[1] not in str(path):
+                continue
+            rows.extend((read_claude if provider == 'claude' else read_codex)(path, counts))
+    return normalize(rows, counts, start, end), counts
+
+
+def estimates(path, start=None, end=None):
+    totals = {}
+    if not path.exists():
+        return totals
+    with path.open(newline='', encoding='utf-8') as stream:
+        for row in csv.DictReader(stream, delimiter='\t'):
+            if start and not (start <= stamp(row['started']) < end):
+                continue
+            key = row['ticket'].upper(), row['agent']
+            total = totals.setdefault(key, {'estimated_rounds_low': None, 'estimated_rounds_high': None,
+                                           'completed_dispatch_minutes': None})
+            for column, field in (('rounds_low', 'estimated_rounds_low'), ('rounds_high', 'estimated_rounds_high'),
+                                  ('actual_min', 'completed_dispatch_minutes')):
+                if row.get(column):
+                    total[field] = (total[field] or 0) + float(row[column])
+    return totals
+
+
+def parser():
+    cli = argparse.ArgumentParser(description='Read-only raw token usage for Claude and Codex flat plans; UTC dates, END exclusive.')
+    commands = cli.add_subparsers(dest='command', required=True)
+    for name in ('summary', 'tickets', 'export'):
+        command = commands.add_parser(name, help={'summary': 'IGR-14 summary and phase totals',
+            'tickets': 'Ticket rows, both providers; resume starts are not proven handoffs',
+            'export': 'Normalized call/event JSONL; diagnostics on stderr'}[name])
+        command.add_argument('start', type=stamp, metavar='START')
+        command.add_argument('end', type=stamp, metavar='END')
+    command = commands.add_parser('session', help='Claude session with linked subagents, or Codex thread (own calls only)')
+    command.add_argument('id', metavar='claude:ID|codex:ID')
+    return cli
+
+
+def main():
+    cli = parser()
+    args = cli.parse_args()
+    cli.error('Report rendering is added in implementation step 2')
+
+
+if __name__ == '__main__':
+    main()
