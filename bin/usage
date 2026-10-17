@@ -133,9 +133,10 @@ def json_lines(path, counts, provider):
 
 
 def read_claude(path, counts):
-    child = path.parent.name == 'subagents'
     session = path.stem
-    parent = path.parent.parent.name if child else None
+    # Workflow agents can be nested below subagents/workflows/<workflow>/ .
+    parts = path.parts
+    parent = parts[parts.index('subagents') - 1] if 'subagents' in parts else None
     rows, calls, tools = [], {}, {}
     for number, record in json_lines(path, counts, 'claude'):
         common = base('claude', session, record, path, number, record.get('cwd'), parent)
@@ -281,7 +282,8 @@ def normalize(rows, counts, start=None, end=None):
             if scope not in first_commands and action == 'resume':
                 result.append(event(row, 'resume_start'))
             first_commands.add(scope)
-            intake[scope] = ticket
+            if action in ('start', 'resume'):
+                intake[scope] = ticket
             if action in ('start', 'finish'):
                 phases[scope + (ticket,)] = (('design' if action == 'start' else 'finish'), row['source'])
         if row.get('event') == 'step' and row['status'] in ('running', 'fixing', 'done'):
@@ -441,6 +443,8 @@ def summary(rows, out):
         weighted_total = sum(weighted(r) or 0 for r in calls)
         details[provider] = {
             'main_sessions': len({r['session_id'] for r in main}),
+            'main_source_files': len({r['source']['path'] for r in main}),
+            'child_source_files': len({r['source']['path'] for r in calls if r['parent_session_id']}),
             'child_sessions': len({r['session_id'] for r in calls if r['parent_session_id']}),
             'subagent_call_share_pct': share(len(calls) - len(main), len(calls)),
             'cache_read_share_of_context_pct': share(sum(r['cache_read_tokens'] for r in calls), sum(r['context_tokens'] for r in calls)),
@@ -505,8 +509,9 @@ def timeline(rows, provider, identifier, out):
         key = row['session_id']
         gap = (time - previous[key]).total_seconds() if key in previous else None
         previous[key] = time
-        detail = {'tools': row.get('tools', []), 'result_chars': row.get('result_chars'),
-                  'parent_session_id': row['parent_session_id']}
+        detail = {'tools': row.get('tools', []), 'result_chars': row.get('result_chars')}
+        if provider == 'claude':
+            detail['parent_session_id'] = row['parent_session_id']
         if row.get('event') == 'meter':
             detail.update({k: row.get(k) for k in ('used_percent', 'window_minutes', 'resets_at', 'limit_id', 'plan_type')})
         if row.get('event') in ('step', 'ticket_command'):

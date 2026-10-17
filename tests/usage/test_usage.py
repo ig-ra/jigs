@@ -66,6 +66,14 @@ class ReaderTests(unittest.TestCase):
         steps = [r for r in rows if r.get('event') == 'step']
         self.assertEqual([(r['step'], r['status']) for r in steps], [('implement', 'running'), ('reviews', 'running'), ('implement', 'running')])
 
+    def test_finish_marker_does_not_replace_latest_start_resume_intake(self):
+        rows = usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
+        finish = next(r for r in rows if r.get('action') == 'finish')
+        finish['marker_ticket'] = 'IGR-13'
+        normalized = usage.normalize(rows, Counter())
+        call = next(r for r in normalized if r.get('id') == 'm7')
+        self.assertEqual((call['ticket'], call['phase']), ('IGR-15', 'design'))
+
     def test_child_link_malformed_unassigned_and_read_only(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -94,6 +102,18 @@ class ReaderTests(unittest.TestCase):
             self.assertEqual(counts['unassigned'], 1)
             scoped, _ = usage.collect(claude_root=claude, codex_root=codex, session=('claude', 'main'))
             self.assertIn('child1', [r.get('id') for r in scoped])
+
+    def test_nested_workflow_subagents_link_to_main_and_stay_out_of_main_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            child = Path(directory) / 'main/subagents/workflows/wf-example/agent-worker.jsonl'
+            child.parent.mkdir(parents=True)
+            child.write_bytes((FIXTURES / 'child.jsonl').read_bytes())
+            rows = usage.normalize(usage.read_claude(child, Counter()), Counter())
+            self.assertEqual(rows[0]['parent_session_id'], 'main')
+            out = io.StringIO()
+            usage.summary(rows, out)
+            self.assertIn('main_sessions\t0\t0', out.getvalue())
+            self.assertIn('child_sessions\t1\t0', out.getvalue())
 
     def test_window_is_utc_end_exclusive_and_whole_file_metadata_retained(self):
         counts = Counter()
@@ -176,6 +196,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn('meter', out.getvalue())
         self.assertIn('compaction', out.getvalue())
         self.assertNotIn('codex-child', out.getvalue())
+        self.assertNotIn('parent_session_id', out.getvalue())
 
     def test_global_duplicate_keeps_union_and_largest_usage(self):
         rows = usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
