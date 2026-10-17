@@ -69,9 +69,62 @@ def category(name, command=''):
     return 'other'
 
 
+def without_heredoc_bodies(command):
+    """Keep shell headers; skip closed bodies with simple literal delimiters."""
+    if '<<' not in command:
+        return command
+    lines, shell = iter(command.splitlines(keepends=True)), []
+    for line in lines:
+        # Retain quotes to distinguish a redirection from a quoted '<<' argument.
+        lexer = shlex.shlex(line, posix=False, punctuation_chars=';&|<>')
+        lexer.commenters = ''
+        lexer.whitespace_split = True
+        try:
+            words = list(lexer)
+        except ValueError:
+            return None
+        if line.rstrip('\r\n').endswith('\\'):
+            return None  # Continued headers need a shell parser.
+        bodies = []
+        for index, word in enumerate(words):
+            if word != '<<':
+                if word.startswith('<<'):
+                    return None  # Here-strings and other unsupported operators.
+                continue
+            if index + 1 >= len(words):
+                return None
+            delimiter = words[index + 1]
+            strip_tabs = delimiter.startswith('-')
+            if strip_tabs:
+                delimiter = delimiter[1:]
+                if not delimiter:
+                    if index + 2 >= len(words):
+                        return None
+                    delimiter = words[index + 2]
+            try:
+                literal = shlex.split(delimiter)
+            except ValueError:
+                return None
+            if len(literal) != 1 or not re.fullmatch(r'[A-Za-z0-9_. -]+', literal[0]):
+                return None
+            bodies.append((literal[0], strip_tabs))
+        shell.append(line)
+        for delimiter, strip_tabs in bodies:
+            for body in lines:
+                end = body.rstrip('\r\n')
+                if (end.lstrip('\t') if strip_tabs else end) == delimiter:
+                    break
+            else:
+                return None
+    return ''.join(shell)
+
+
 def step_candidates(command):
     """Literal shell arguments only; opaque code and heredoc bodies stay unknown."""
     if 'tk' not in command:
+        return []
+    command = without_heredoc_bodies(command)
+    if command is None:
         return []
     lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|<>\n')
     lexer.whitespace = ' \t\r'
@@ -79,8 +132,6 @@ def step_candidates(command):
     try:
         tokens = list(lexer)
     except ValueError:
-        return []
-    if any('<<' in token for token in tokens):
         return []
     groups, words = [], []
     for token in tokens + [';']:

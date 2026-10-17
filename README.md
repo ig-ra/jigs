@@ -120,6 +120,8 @@ Done-only band updates preserve finish; explicit new work may change phase.
 Todo/fail markers do not advance phases. A step needs literal executable shell
 arguments and a matching native `KEY line=status` success receipt. Quoted examples,
 opaque code, pipeline errors and background launches do not establish a phase.
+Closed heredoc bodies stay opaque; literal tk statements elsewhere in the command
+can supply markers. Unclosed or unsupported heredoc syntax stays unproven.
 Without a proven marker, phase remains unknown; prior proven state is retained.
 Transitions stay scoped to their session and ticket; pre-marker phase is unknown.
 Export retains original step/status and source path/line. Native event identity
