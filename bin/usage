@@ -5,8 +5,10 @@ from collections import Counter, defaultdict
 import csv
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 import re
+import shlex
 import sys
 
 UTC = timezone.utc
@@ -15,8 +17,8 @@ WEIGHTS = {'input': 1, 'cw5m': 1.25, 'cw1h': 2, 'read': .1, 'output': 5,
            'sonnet': .6, 'haiku': .2, 'opus': 1}
 PROXY_LABEL = 'IGR-14 weighted proxy, uncalibrated'
 TICKET = r'[A-Za-z][A-Za-z0-9]*-\d+'
-INTAKE = re.compile(r'^(?:/igr:ticket|/ticket|ticket)\s+(start|resume|finish)\s+(' + TICKET + r')\b', re.I)
-STEP = re.compile(r'''(?:^|[;|&\n"']\s*)(?:[^\s"';()]+/)?tk\s+(?:--cwd\s+\S+\s+)?step\s+(''' + TICKET + r')\s+(implement|reviews|checks)\s+(running|fixing|done|todo|fail)\b', re.I)
+INTAKE = re.compile(r'^(?:/igr:ticket|/ticket|ticket)\s+(start|resume)\s+(' + TICKET + r')\b', re.I)
+FINISH = re.compile(r'^(?:/igr:ticket|/ticket|ticket)\s+finish\s*$', re.I)
 
 
 def stamp(value):
@@ -67,6 +69,40 @@ def category(name, command=''):
     return 'other'
 
 
+def step_candidates(command):
+    """Literal shell arguments only; opaque code and heredoc bodies stay unknown."""
+    if 'tk' not in command:
+        return []
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|<>\n')
+    lexer.whitespace = ' \t\r'
+    lexer.whitespace_split = True
+    try:
+        tokens = list(lexer)
+    except ValueError:
+        return []
+    if any('<<' in token for token in tokens):
+        return []
+    groups, words = [], []
+    for token in tokens + [';']:
+        if token and all(char in ';&|\n' for char in token):
+            groups.append(words)
+            words = []
+        else:
+            words.append(token)
+    candidates = []
+    for words in groups:
+        if not words or Path(words[0]).name != 'tk':
+            continue
+        args = words[1:]
+        if args[:1] == ['--cwd']:
+            args = args[2:]
+        if (len(args) >= 4 and args[0] == 'step' and re.fullmatch(TICKET, args[1])
+                and args[2] in ('implement', 'reviews', 'checks')
+                and args[3] in ('running', 'fixing', 'done', 'todo', 'fail')):
+            candidates.append((args[1].upper(), args[2], args[3]))
+    return candidates
+
+
 def tool(identifier, name, value, source):
     args = arguments(value)
     command = args.get('command') or args.get('cmd') or ''
@@ -74,13 +110,16 @@ def tool(identifier, name, value, source):
     if not args and isinstance(value, str):
         command = value
     return {'id': identifier, 'name': name, 'kind': category(name, command),
-            'source': source, 'result_chars': None, '_command': command}
+            'source': source, 'result_chars': None,
+            '_steps': (step_candidates(args.get('command') or args.get('cmd') or '')
+                       if name.rsplit('.', 1)[-1] in ('Bash', 'exec_command') else [])}
 
 
 def base(provider, session, record, path, line, cwd=None, parent=None):
     return {'provider': provider, 'session_id': session, 'timestamp': record.get('timestamp'),
             'cwd': cwd, 'parent_session_id': parent,
-            'source': {'path': str(path), 'line': line}}
+            'source': {'path': str(path), 'line': line},
+            'record_id': record.get('uuid', record.get('ordinal'))}
 
 
 def event(common, name, **fields):
@@ -94,15 +133,21 @@ def command_event(common, content):
     args = re.search(r'<command-args>(.*?)</command-args>', value, re.S)
     if name and args:
         value = name[1] + ' ' + args[1]
+    if FINISH.fullmatch(value):
+        return event(common, 'ticket_command', action='finish', status='recorded')
     match = INTAKE.match(value)
     if match:
         return event(common, 'ticket_command', action=match[1].lower(),
                      marker_ticket=match[2].upper(), status='recorded')
 
 
-def step_events(common, command):
-    return [event(common, 'step', marker_ticket=m[1].upper(), step=m[2].lower(),
-                  status=m[3].lower()) for m in STEP.finditer(command)]
+def step_events(common, action, output, is_error=False, require_exit=False):
+    candidates = action['_steps']
+    if not candidates or not successful(output, is_error, require_exit):
+        return []
+    return [event(common, 'step', marker_ticket=ticket, step=line, status=status,
+                  tool_id=action['id']) for ticket, line, status in candidates
+            if re.search(r'(?m)^' + re.escape(f'{ticket} {line}={status}') + r'(?:\s|$)', output)]
 
 
 def successful(output, is_error=False, require_exit=False):
@@ -184,8 +229,7 @@ def read_claude(path, counts):
                 if action:
                     output = text_content(block.get('content', ''))
                     action['result_chars'] = len(output)
-                    if successful(output, block.get('is_error', False)):
-                        rows.extend(step_events(common, action['_command']))
+                    rows.extend(step_events(common, action, output, block.get('is_error', False)))
         elif kind == 'system' and record.get('subtype') == 'compact_boundary':
             rows.append(event(common, 'compaction', details=record.get('compactMetadata')))
     rows.extend(calls.values())
@@ -203,9 +247,13 @@ def read_codex(path, counts):
             source = payload.get('source')
             role = source if isinstance(source, str) else payload.get('thread_source')
             if isinstance(source, dict):
-                spawn = source.get('subagent', {}).get('thread_spawn', {})
-                role = spawn.get('agent_role') or role
-                parent = parent or spawn.get('parent_thread_id')
+                subagent = source.get('subagent', {})
+                if isinstance(subagent, str):
+                    role = subagent
+                else:
+                    spawn = subagent.get('thread_spawn', {})
+                    role = spawn.get('agent_role') or role
+                    parent = parent or spawn.get('parent_thread_id')
         elif kind == 'turn_context':
             cwd, model, effort = payload.get('cwd', cwd), payload.get('model'), payload.get('effort')
         common = base('codex', session, record, path, number, cwd, parent)
@@ -226,8 +274,7 @@ def read_codex(path, counts):
                 if action:
                     output = text_content(payload.get('output', ''))
                     action['result_chars'] = len(output)
-                    if successful(output, require_exit=True):
-                        rows.extend(step_events(common, action['_command']))
+                    rows.extend(step_events(common, action, output, require_exit=True))
         if kind == 'event_msg' and payload.get('type') == 'token_count':
             limits = payload.get('rate_limits') or {}
             for window in ('primary', 'secondary'):
@@ -255,12 +302,21 @@ def read_codex(path, counts):
 
 
 def normalize(rows, counts, start=None, end=None):
-    unique, events = {}, []
+    unique, events = {}, {}
     for row in rows:
         if not row.get('timestamp'):
             continue
         if row['type'] != 'call':
-            events.append(row)
+            identity = row.get('record_id')
+            if identity is None:
+                identity = (row['source']['path'], row['source']['line'])
+            key = (row['provider'], row['session_id'], identity, row['event'],
+                   row.get('tool_id'), row.get('marker_ticket'), row.get('step'),
+                   row.get('status'), row.get('action'), row.get('window'))
+            if key in events:
+                counts['duplicate'] += 1
+            else:
+                events[key] = row
             continue
         key = row['provider'], row['id']
         old = unique.get(key)
@@ -275,24 +331,27 @@ def normalize(rows, counts, start=None, end=None):
             unique[key] = row
     intake, phases, first_commands = {}, {}, set()
     result = []
-    for row in sorted(list(unique.values()) + events, key=lambda r: (r['timestamp'], r['source']['line'])):
+    for row in sorted(list(unique.values()) + list(events.values()), key=lambda r: (r['timestamp'], r['source']['line'])):
         scope = row['provider'], row['session_id']
+        cwd_ticket = ticket_from_cwd(row.get('cwd'))
+        row['ticket'] = row.get('marker_ticket') or cwd_ticket or intake.get(scope)
+        row['ticket_basis'] = 'cwd' if cwd_ticket == row['ticket'] and cwd_ticket else (
+            'via intake' if row['ticket'] else 'unassigned')
         if row.get('event') == 'ticket_command':
-            action, ticket = row['action'], row['marker_ticket']
+            action, ticket = row['action'], row['ticket']
             if scope not in first_commands and action == 'resume':
                 result.append(event(row, 'resume_start'))
             first_commands.add(scope)
             if action in ('start', 'resume'):
                 intake[scope] = ticket
-            if action in ('start', 'finish'):
+            if ticket and action in ('start', 'finish'):
                 phases[scope + (ticket,)] = (('design' if action == 'start' else 'finish'), row['source'])
         if row.get('event') == 'step' and row['status'] in ('running', 'fixing', 'done'):
-            phase = 'develop' if row['step'] == 'implement' else 'review'
-            phases[scope + (row['marker_ticket'],)] = phase, row['source']
-        cwd_ticket = ticket_from_cwd(row.get('cwd'))
-        row['ticket'] = row.get('marker_ticket') or cwd_ticket or intake.get(scope)
-        row['ticket_basis'] = 'cwd' if cwd_ticket == row['ticket'] and cwd_ticket else (
-            'via intake' if row['ticket'] else 'unassigned')
+            key = scope + (row['ticket'],)
+            current = phases.get(key, ('unknown', None))[0]
+            if not (current == 'finish' and row['status'] == 'done'):
+                phase = 'develop' if row['step'] == 'implement' else 'review'
+                phases[key] = phase, row['source']
         row['phase'], row['phase_source'] = phases.get(scope + (row['ticket'],), ('unknown', None))
         if row['type'] == 'call':
             if row['model'] == '<synthetic>':
@@ -311,7 +370,7 @@ def normalize(rows, counts, start=None, end=None):
             row['ticket_basis'] = 'cwd' if ticket_from_cwd(row.get('cwd')) == row['ticket'] else 'via intake'
             row['phase'], row['phase_source'] = 'unknown', None
         for action in row.get('tools', []):
-            action.pop('_command', None)
+            action.pop('_steps', None)
     result = [r for r in result if in_window(r, start, end)]
     counts['unassigned'] = sum(r.get('ticket') is None for r in result)
     return result
@@ -360,7 +419,6 @@ def estimates(path, start=None, end=None):
     return totals
 
 
-# Inserted into the single executable; no runtime helper file.
 BUCKETS = ('new_input_tokens', 'cache_read_tokens', 'cache_write_tokens',
            'cache_write_5m_tokens', 'cache_write_1h_tokens', 'output_tokens', 'reasoning_tokens')
 
@@ -483,7 +541,8 @@ def tickets(rows, estimate_rows, out):
     metrics = ('calls',) + BUCKETS + ('context_median', 'context_p90', 'context_max', 'compactions',
         'resume_starts', 'via_intake_pct', 'estimated_rounds_low', 'estimated_rounds_high',
         'completed_dispatch_minutes', 'phase_totals')
-    headers = ['ticket'] + [p + '.' + key for p in ('claude', 'codex') for key in metrics]
+    headers = (['ticket'] + ['claude.' + key for key in metrics] +
+               ['claude_review_minutes'] + ['codex.' + key for key in metrics])
     result = []
     # Always include unassigned, even if it is empty.
     keys = sorted({r['ticket'] for r in rows if r['ticket']}) + [None]
@@ -495,6 +554,8 @@ def tickets(rows, estimate_rows, out):
             values.update(estimate_rows.get((ticket, provider), {}))
             values['phase_totals'] = phase_totals(selected)
             line.extend(values.get(key) for key in metrics)
+            if provider == 'claude':
+                line.append(estimate_rows.get((ticket, 'claude-review'), {}).get('completed_dispatch_minutes'))
         result.append(line)
     table(headers, result, out)
 
@@ -564,7 +625,7 @@ def main():
         if start >= end:
             cli.error('START must be before END (UTC, end exclusive)')
     rows, counts = collect(start, end, session=session)
-    estimate_rows = estimates(Path.home() / '.claude/agent-estimates.tsv', start, end) if args.command == 'tickets' else None
+    estimate_rows = estimates(Path(os.environ.get('AGENT_ESTIMATES') or Path.home() / '.claude/agent-estimates.tsv'), start, end) if args.command == 'tickets' else None
     if args.command in ('summary', 'tickets'):
         print('UTC [' + start.isoformat() + ', ' + end.isoformat() + ')')
     render(args.command, rows, sys.stdout, estimate_rows, session)

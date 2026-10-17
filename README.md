@@ -112,12 +112,19 @@ reasoning to totals a second time. Tool-result sizes are characters, not tokens.
 
 Ticket = key in the record's cwd worktree folder (suffixes allowed), otherwise
 latest explicit `ticket start/resume KEY` command in that session, labelled
-`via intake`, otherwise unassigned. A finish command marks finish for its named
-ticket. No session-majority guessing. Recorded start establishes design;
-successful `tk step` implement establishes develop, reviews/checks establish
-review; finish establishes finish. Todo/fail markers do not advance phases.
+`via intake`, otherwise unassigned. Keyless `/igr:ticket finish` uses the same
+cwd/intake evidence; without either, it stays unassigned. No session-majority
+guessing. Recorded start establishes design; successful `tk step` implement
+establishes develop, reviews/checks establish review; finish establishes finish.
+Done-only band updates preserve finish; explicit new work may change phase.
+Todo/fail markers do not advance phases. A step needs literal executable shell
+arguments and a matching native `KEY line=status` success receipt. Quoted examples,
+opaque code, pipeline errors and background launches do not establish a phase.
+Without a proven marker, phase remains unknown; prior proven state is retained.
 Transitions stay scoped to their session and ticket; pre-marker phase is unknown.
-Export retains original step/status and source path/line. No checkpoint inference.
+Export retains original step/status and source path/line. Native event identity
+deduplicates copies (Claude UUID, Codex ordinal; source coordinates when absent).
+Different-time meter observations remain distinct. No checkpoint inference.
 
 Summary shows both providers, model/kind splits, raw buckets, main-thread context
 median/p90/max and phase totals. Context percentiles interpolate at `(n-1)*p`.
@@ -128,6 +135,10 @@ Null means absent evidence, not a measured zero; empty phases have zero calls.
 Estimated rounds low/high and completed dispatch minutes sum estimate rows whose
 start is inside the report window, separately per provider; they are nullable
 local metadata, not canonical ticket size or elapsed ticket duration.
+`claude_review_minutes`, between the Claude and Codex column groups, sums completed
+`claude-review` actuals separately. It contributes no estimated rounds and does
+not change Claude dispatch minutes. Estimate metadata uses `AGENT_ESTIMATES` when
+nonempty, otherwise `~/.claude/agent-estimates.tsv`, matching the writer.
 
 A **resume start** is a session whose first recorded ticket command is resume.
 It is not a proven successful handoff; compactions are separate events. Claude

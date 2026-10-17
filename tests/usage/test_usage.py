@@ -1,12 +1,17 @@
 """Small synthetic logs only. No provider writes or network access."""
 from collections import Counter
+from contextlib import redirect_stdout, redirect_stderr
+import copy
 import io
 import importlib.machinery
 import importlib.util
 import json
+import os
+import sys
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_loader('usage', importlib.machinery.SourceFileLoader(
@@ -29,7 +34,7 @@ class ReaderTests(unittest.TestCase):
         call = next(r for r in rows if r.get('id') == 'm1')
         self.assertEqual((call['output_tokens'], call['context_tokens']), (5, 130))
         self.assertEqual([a['id'] for a in call['tools']], ['read', 'step'])
-        self.assertEqual(call['result_chars'], 5)
+        self.assertEqual(call['result_chars'], 27)
         self.assertEqual(call['kind'], 'mixed')
         self.assertEqual((call['cache_write_5m_tokens'], call['cache_write_1h_tokens']), (15, 5))
         self.assertEqual(counts['duplicate'], 2)  # One Claude appearance, one Codex compaction.
@@ -46,7 +51,7 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(calls[0]['reasoning_tokens'], 5)
         self.assertEqual(calls[0]['parent_session_id'], 'parent')
         self.assertEqual(calls[0]['native_role'], 'reviewer')
-        self.assertEqual(calls[0]['tools'][0]['result_chars'], 37)
+        self.assertEqual(calls[0]['tools'][0]['result_chars'], 59)
         meters = [r for r in rows if r.get('event') == 'meter']
         self.assertEqual([r['used_percent'] for r in meters], [17, 18])
         self.assertEqual(sum(r.get('event') == 'compaction' for r in rows), 2)
@@ -69,10 +74,87 @@ class ReaderTests(unittest.TestCase):
     def test_finish_marker_does_not_replace_latest_start_resume_intake(self):
         rows = usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
         finish = next(r for r in rows if r.get('action') == 'finish')
-        finish['marker_ticket'] = 'IGR-13'
+        finish['cwd'] = '/repo/.worktrees/igr-13'
         normalized = usage.normalize(rows, Counter())
         call = next(r for r in normalized if r.get('id') == 'm7')
         self.assertEqual((call['ticket'], call['phase']), ('IGR-15', 'design'))
+
+    def test_keyless_finish_scope_and_done_updates(self):
+        rows = usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
+        finish = next(r for r in rows if r.get('action') == 'finish')
+        self.assertNotIn('marker_ticket', finish)
+        final_call = next(r for r in rows if r.get('id') == 'm7')
+        for index, line in enumerate(('implement', 'reviews', 'checks'), 20):
+            rows.append(usage.event(dict(finish, timestamp=f'2026-10-08T00:00:{index}Z',
+                source={'path': 'cleanup', 'line': index}, record_id=f'done-{index}'),
+                'step', marker_ticket='IGR-15', step=line, status='done'))
+        rows.append(dict(final_call, id='cleanup', timestamp='2026-10-08T00:00:24Z'))
+        calls = {r['id']: r for r in usage.normalize(rows, Counter()) if r['type'] == 'call'}
+        self.assertEqual(calls['cleanup']['phase'], 'finish')
+        for cwd, expected in (('/repo/.worktrees/igr-42', 'IGR-42'), ('/repo', None)):
+            marker = dict(finish, cwd=cwd)
+            following = dict(final_call, cwd=cwd)
+            parsed = usage.normalize([marker, following], Counter())
+            call = next(r for r in parsed if r['type'] == 'call')
+            self.assertEqual(call['ticket'], expected)
+            self.assertEqual(call['phase'], 'finish' if expected else 'unknown')
+        # Explicit new work can leave finish; done-only bookkeeping cannot.
+        rows.append(usage.event(dict(finish, timestamp='2026-10-08T00:00:25Z',
+            source={'path': 'cleanup', 'line': 25}, record_id='new-work'),
+            'step', marker_ticket='IGR-15', step='implement', status='running'))
+        rows.append(dict(final_call, id='new-work', timestamp='2026-10-08T00:00:26Z'))
+        parsed = usage.normalize(rows, Counter())
+        self.assertEqual(next(r['phase'] for r in parsed if r.get('id') == 'new-work'), 'develop')
+
+    def test_step_requires_literal_invocation_and_native_success_receipt(self):
+        common = {'provider': 'claude', 'session_id': 'session',
+                  'timestamp': '2026-10-08T00:00:00Z', 'source': {'path': 'fixture', 'line': 1}}
+        receipt = 'IGR-15 reviews=running'
+        direct = '/repo/tk --cwd /repo/.worktrees/igr-15 step IGR-15 reviews running'
+        commands = ['echo "tk step IGR-15 reviews running"',
+            'rg "tk step IGR-15 reviews running" docs',
+            'python3 -c "print(\"tk step IGR-15 reviews running\")"',
+            "cat <<'EOF'\ntk step IGR-15 reviews running\nEOF"]
+        for command in commands:
+            action = usage.tool('tool', 'Bash', {'command': command}, common['source'])
+            with self.subTest(command=command):
+                self.assertEqual(usage.step_events(common, action, receipt), [])
+        opaque = usage.tool('opaque', 'exec', 'run({cmd:"tk step IGR-15 reviews running"})', common['source'])
+        self.assertEqual(usage.step_events(common, opaque, receipt), [])
+        opaque_json = usage.tool('opaque', 'exec', json.dumps({'cmd': direct}), common['source'])
+        self.assertEqual(usage.step_events(common, opaque_json, receipt), [])
+        action = usage.tool('tool', 'Bash', {'command': 'cd /repo && ' + direct}, common['source'])
+        for output, is_error in [('ok', False), ('ERROR estimate already open for this line', False),
+                ('Command running in background with ID: task', False), (receipt, True)]:
+            self.assertEqual(usage.step_events(common, action, output, is_error), [])
+        self.assertEqual(usage.step_events(common, action, receipt)[0]['step'], 'reviews')
+        with patch.object(usage, 'successful', side_effect=AssertionError('unrelated result scanned')):
+            read = usage.tool('read', 'Read', {}, common['source'])
+            self.assertEqual(usage.step_events(common, read, 'large unrelated result'), [])
+
+    def test_native_event_identity_deduplicates_copies_not_distinct_meter_times(self):
+        rows = usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
+        copies = copy.deepcopy(rows)
+        for row in copies:
+            row['source']['path'] = 'another-project/' + Path(row['source']['path']).name
+        rows += copies + usage.read_codex(FIXTURES / 'codex.jsonl', Counter())
+        for row in rows:
+            if row.get('event') == 'meter':
+                row['used_percent'] = 17
+        normalized = usage.normalize(rows, Counter())
+        self.assertEqual(sum(r.get('event') == 'compaction' for r in normalized), 2)
+        self.assertEqual(sum(r.get('event') == 'ticket_command' for r in normalized), 4)
+        self.assertEqual(sum(r.get('event') == 'resume_start' for r in normalized), 2)
+        meters = [r for r in normalized if r.get('event') == 'meter']
+        self.assertEqual(len(meters), 2)
+        self.assertNotEqual(meters[0]['timestamp'], meters[1]['timestamp'])
+
+    def test_codex_native_string_subagent_role(self):
+        rows = usage.normalize(usage.read_codex(FIXTURES / 'codex-review.jsonl', Counter()), Counter())
+        call = next(r for r in rows if r['type'] == 'call')
+        self.assertEqual(call['native_role'], 'review')
+        self.assertEqual(call['parent_session_id'], 'parent')
+        self.assertEqual(call['new_input_tokens'], 100)
 
     def test_child_link_malformed_unassigned_and_read_only(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -130,6 +212,23 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(totals[('IGR-13', 'claude')]['completed_dispatch_minutes'], None)
         self.assertEqual(usage.estimates(FIXTURES / 'absent'), {})
 
+    def test_cli_uses_writer_estimates_environment_path(self):
+        rows, _ = load()
+        with tempfile.TemporaryDirectory() as directory:
+            override = Path(directory) / 'estimates.tsv'
+            override.write_bytes((FIXTURES / 'estimates.tsv').read_bytes())
+            output = io.StringIO()
+            with patch.dict(os.environ, {'AGENT_ESTIMATES': str(override)}), \
+                    patch.object(sys, 'argv', ['usage', 'tickets', '2026-10-08', '2026-10-09']), \
+                    patch.object(usage, 'collect', return_value=(rows, Counter())), \
+                    redirect_stdout(output), redirect_stderr(io.StringIO()):
+                usage.main()
+            lines = output.getvalue().splitlines()
+            headers = lines[1].split('\t')
+            ticket = next(dict(zip(headers, row.split('\t'))) for row in lines[2:] if row.startswith('IGR-15\t'))
+            self.assertEqual(ticket['claude_review_minutes'], '2.00')
+            self.assertEqual(ticket['codex.completed_dispatch_minutes'], '3.00')
+
 
 class ReportTests(unittest.TestCase):
     def test_phase_and_ticket_splits_reconcile_calls_and_raw_buckets(self):
@@ -172,13 +271,17 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(ticket['codex.estimated_rounds_low'], '3.00')
         self.assertEqual(ticket['codex.completed_dispatch_minutes'], '3.00')
         self.assertEqual(ticket['claude.completed_dispatch_minutes'], 'null')
+        self.assertEqual(ticket['claude_review_minutes'], '2.00')
+        self.assertEqual(ticket['claude.estimated_rounds_low'], 'null')
+        self.assertEqual(ticket['claude.estimated_rounds_high'], 'null')
+        self.assertEqual(parsed['IGR-13']['claude_review_minutes'], 'null')
         self.assertEqual(ticket['codex.resume_starts'], '1')
         self.assertEqual(sum(v['calls'] for v in json.loads(ticket['claude.phase_totals']).values()), 4)
         out = io.StringIO()
         usage.render('export', rows, out)
         exported = [json.loads(line) for line in out.getvalue().splitlines()]
         self.assertEqual(exported, rows)
-        self.assertTrue(all('_command' not in action for r in exported for action in r.get('tools', [])))
+        self.assertTrue(all('_steps' not in action for r in exported for action in r.get('tools', [])))
 
     def test_session_links_claude_children_but_codex_shows_own_thread_only(self):
         rows, _ = load()
@@ -204,7 +307,7 @@ class ReportTests(unittest.TestCase):
         normalized = usage.normalize(rows + rows, counts)
         self.assertEqual(sum(r['type'] == 'call' for r in normalized), 7)
         self.assertEqual(next(r['output_tokens'] for r in normalized if r.get('id') == 'm1'), 5)
-        self.assertEqual(counts['duplicate'], 8)
+        self.assertEqual(counts['duplicate'], 14)  # 8 calls and 6 copied native events.
 
 
 if __name__ == '__main__':
