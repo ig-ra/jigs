@@ -4,7 +4,8 @@
 Exit: 0 ready, 1 failed/stopped, 2 usage, 3 prerequisite/API error, 8 pending,
 124 timeout. State's verdict is required checks (merged succeeds); threads' verdict
 is unresolved count. Watch timeouts/intervals are seconds. No shell command strings.
-Only reply, enqueue, close apply and step mutate anything.
+go KEY|NUMBER prepares a ticket worktree and launches Claude at start or resume.
+Only go, reply, enqueue, close apply and step mutate anything.
 """
 from __future__ import annotations
 
@@ -472,6 +473,35 @@ def ticket_key(value: str) -> str:
     return value.upper()
 
 
+def parse_key(value: str, worktrees: list[str]) -> str:
+    if not re.fullmatch(r"[0-9]+", value):
+        return ticket_key(value)
+    teams = set()
+    for worktree in worktrees:
+        path = Path(worktree)
+        if len(path.parts) >= 3 and path.parts[-3] == ".worktrees" and re.fullmatch(
+                r"[A-Za-z][A-Za-z0-9]*-[0-9]+", path.name):
+            teams.add(ticket_key(path.name).rsplit("-", 1)[0])
+    if len(teams) != 1:
+        raise TkError("no shared ticket team; use a full key, e.g. tk go IGR-15", 2)
+    return ticket_key(f"{teams.pop()}-{value}")
+
+
+def prs_for_key(key: str, prs: list[JSON]) -> list[JSON]:
+    pattern = re.compile(rf"(?:^|/){re.escape(key)}(?:-[^/]+)?(?:/|$)", re.IGNORECASE)
+    return [pr for pr in prs if pattern.search(pr["headRefName"])]
+
+
+def decide(checkpoint: bool, exists: bool, head: str | None, prs: list[JSON]) -> str:
+    if checkpoint:
+        return "resume"
+    if any(pr["state"] == "OPEN" for pr in prs):
+        return "start"
+    if any(pr["state"] == "MERGED" and (not exists or head == pr["headRefOid"]) for pr in prs):
+        return "report"
+    return "start"
+
+
 def ticket_worktree(ctx: Context, key: str, owner: str | None = None) -> tuple[Path, Path]:
     common = Path(ctx.git("rev-parse", "--path-format=absolute", "--git-common-dir"))
     root = common.parent
@@ -502,6 +532,46 @@ def prep(ctx: Context, a: argparse.Namespace) -> JSON:
             "branch": (tree or {}).get("branch", "").removeprefix("refs/heads/") or None,
             "local": str(local), "leftover_worktrees": matching,
             "panes": [{k: p.get(k) for k in ("name", "pane_id", "agent", "agent_status")} for p in panes]}
+
+
+def go(ctx: Context, a: argparse.Namespace) -> int:
+    worktrees = [line.removeprefix("worktree ") for line in ctx.git("worktree", "list", "--porcelain").splitlines()
+                 if line.startswith("worktree ")]
+    a.key = parse_key(a.key, worktrees)
+    info = prep(ctx, a)
+    path = Path(info["worktree"])
+    checkpoint = (path / "igr" / "resume.md").exists()
+    head = None
+    prs = []
+    if not checkpoint:
+        lookup = ["--search", f'"{a.key}"']
+        if info["exists"]:
+            head = ctx.git("rev-parse", "HEAD", cwd=path)
+            lookup = ["--head", info["branch"]]
+        prs = gh(["pr", "list", "--repo", ctx.slug(), *lookup, "--state", "all",
+                  "--limit", "1000", "--json", "number,state,headRefOid,headRefName"], ctx.cwd)
+        if not info["exists"]:
+            prs = prs_for_key(a.key, prs)
+    action = decide(checkpoint, info["exists"], head, prs)
+    if action == "report":
+        output({"key": a.key, "result": "MERGED"}, f"{a.key}: merged work; nothing launched", a.json)
+        return 0
+    if not info["exists"]:
+        root = Path(info["repo_root"])
+        ctx.git("fetch", "origin", "--quiet", cwd=root)
+        ctx.git("worktree", "add", "--no-track", "-b", f"{path.parent.name}/{path.name}",
+                str(path), f"origin/{info['default_branch']}", cwd=root)
+        common = Path(ctx.git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+        exclude = common / "info" / "exclude"
+        content = exclude.read_text() if exclude.exists() else ""
+        if "/igr/" not in content.splitlines():
+            with exclude.open("a") as f:
+                f.write("\n/igr/\n")
+    if os.environ.get("HERDR_ENV") == "1":
+        herdr(["tab", "rename", os.environ["HERDR_TAB_ID"], a.key.rsplit("-", 1)[1]])
+    os.chdir(path)
+    os.execvp("claude", ["claude", f"/igr:ticket {action} {a.key}"])
+    return 0
 
 
 def close_proof(ctx: Context, info: JSON) -> JSON:
@@ -673,9 +743,9 @@ def parser() -> argparse.ArgumentParser:
     cmd.add_argument("thread")
     cmd.add_argument("body")
     cmd.add_argument("--resolve", action="store_true")
-    for name in ("prep", "close", "step"):
+    for name in ("go", "prep", "close", "step"):
         cmd = sub.add_parser(name)
-        cmd.set_defaults(func={"prep": prep_command, "close": close, "step": step}[name])
+        cmd.set_defaults(func={"go": go, "prep": prep_command, "close": close, "step": step}[name])
         cmd.add_argument("key")
         if name != "step":
             cmd.add_argument("--owner", help="worktree owner; default: cwd owner or git user first name")

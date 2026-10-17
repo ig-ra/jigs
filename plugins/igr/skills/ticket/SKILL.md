@@ -5,6 +5,16 @@ description: "Linear ticket lifecycle for any repo. start prepares a ticket and 
 
 # Ticket lifecycle
 
+Normal shell entry: `tk go IGR-15` (full key, any case) or `tk go 15`. A bare number uses the one team shared by this repo's registered ticket worktrees under `.worktrees/<owner>/<team>-<n>`; none or mixed teams requires a full key. `go` prepares or reuses the worktree, labels the Herdr tab, then replaces itself with Claude there, passing only `/igr:ticket start KEY` or `/igr:ticket resume KEY`. A checkpoint takes precedence; otherwise merged work is reported without launching. `go` reads worktrees and GitHub, never Linear.
+
+One-time PATH setup: with `~/.local/bin` on PATH, link `tk` from the **canonical jigs checkout**, so removing a ticket worktree cannot break it. Substitute its absolute path:
+```sh
+mkdir -p ~/.local/bin
+ln -s /absolute/path/to/jigs/plugins/igr/skills/ticket/scripts/tk ~/.local/bin/tk
+```
+
+Inside an existing Claude session, `/igr:ticket start` remains the fallback.
+
 Three modes, from the first argument:
 - `start <key>`, for example `/igr:ticket start ABC-123` or `/igr:ticket start 123`. If the first argument is a key with no mode, treat it as `start`.
 - `resume [key] [worktree]`, for example `/igr:ticket resume ABC-123`, `/igr:ticket resume ABC-123 /abs/path/to/worktree` (what a handoff queues) or `/igr:ticket resume` in its worktree. Read [references/resume.md](references/resume.md) and continue the existing phase. A restart or compaction of ongoing ticket work uses this mode.
@@ -49,11 +59,15 @@ Use the session's Linear connection: each repo folder should enable exactly one.
 
 If the ticket does not exist, stop and say so.
 
-Then move it to In Progress with `save_issue(KEY, state: "In Progress")`. Skip this when it is already In Progress, In Review or Done, or when a blocked-by ticket is not Done (step 7 reports and stops then).
+If its status is Done, report that and stop before changing status or preparing work.
+
+Then move it to In Progress with `save_issue(KEY, state: "In Progress")`. Skip this when it is already In Progress or In Review, or when a blocked-by ticket is not Done (step 7 reports and stops then).
 
 #### 2. Worktree from the latest default branch
 
-If the session is already in an entered worktree, first `ExitWorktree` with `action: keep` and return to the canonical checkout. Run `<skill base directory>/scripts/tk --cwd <session cwd> prep <KEY>` and derive `REPO`, `BASE`, `SLUG`, `worktree`, `owner`, `LOCAL` (see "Which repo"). Use plain `git -C <path>` commands. Inspect `prep`'s same-ticket worktrees and panes before creating anything; report a conflicting location instead of forcing it.
+Run `<skill base directory>/scripts/tk --cwd <session cwd> prep <KEY>` and derive `REPO`, `BASE`, `SLUG`, `worktree`, `owner`, `LOCAL` (see "Which repo"). Use plain `git -C <path>` commands. Inspect `prep`'s same-ticket worktrees and panes before creating anything; report a conflicting location instead of forcing it.
+
+If the session's cwd already is the returned registered ticket worktree (for example after `tk go`), adopt its actual `branch` from prep. Skip `ExitWorktree` and the fetch, worktree creation/update and upstream changes below; continue with local ignore verification. Otherwise, if the session is in an entered worktree, first `ExitWorktree` with `action: keep` and return to the canonical checkout, then:
 
 - `git -C <REPO> fetch origin --quiet`
 - **If the returned `<worktree>` exists** (a compaction or restart of ongoing work with a checkpoint uses `resume` instead): report whether it is clean, its commits ahead (`git -C <worktree> rev-list --count <BASE>..HEAD`) and behind. Fast-forward it (`git -C <worktree> merge --ff-only <BASE>`) only when it has no commits of its own. A branch with its own commits, usually with an open PR, is rebased only on request, because a rebase rewrites the pushed head. Never discard work.
@@ -82,7 +96,7 @@ These operations run from the canonical checkout.
 
 #### 5. Switch into the worktree
 
-Call `EnterWorktree` with `path` set to the worktree, so every later read, edit and git command targets this ticket. Load the tool with ToolSearch if it is deferred. If it refuses because "the current directory is not in a git repository" (after a compaction the session cwd can be a non-git folder), run a Bash `cd <worktree>` and retry. If it still refuses, continue without it and use absolute paths and `git -C <worktree>` for every command.
+If the session's cwd already is the ticket's worktree, stay there and skip `EnterWorktree`. Otherwise call `EnterWorktree` with `path` set to the worktree, so every later read, edit and git command targets this ticket. Load the tool with ToolSearch if it is deferred. If it refuses because "the current directory is not in a git repository" (after a compaction the session cwd can be a non-git folder), run a Bash `cd <worktree>` and retry. If it still refuses, continue without it and use absolute paths and `git -C <worktree>` for every command.
 
 #### 6. Read the working set
 

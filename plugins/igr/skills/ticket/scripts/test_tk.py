@@ -297,6 +297,69 @@ class PRTests(unittest.TestCase):
         self.assertEqual(out.getvalue(), "req_fail=0\n")
 
 
+class GoTests(unittest.TestCase):
+    def test_parse_full_keys(self):
+        for value in ("TEAM-15", "team-15", "TeAm-15"):
+            with self.subTest(value=value):
+                self.assertEqual(tk.parse_key(value, []), "TEAM-15")
+
+    def test_parse_number_uses_shared_worktree_team(self):
+        trees = ["/repo/.worktrees/one/team-1", "/repo/.worktrees/two/TEAM-2",
+                 "/repo/.worktrees/one/not-a-ticket", "/elsewhere/other-3"]
+        self.assertEqual(tk.parse_key("15", trees), "TEAM-15")
+
+    def test_parse_number_without_shared_team_is_usage_error(self):
+        for trees in ([], ["/repo/.worktrees/one/team-1", "/repo/.worktrees/one/other-2"]):
+            with self.subTest(trees=trees), self.assertRaises(tk.TkError) as error:
+                tk.parse_key("15", trees)
+            self.assertEqual(error.exception.code, 2)
+            self.assertIn("tk go IGR-15", str(error.exception))
+
+    def test_parse_invalid_key_is_usage_error(self):
+        for value in ("", "TEAM", "-15", "TEAM-15/extra"):
+            with self.subTest(value=value), self.assertRaises(tk.TkError) as error:
+                tk.parse_key(value, [])
+            self.assertEqual(error.exception.code, 2)
+
+    def test_branch_key_filter_applies_to_merged_and_open_mentions(self):
+        merged = {"headRefName": "owner/igr-15", "state": "MERGED", "headRefOid": "head"}
+        branches = [("owner/igr-15", True), ("owner/IgR-15-slug", True),
+                    ("owner/igr-150", False), ("owner/igr-16", False),
+                    ("owner/notigr-15", False), ("owner/igr-15-", False)]
+        for branch, belongs in branches:
+            for state in ("MERGED", "OPEN"):
+                with self.subTest(branch=branch, state=state):
+                    candidate = {"headRefName": branch, "state": state, "headRefOid": "head",
+                                 "title": "Follow-up for IGR-15", "body": "Related to IGR-15"}
+                    selected = tk.prs_for_key("IGR-15", [candidate])
+                    self.assertEqual(selected, [candidate] if belongs else [])
+                    if state == "MERGED":
+                        expected = "report" if belongs else "start"
+                    else:
+                        selected = tk.prs_for_key("IGR-15", [merged, candidate])
+                        expected = "start" if belongs else "report"
+                    self.assertEqual(tk.decide(False, False, None, selected), expected)
+
+    def test_decide(self):
+        merged = {"state": "MERGED", "headRefOid": "merged-head"}
+        opened = {"state": "OPEN", "headRefOid": "open-head"}
+        cases = [
+            ("checkpoint first", True, True, "merged-head", [merged], "resume"),
+            ("checkpoint with open PR", True, True, "open-head", [merged, opened], "resume"),
+            ("existing merged HEAD", False, True, "merged-head", [merged], "report"),
+            ("gone merged worktree", False, False, None, [merged], "report"),
+            ("open blocks existing report", False, True, "merged-head", [merged, opened], "start"),
+            ("open blocks gone report", False, False, None, [merged, opened], "start"),
+            ("local work after merge", False, True, "new-head", [merged], "start"),
+            ("new ticket", False, False, None, [], "start"),
+            ("existing without PR", False, True, "head", [], "start"),
+            ("closed is not merged", False, False, None, [{"state": "CLOSED"}], "start"),
+        ]
+        for name, checkpoint, exists, head, prs, expected in cases:
+            with self.subTest(name=name):
+                self.assertEqual(tk.decide(checkpoint, exists, head, prs), expected)
+
+
 class LifecycleTests(unittest.TestCase):
     def test_step_preserves_unrelated_fields_and_serializes_updates(self):
         with ticket_setup() as (root, tree):
