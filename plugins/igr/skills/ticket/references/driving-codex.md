@@ -158,8 +158,9 @@ middle of a PR, to review findings, and to CI failures: a fix brief carries the 
 numbers, never "my reading" of the cause. A batch of review or bot findings counts as a problem: sort
 it per `loop.md` After code step 2, and give judgment-track findings to codex without my verdict.
 
-**This includes my numbers.** In the independent pass, name what to measure, not what I measured: my
-evidence anchors codex as much as my design does. Point it at primary sources and say that any
+**This includes my numbers.** In the independent pass, name what to measure and hand over the exact
+commands or scripts that measure it, not what I measured: my evidence anchors codex as much as my
+design does, while rebuilding a measurement method from scratch is the expensive part. Point it at primary sources and say that any
 numbers already on the ticket or PR are claims to re-check. The numbers I gathered go in at the
 compare round.
 
