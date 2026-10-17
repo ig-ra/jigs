@@ -319,6 +319,42 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(exported, rows)
         self.assertTrue(all('_steps' not in action for r in exported for action in r.get('tools', [])))
 
+    def test_estimate_only_tickets_show_observed_zeros_and_nullable_metadata(self):
+        rows, _ = load()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'estimates.tsv'
+            path.write_text('started\tagent\tticket\trounds_low\trounds_high\tactual_min\n'
+                '2026-10-08T01:00Z\tcodex\tIGR-90\t2\t3\t5\n'
+                '2026-10-08T02:00Z\tclaude-review\tIGR-90\t1\t1\t2\n'
+                '2026-10-08T03:00Z\tclaude-review\tIGR-91\t1\t1\t4\n'
+                '2026-10-08T04:00Z\tclaude\tIGR-92\t1\t2\t\n'
+                '2026-10-09T01:00Z\tcodex\tIGR-99\t1\t1\t3\n')
+            estimates = usage.estimates(path, usage.stamp('2026-10-08'), usage.stamp('2026-10-09'))
+        out = io.StringIO()
+        usage.tickets(rows, estimates, out)
+        lines = out.getvalue().splitlines()
+        parsed = {cells[0]: dict(zip(lines[0].split('\t'), cells))
+                  for cells in (line.split('\t') for line in lines[1:])}
+        self.assertNotIn('IGR-99', parsed)
+        self.assertIn('unassigned', parsed)
+        self.assertEqual(parsed['IGR-90']['codex.estimated_rounds_low'], '2.00')
+        self.assertEqual(parsed['IGR-90']['codex.completed_dispatch_minutes'], '5.00')
+        self.assertEqual(parsed['IGR-90']['claude_review_minutes'], '2.00')
+        self.assertEqual(parsed['IGR-91']['claude_review_minutes'], '4.00')
+        self.assertEqual(parsed['IGR-92']['claude.estimated_rounds_high'], '2.00')
+        self.assertEqual(parsed['IGR-92']['claude.completed_dispatch_minutes'], 'null')
+        for ticket in ('IGR-90', 'IGR-91', 'IGR-92'):
+            for provider in ('claude', 'codex'):
+                for key in ('calls', 'new_input_tokens', 'cache_read_tokens', 'cache_write_tokens', 'output_tokens'):
+                    self.assertEqual(parsed[ticket][provider + '.' + key], '0')
+                for key in ('context_median', 'context_p90', 'context_max'):
+                    self.assertEqual(parsed[ticket][provider + '.' + key], 'null')
+                phases = json.loads(parsed[ticket][provider + '.phase_totals'])
+                self.assertTrue(all(v['calls'] == 0 for v in phases.values()))
+        self.assertEqual(parsed['IGR-91']['claude.estimated_rounds_low'], 'null')
+        self.assertEqual(parsed['IGR-91']['claude.estimated_rounds_high'], 'null')
+        self.assertEqual(parsed['IGR-91']['codex.completed_dispatch_minutes'], 'null')
+
     def test_session_links_claude_children_but_codex_shows_own_thread_only(self):
         rows, _ = load()
         main = next(r for r in rows if r.get('id') == 'm1')

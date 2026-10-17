@@ -141,6 +141,9 @@ local metadata, not canonical ticket size or elapsed ticket duration.
 `claude-review` actuals separately. It contributes no estimated rounds and does
 not change Claude dispatch minutes. Estimate metadata uses `AGENT_ESTIMATES` when
 nonempty, otherwise `~/.claude/agent-estimates.tsv`, matching the writer.
+Tickets with only in-window estimate/review metadata are included: zero observed
+usage, null context statistics, and the existing nullable estimate/actual columns.
+Zero observed usage does not mean zero work.
 
 A **resume start** is a session whose first recorded ticket command is resume.
 It is not a proven successful handoff; compactions are separate events. Claude

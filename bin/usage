@@ -596,7 +596,8 @@ def tickets(rows, estimate_rows, out):
                ['claude_review_minutes'] + ['codex.' + key for key in metrics])
     result = []
     # Always include unassigned, even if it is empty.
-    keys = sorted({r['ticket'] for r in rows if r['ticket']}) + [None]
+    keys = sorted({r['ticket'] for r in rows if r['ticket']} |
+                  {ticket for ticket, _ in estimate_rows if ticket}) + [None]
     for ticket in keys:
         line = [ticket or 'unassigned']
         for provider in ('claude', 'codex'):
