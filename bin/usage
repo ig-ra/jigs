@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Read-only Claude/Codex usage. Python standard library only."""
 import argparse
-from bisect import bisect_left
 from collections import Counter, defaultdict
 import csv
 from datetime import datetime, timedelta, timezone
@@ -9,7 +8,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shlex
 import sys
 
 UTC = timezone.utc
@@ -20,6 +18,8 @@ PROXY_LABEL = 'IGR-14 weighted proxy, uncalibrated'
 TICKET = r'[A-Za-z][A-Za-z0-9]*-\d+'
 INTAKE = re.compile(r'^(?:/igr:ticket|/ticket|ticket)\s+(start|resume)\s+(' + TICKET + r')\b', re.I)
 FINISH = re.compile(r'^(?:/igr:ticket|/ticket|ticket)\s+finish\s*$', re.I)
+STEP = re.compile(r'''(?:^|[\s;|&"'(])(?:[^\s"';()]+/)?tk\s+(?:--cwd\s+\S+\s+)?step\s+(''' + TICKET +
+                  r')\s+(implement|reviews|checks)\s+(running|fixing|done|todo|fail)\b', re.I)
 
 
 def stamp(value):
@@ -70,89 +70,8 @@ def category(name, command=''):
     return 'other'
 
 
-def without_heredoc_bodies(command):
-    """Keep shell headers; skip closed bodies with simple literal delimiters."""
-    if '<<' not in command:
-        return command
-    lines, shell = iter(command.splitlines(keepends=True)), []
-    for line in lines:
-        # Retain quotes to distinguish a redirection from a quoted '<<' argument.
-        lexer = shlex.shlex(line, posix=False, punctuation_chars=';&|<>')
-        lexer.commenters = ''
-        lexer.whitespace_split = True
-        try:
-            words = list(lexer)
-        except ValueError:
-            return None
-        if line.rstrip('\r\n').endswith('\\'):
-            return None  # Continued headers need a shell parser.
-        bodies = []
-        for index, word in enumerate(words):
-            if word != '<<':
-                if word.startswith('<<'):
-                    return None  # Here-strings and other unsupported operators.
-                continue
-            if index + 1 >= len(words):
-                return None
-            delimiter = words[index + 1]
-            strip_tabs = delimiter.startswith('-')
-            if strip_tabs:
-                delimiter = delimiter[1:]
-                if not delimiter:
-                    if index + 2 >= len(words):
-                        return None
-                    delimiter = words[index + 2]
-            try:
-                literal = shlex.split(delimiter)
-            except ValueError:
-                return None
-            if len(literal) != 1 or not re.fullmatch(r'[A-Za-z0-9_. -]+', literal[0]):
-                return None
-            bodies.append((literal[0], strip_tabs))
-        shell.append(line)
-        for delimiter, strip_tabs in bodies:
-            for body in lines:
-                end = body.rstrip('\r\n')
-                if (end.lstrip('\t') if strip_tabs else end) == delimiter:
-                    break
-            else:
-                return None
-    return ''.join(shell)
-
-
 def step_candidates(command):
-    """Literal shell arguments only; opaque code and heredoc bodies stay unknown."""
-    if 'tk' not in command:
-        return []
-    command = without_heredoc_bodies(command)
-    if command is None:
-        return []
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|<>\n')
-    lexer.whitespace = ' \t\r'
-    lexer.whitespace_split = True
-    try:
-        tokens = list(lexer)
-    except ValueError:
-        return []
-    groups, words = [], []
-    for token in tokens + [';']:
-        if token and all(char in ';&|\n' for char in token):
-            groups.append(words)
-            words = []
-        else:
-            words.append(token)
-    candidates = []
-    for words in groups:
-        if not words or Path(words[0]).name != 'tk':
-            continue
-        args = words[1:]
-        if args[:1] == ['--cwd']:
-            args = args[2:]
-        if (len(args) >= 4 and args[0] == 'step' and re.fullmatch(TICKET, args[1])
-                and args[2] in ('implement', 'reviews', 'checks')
-                and args[3] in ('running', 'fixing', 'done', 'todo', 'fail')):
-            candidates.append((args[1].upper(), args[2], args[3]))
-    return candidates
+    return [(m[1].upper(), m[2].lower(), m[3].lower()) for m in STEP.finditer(command or '')]
 
 
 def tool(identifier, name, value, source):
@@ -163,8 +82,8 @@ def tool(identifier, name, value, source):
         command = value
     return {'id': identifier, 'name': name, 'kind': category(name, command),
             'source': source, 'result_chars': None,
-            '_steps': (step_candidates(args.get('command') or args.get('cmd') or '')
-                       if name.rsplit('.', 1)[-1] in ('Bash', 'exec_command') else [])}
+            '_steps': (step_candidates(command)
+                       if args and name.rsplit('.', 1)[-1] in ('Bash', 'exec_command') else [])}
 
 
 def base(provider, session, record, path, line, cwd=None, parent=None):
@@ -382,7 +301,6 @@ def normalize(rows, counts, start=None, end=None):
         else:
             unique[key] = row
     intake, phases, first_commands = {}, {}, set()
-    phase_history = defaultdict(list)
     result = []
     for row in sorted(list(unique.values()) + list(events.values()), key=lambda r: (r['timestamp'], r['source']['line'])):
         scope = row['provider'], row['session_id']
@@ -393,48 +311,35 @@ def normalize(rows, counts, start=None, end=None):
         if row.get('event') == 'ticket_command':
             action, ticket = row['action'], row['ticket']
             if scope not in first_commands and action == 'resume':
-                result.append(event(row, 'resume_start'))
+                result.append(event(row, 'resume_start', phase='unknown', phase_source=None))
             first_commands.add(scope)
             if action in ('start', 'resume'):
                 intake[scope] = ticket
             if ticket and action in ('start', 'finish'):
                 key = scope + (ticket,)
                 phases[key] = (('design' if action == 'start' else 'finish'), row['source'])
-                phase_history[key].append((row['timestamp'], *phases[key]))
         if row.get('event') == 'step' and row['status'] in ('running', 'fixing', 'done'):
             key = scope + (row['ticket'],)
             current = phases.get(key, ('unknown', None))[0]
             if not (current == 'finish' and row['status'] == 'done'):
                 phase = 'develop' if row['step'] == 'implement' else 'review'
                 phases[key] = phase, row['source']
-                phase_history[key].append((row['timestamp'], *phases[key]))
         row['phase'], row['phase_source'] = phases.get(scope + (row['ticket'],), ('unknown', None))
         if row['type'] == 'call':
             if row['model'] == '<synthetic>':
                 counts['synthetic'] += int(in_window(row, start, end))
                 continue
+            if row['phase'] == 'unknown' and row['ticket'] and row['parent_session_id']:
+                row['phase'], row['phase_source'] = phases.get(
+                    (row['provider'], row['parent_session_id'], row['ticket']), ('unknown', None))
             row['context_tokens'] = (row['native_input_tokens'] if row['provider'] == 'codex' else
                 row['new_input_tokens'] + row['cache_read_tokens'] + row['cache_write_tokens'])
             kinds = {a['kind'] for a in row['tools']}
             row['kind'] = 'text' if not kinds else next(iter(kinds)) if len(kinds) == 1 else 'mixed'
             row['result_chars'] = sum(a['result_chars'] or 0 for a in row['tools'])
+            for action in row['tools']:
+                action.pop('_steps', None)
         result.append(row)
-    # Resume events copy the already-tagged command, without changing its action.
-    for row in result:
-        if (row['type'] == 'call' and row['phase'] == 'unknown' and row['ticket']
-                and row['parent_session_id']):
-            # Only native parent/main markers, never another inherited call's phase.
-            history = phase_history.get((row['provider'], row['parent_session_id'], row['ticket']), [])
-            index = bisect_left(history, (row['timestamp'],))
-            # Equal-time records in separate sessions have no proven ordering.
-            if index and (index == len(history) or history[index][0] != row['timestamp']):
-                row['phase'], row['phase_source'] = history[index - 1][1:]
-        if row.get('event') == 'resume_start':
-            row['ticket'] = row['marker_ticket']
-            row['ticket_basis'] = 'cwd' if ticket_from_cwd(row.get('cwd')) == row['ticket'] else 'via intake'
-            row['phase'], row['phase_source'] = 'unknown', None
-        for action in row.get('tools', []):
-            action.pop('_steps', None)
     result = [r for r in result if in_window(r, start, end)]
     counts['unassigned'] = sum(r.get('ticket') is None for r in result)
     return result
@@ -562,6 +467,7 @@ def summary(rows, out):
     for provider, group in groups.items():
         calls = [r for r in group if r['type'] == 'call']
         main = [r for r in calls if not r['parent_session_id']]
+        main_totals = aggregate(main)
         weighted_total = sum(weighted(r) or 0 for r in calls)
         details[provider] = {
             'main_sessions': len({r['session_id'] for r in main}),
@@ -570,9 +476,9 @@ def summary(rows, out):
             'child_sessions': len({r['session_id'] for r in calls if r['parent_session_id']}),
             'subagent_call_share_pct': share(len(calls) - len(main), len(calls)),
             'cache_read_share_of_context_pct': share(sum(r['cache_read_tokens'] for r in calls), sum(r['context_tokens'] for r in calls)),
-            'main_context_median': percentile([r['context_tokens'] for r in main], .5),
-            'main_context_p90': percentile([r['context_tokens'] for r in main], .9),
-            'main_context_max': percentile([r['context_tokens'] for r in main], 1),
+            'main_context_median': main_totals['context_median'],
+            'main_context_p90': main_totals['context_p90'],
+            'main_context_max': main_totals['context_max'],
             'calls_at_400k_pct': share(sum(r['context_tokens'] >= 400000 for r in calls), len(calls)),
             'weighted_proxy': weighted_total if provider == 'claude' else None,
             'weighted_cache_read_share_pct': share(sum(r['cache_read_tokens'] * WEIGHTS['read'] *

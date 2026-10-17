@@ -117,11 +117,10 @@ cwd/intake evidence; without either, it stays unassigned. No session-majority
 guessing. Recorded start establishes design; successful `tk step` implement
 establishes develop, reviews/checks establish review; finish establishes finish.
 Done-only band updates preserve finish; explicit new work may change phase.
-Todo/fail markers do not advance phases. A step needs literal executable shell
-arguments and a matching native `KEY line=status` success receipt. Quoted examples,
-opaque code, pipeline errors and background launches do not establish a phase.
-Closed heredoc bodies stay opaque; literal tk statements elsewhere in the command
-can supply markers. Unclosed or unsupported heredoc syntax stays unproven.
+Todo/fail markers do not advance phases. A step needs matching `tk step` command
+text and a native `KEY line=status` success receipt for that ticket, step and status.
+Quoted examples without a receipt, opaque code, pipeline errors and background
+launches do not establish a phase. Command text is matched without shell parsing.
 Prior proven state is retained. Transitions stay scoped to their session and ticket.
 For a child call without its own proven phase, use the native parent/main scope's
 proven phase for the same ticket at that call's timestamp. Claude's containing
@@ -129,8 +128,9 @@ main-session directory supplies this scope, including nested subagents; it need
 not be the direct dispatching agent. Codex uses its native parent thread ID.
 Own markers win; inheritance follows one link only and changes with the parent's
 phase. A child under a develop parent reads develop, even if its role says review.
-Missing/unknown parent evidence or ambiguous equal-time ordering stays unknown;
-without either own or parent evidence, pre-marker phase is unknown.
+Missing/unknown parent evidence stays unknown; without either own or parent
+evidence, pre-marker phase is unknown. All sessions use the merged timestamp/source
+line ordering.
 Export retains original step/status and source path/line. Native event identity
 deduplicates copies (Claude UUID, Codex ordinal; source coordinates when absent).
 Different-time meter observations remain distinct. No checkpoint inference.
@@ -162,6 +162,12 @@ session timelines include linked subagent files; Codex timelines show only the
 selected **Codex thread**. All Codex child records remain in summary, tickets and
 export, with native role and parent IDs. Timeline gaps are elapsed time between
 recorded entries in each thread, not measured latency or human waiting.
+A lookup by a child's own ID reads only matching paths and does not load its
+parent's phase markers. It can therefore show unknown where a windowed report
+inherits a phase. For Claude, use `bin/usage session claude:PARENT-MAIN-ID` with
+the containing main ID from the child's timeline detail to include that evidence.
+Codex thread lookup also excludes parent logs; use windowed summary/tickets/export
+when parent phase evidence is needed. The child's own usage is still reported.
 Native `guardian_review` threads assess tool approvals; that role/model name does
 not establish ticket code-review phase. They use the same parent evidence rule;
 the observed IGR-15 guardian parents have unknown phase. The standalone native

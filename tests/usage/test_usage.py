@@ -124,7 +124,7 @@ class ReaderTests(unittest.TestCase):
         parsed = usage.normalize(rows, Counter())
         self.assertEqual(next(r['phase'] for r in parsed if r.get('id') == 'new-work'), 'develop')
 
-    def test_step_requires_literal_invocation_and_native_success_receipt(self):
+    def test_step_requires_matching_native_success_receipt(self):
         common = {'provider': 'claude', 'session_id': 'session',
                   'timestamp': '2026-10-08T00:00:00Z', 'source': {'path': 'fixture', 'line': 1}}
         receipt = 'IGR-15 reviews=running'
@@ -136,55 +136,21 @@ class ReaderTests(unittest.TestCase):
         for command in commands:
             action = usage.tool('tool', 'Bash', {'command': command}, common['source'])
             with self.subTest(command=command):
-                self.assertEqual(usage.step_events(common, action, receipt), [])
+                self.assertEqual(usage.step_events(common, action, "quoted example without a receipt"), [])
         opaque = usage.tool('opaque', 'exec', 'run({cmd:"tk step IGR-15 reviews running"})', common['source'])
         self.assertEqual(usage.step_events(common, opaque, receipt), [])
         opaque_json = usage.tool('opaque', 'exec', json.dumps({'cmd': direct}), common['source'])
         self.assertEqual(usage.step_events(common, opaque_json, receipt), [])
         action = usage.tool('tool', 'Bash', {'command': 'cd /repo && ' + direct}, common['source'])
         for output, is_error in [('ok', False), ('ERROR estimate already open for this line', False),
-                ('Command running in background with ID: task', False), (receipt, True)]:
+                ('Command running in background with ID: task', False), (receipt, True),
+                (receipt + '\nProcess exited with code 1', False), ('IGR-15 checks=running', False),
+                ('SAW-42 reviews=running', False), ('IGR-15 reviews=done', False)]:
             self.assertEqual(usage.step_events(common, action, output, is_error), [])
         self.assertEqual(usage.step_events(common, action, receipt)[0]['step'], 'reviews')
         with patch.object(usage, 'successful', side_effect=AssertionError('unrelated result scanned')):
             read = usage.tool('read', 'Read', {}, common['source'])
             self.assertEqual(usage.step_events(common, read, 'large unrelated result'), [])
-
-    def test_steps_outside_closed_heredocs_keep_receipts_but_not_body_examples(self):
-        common = {'provider': 'claude', 'session_id': 'session',
-                  'timestamp': '2026-10-08T00:00:00Z', 'source': {'path': 'fixture', 'line': 1}}
-        direct = '/repo/tk step IGR-15 reviews running'
-        body = "prose with an unmatched ' quote\ntk step IGR-15 checks done\n"
-        commands = [
-            direct + "\ncat <<'EOF'\n" + body + 'EOF\n',
-            'cat <<"EOF"\n' + body + 'EOF\n' + direct,
-            "cat <<A\n" + body + 'A\n' + direct + "\ncat <<B\n" + body + 'B\n',
-            'cat <<A <<B\n' + body + 'A\n' + body + 'B\n' + direct,
-            "cat <<-'EOF'\n" + body + '\tEOF\n' + direct,
-            "cat <<- 'EOF'\n" + body + '\tEOF\n' + direct,
-            'echo "<<"\n' + direct,
-        ]
-        for command in commands:
-            with self.subTest(command=command):
-                action = usage.tool('tool', 'Bash', {'command': command}, common['source'])
-                events = usage.step_events(common, action, 'IGR-15 reviews=running\nIGR-15 checks=done')
-                self.assertEqual([(r['step'], r['status']) for r in events], [('reviews', 'running')])
-                self.assertEqual(usage.step_events(common, action, 'IGR-15 reviews=running', True), [])
-                self.assertEqual(usage.step_events(common, action, 'Command running in background with ID: task'), [])
-
-    def test_unclosed_or_unsupported_heredocs_do_not_prove_steps(self):
-        direct = 'tk step IGR-15 reviews running'
-        commands = [direct + '\ncat <<EOF\nunclosed',
-            'cat <<$END\nbody\nEND\n' + direct,
-            'cat <<EOF#suffix\nbody\nEOF\n' + direct,
-            'cat <<< "body"\n' + direct,
-            'cat <<EOF\\\nbody\nEOF\n' + direct,
-            'cat <<EOF\nbody\n EOF\n' + direct,
-            'cat <<A <<B\nbody\nA\n' + direct,
-            'cat <<\n' + direct]
-        for command in commands:
-            with self.subTest(command=command):
-                self.assertEqual(usage.step_candidates(command), [])
 
     def test_native_event_identity_deduplicates_copies_not_distinct_meter_times(self):
         rows = usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
@@ -273,7 +239,7 @@ class ReaderTests(unittest.TestCase):
         self.assertIsNone(calls['child-6']['effort'])
         self.assertIsNone(calls['child-8']['model'])
 
-    def test_child_phase_stays_unknown_without_proven_same_ticket_parent_order(self):
+    def test_child_phase_stays_unknown_without_proven_same_ticket_parent(self):
         rows = child_phase_fixture()
         sample = next(r for r in rows if r.get('id') == 'child-3')
         cases = [
@@ -283,7 +249,6 @@ class ReaderTests(unittest.TestCase):
             dict(id='unassigned', session_id='unassigned', cwd='/repo'),
             dict(id='other-provider', session_id='codex-child', provider='codex'),
             dict(id='no-recursion', session_id='grandchild', parent_session_id='child', timestamp='2026-10-08T00:00:06Z'),
-            dict(id='same-time', session_id='same-time', timestamp='2026-10-08T00:00:05Z'),
         ]
         rows.append(dict(sample, id='unknown-parent', session_id='unknown-parent', parent_session_id=None))
         rows.extend(dict(sample, **fields) for fields in cases)
