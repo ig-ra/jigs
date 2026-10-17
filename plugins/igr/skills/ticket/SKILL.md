@@ -1,15 +1,16 @@
 ---
 name: ticket
-description: "Linear ticket lifecycle for any repo, two modes. /igr:ticket start <key> prepares a Linear ticket (reads it and its comments, creates its worktree in <repo>/.worktrees from the repo's default branch or reports on an existing one, enters it, names the herdr pane and tab after the ticket, reads the handoff (when the repo has one) and working memories, lists leftovers, moves it to In Progress, reports readiness and goes straight into the loop's investigation without waiting for a go). /igr:ticket finish closes the ticket this session worked on, a code ticket after its PRs merged or a decide ticket after the decision is recorded (proves nothing is left unmerged or unrecorded, ticks proven criteria, finalizes the living comment and A-to-B, proposes follow-ups, updates memory and the .remember handoff, closes the idle codex pane, removes the worktree and branch, and only then sets Done; gives the next start prompt). Use when asked to start ticket ABC-123, pick up ticket 123, work on ticket X, when resuming after compaction, or when told it was merged, wrap up this ticket, save handoff and remember. Any Linear key works (TEAM-123, any case); a bare number works when the team prefix is known."
+description: "Linear ticket lifecycle for any repo. start prepares a ticket and worktree, reads decisions and begins investigation. resume continues an existing ticket from igr/resume.md after a restart, compaction or handoff, checking live state before continuing the recorded phase. finish proves delivery, records the result and follow-ups, saves memory and handoff, cleans up and sets Done. Use when asked to start or pick up a ticket, resume ticket work, or wrap up a merged or decided ticket. Any Linear key works; a bare number needs a known team prefix."
 ---
 
 # Ticket lifecycle
 
-Two modes, from the first argument:
+Three modes, from the first argument:
 - `start <key>`, for example `/igr:ticket start ABC-123` or `/igr:ticket start 123`. If the first argument is a key with no mode, treat it as `start`.
+- `resume [key]`, for example `/igr:ticket resume ABC-123` or `/igr:ticket resume` in its worktree. Read [references/resume.md](references/resume.md) and continue the existing phase. A restart or compaction of ongoing ticket work uses this mode.
 - `finish`, with no key: the ticket comes from the current session.
 
-If the mode is unclear, ask. Between the two modes, the work follows `references/loop.md` ("Before code", "After code", "Rules for both halves"). Corrections to the loop go in that file.
+If the mode is unclear, ask. Work between start and finish follows `references/loop.md` ("Before code", "After code", "Rules for both halves"). Corrections to the loop go in that file.
 
 ## Which repo
 
@@ -17,9 +18,9 @@ Run `<skill base directory>/scripts/tk --help` once; use the absolute skill base
 
 Run `<skill base directory>/scripts/tk --cwd <session cwd> prep <KEY>` before entering the worktree. JSON gives `repo_root` (`REPO`), `default_branch` (`BASE` = `origin/<default_branch>`), `worktree`, `branch`, `exists`, `local` (`LOCAL`), same-ticket worktrees and panes. It reads context; it does not fetch, create or enter a worktree. Owner comes from the cwd's worktree slot or the first word of git's user name; use `--owner` only to correct a mismatch. `tk` derives the GitHub repo from origin; use `--repo` only for an explicit different target. Derive `SLUG` for manual `gh` calls with `gh repo view --json nameWithOwner -q .nameWithOwner` in `REPO`, and pass it as `--repo <SLUG>` there. `tk` clears token environment overrides; manual `gh` calls below use the same `env -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN gh` prefix. Follow the session's auth/sandbox rules.
 
-Save `worktree` from prep and use that absolute path verbatim for creation, resume, EnterWorktree, LOCAL and cleanup. Save its `owner` too (the directory immediately above the ticket folder), and pass that owner to canonical `tk close` calls. Check that `.worktrees` is git-ignored (`git -C <REPO> check-ignore .worktrees`); if not, report it and do not edit `.gitignore` yourself.
+For start, save `worktree` from prep; for resume, select and verify the existing checkpoint's registered worktree as described in `references/resume.md`. Use the selected absolute path verbatim for creation, EnterWorktree, LOCAL and cleanup. Save its `owner` too (the directory immediately above the ticket folder), and pass that owner to canonical `tk close` calls. Check that `.worktrees` is git-ignored (`git -C <REPO> check-ignore .worktrees`); if not, report it and do not edit `.gitignore` yourself.
 
-**Ticket files:** `LOCAL` = `<worktree>/igr/`, also returned by `tk prep`. One worktree, one ticket: models, A-to-B, briefs, answers, plans and `state.json` all sit directly there. Open timer ids live in `state.json` → `tk.estimates`. Files survive forks, compaction and temp cleanup. Removing the worktree deletes them; record the approved contract and final result on Linear before cleanup. The optional canonical handoff `<REPO>/.remember/remember.md` is edited only after leaving the worktree.
+**Ticket files:** `LOCAL` = `<worktree>/igr/`, also returned by `tk prep`. One worktree, one ticket: models, A-to-B, briefs, answers, plans, `resume.md` and `state.json` all sit directly there. `resume.md` is the compact continuation checkpoint; its format and update rules live in [references/resume.md](references/resume.md#save-the-checkpoint). Open timer ids live in `state.json` → `tk.estimates`. Files survive forks, compaction and temp cleanup. Removing the worktree deletes them; record the approved contract and final result on Linear before cleanup. The optional canonical handoff `<REPO>/.remember/remember.md` is edited only after leaving the worktree.
 
 **Fallback:** on `tk` exit 3, do that step manually and verify the same completion criteria; read back mutations before retrying. For prep, use `git rev-parse --path-format=absolute --git-common-dir` and `git symbolic-ref --short refs/remotes/origin/HEAD` (if missing, use `origin/main` and say so). A non-git cwd needs the repo from the user. Other exit codes: see `tk --help`; failed guards, pending results and timeouts never authorize bypass. Reply/resolve/enqueue manual fallback paths are next to their commands in `references/loop.md`.
 
@@ -55,7 +56,7 @@ Then move it to In Progress with `save_issue(KEY, state: "In Progress")` (ToolSe
 If the session is already in an entered worktree, first `ExitWorktree` with `action: keep` and return to the canonical checkout. Run `<skill base directory>/scripts/tk --cwd <session cwd> prep <KEY>` and derive `REPO`, `BASE`, `SLUG`, `worktree`, `owner`, `LOCAL` (see "Which repo"). Use plain `git -C <path>` commands. Inspect `prep`'s same-ticket worktrees and panes before creating anything; report a conflicting location instead of forcing it.
 
 - `git -C <REPO> fetch origin --quiet`
-- **If the returned `<worktree>` exists** (for example, resuming after a compaction): report whether it is clean, its commits ahead (`git -C <worktree> rev-list --count <BASE>..HEAD`) and behind. Fast-forward it (`git -C <worktree> merge --ff-only <BASE>`) only when it has no commits of its own. A branch with its own commits, usually with an open PR, is rebased only on request, because a rebase rewrites the pushed head. Never discard work.
+- **If the returned `<worktree>` exists** (a compaction or restart of ongoing work with a checkpoint uses `resume` instead): report whether it is clean, its commits ahead (`git -C <worktree> rev-list --count <BASE>..HEAD`) and behind. Fast-forward it (`git -C <worktree> merge --ff-only <BASE>`) only when it has no commits of its own. A branch with its own commits, usually with an open PR, is rebased only on request, because a rebase rewrites the pushed head. Never discard work.
 - **If it does not exist:** `git -C <REPO> worktree add -b <gitBranchName> <worktree> <BASE>`. If that branch already exists elsewhere, report it instead of forcing. If another worktree of this repo already holds this ticket's work under a different name (for example the ticket's parent), report it and ask which to use.
 - Then `git -C <worktree> branch --unset-upstream`. The new branch tracks the base, and a later plain `git push` would target the default branch.
 
@@ -104,11 +105,15 @@ Report in about five short lines, verdict first, using names rather than numbers
 - the worktree path, branch and base sha, the pane name and the tab label;
 - leftovers to close.
 
-Then, in the same turn, start `references/loop.md` "Before code" step 1 (my own investigation). Its first stop is the hidden-decisions poll. Stop after the report instead only when told "don't start yet", a blocked-by ticket is not Done, or a worktree conflict needs an answer.
+Save the initial `LOCAL/resume.md` using [references/resume.md](references/resume.md#save-the-checkpoint), with phase `design` and the actual next action (including any blocker). Then, in the same turn, start `references/loop.md` "Before code" step 1 (my own investigation). Its first stop is the hidden-decisions poll. Stop after the report instead only when told "don't start yet", a blocked-by ticket is not Done, or a worktree conflict needs an answer.
+
+## `/igr:ticket resume [key]`: continue a ticket
+
+Follow [references/resume.md](references/resume.md). Locate the existing checkpoint, verify its ticket, worktree, contract and current work, then continue its recorded next action. Resume does not run the start procedure or reset ticket status. The loop's session handoffs end by queueing this command after `/clear`.
 
 ## `/igr:ticket finish`: finish the current ticket
 
-The mirror of `start`. It runs in the session that worked on the ticket, so the ticket, the PR, the codex pane and the decisions are already in context. It closes the loop in `references/loop.md`, for code tickets and for decide tickets.
+The mirror of `start`. It runs in the ticket's latest session. After a handoff, earlier decisions are not in context: read `<LOCAL>/resume.md` and the files it points to (contract, follow-ups, corrections) instead of relying on the conversation. It closes the loop in `references/loop.md`, for code tickets and for decide tickets.
 
 The order matters: prove the work is finished, clean up the worktree, and only then set Done. A ticket marked Done with work still sitting in a worktree is how work gets lost.
 
@@ -116,7 +121,7 @@ The order matters: prove the work is finished, clean up the worktree, and only t
 
 No argument. Work it out from the session, in this order:
 1. The current worktree's branch (`git rev-parse --abbrev-ref HEAD` in the session's worktree). Derive `REPO`, `BASE`, `SLUG` from it (see "Which repo"). Names look like `<owner>/abc-123-...`, which gives `ABC-123`.
-2. The ticket this conversation has been working on.
+2. The ticket this conversation has been working on, or the `Ticket:` line of the worktree's `igr/resume.md`.
 
 If the two disagree, or neither gives an answer, ask which ticket and stop. Save `KEY`, `key`, `LOCAL`, `worktree`, its `owner` and branch before leaving the worktree; the canonical branch is not the ticket branch.
 
@@ -153,19 +158,19 @@ Load the Linear tools if they are deferred. Re-read the description and comments
 
 #### 3. Follow-ups
 
-Collect what was deferred, decided for later, or left out of scope. Look at the ticket comments, the resolved PR threads, the decisions made in this conversation, and known costs. For each one, check whether a ticket already covers it. Propose either a new ticket, in the style of its sibling tickets, or a note on the ticket that owns it. Create them only after approval. Already-created follow-ups just get listed.
+Collect what was deferred, decided for later, or left out of scope. Look at the ticket comments, the resolved PR threads, the checkpoint's `Follow-ups:` and the plan's "Not in scope → Follow-ups", the decisions made in this conversation, and known costs. For each one, check whether a ticket already covers it. Propose either a new ticket, in the style of its sibling tickets, or a note on the ticket that owns it. Create them only after approval. Already-created follow-ups just get listed.
 
 #### 4. Memory and handoff
 
 - **Project memory** (the file for the ticket's project, found through `MEMORY.md`): append one short paragraph covering what shipped (PR and merge sha, or the decision), new tickets, and facts learned that a later session needs. Update its description and index line if "next" changed.
-- **Feedback:** if I was corrected on how I work during the ticket and it is not saved yet, propose the exact edit in the report, naming where it belongs (`references/loop.md` or this file for the ticket loop, `references/driving-codex.md` for briefing codex) rather than a new file, and apply it only after Igor's OK. A fact for a project memory may be written directly.
+- **Feedback:** if I was corrected on how I work during the ticket (this conversation and `<LOCAL>/corrections.md`) and it is not saved yet, propose the exact edit in the report, naming where it belongs (`references/loop.md` or this file for the ticket loop, `references/driving-codex.md` for briefing codex) rather than a new file, and apply it only after Igor's OK. A fact for a project memory may be written directly.
 - **Agent-time estimates:** find this ticket's open rows in `~/.claude/agent-estimates.tsv`. For each implementing id in `state.json` → `tk.estimates`, use `<skill base directory>/scripts/tk --cwd <worktree> step <KEY> <line> <current status> --report --actual-minutes <minutes>`. Take minutes from when that run actually ended (the codex report or my last commit), not from now. For legacy ids or missing state, use `python3 <skill base directory>/../agent-estimate/estimate.py done <id> --actual <minutes>`; `tk` cannot report an id it does not hold. Put estimated against actual for each implementing row in the report. For Claude review timers, follow `references/loop.md`, After code step 1; list their actual minutes per PR.
 - **Handoff** `<REPO>/.remember/remember.md` (skip with a note if the repo has none): rewrite this track's section with a timestamp. Cover the state (ticket Done, PR and sha or the decision), next (the recommended next ticket and why), leftovers, and carried-over open items. Keep other tracks' sections untouched.
 
 #### 5. Clean up
 
 Only after steps 1-4, from the canonical checkout:
-1. Stop this session's background watchers for the ticket (TaskStop).
+1. Stop this session's background watchers for the ticket (TaskStop). For any in the checkpoint's `Watcher:` line from an earlier session, confirm it is no longer running.
 2. **Final band, before removal:** for a code ticket, run `<skill base directory>/scripts/tk --cwd <worktree> step <KEY> implement done`, then the same for `reviews done` and `checks done --note <merge sha>`.
 3. Inside Herdr, read the codex pane (`herdr agent get codex-<N>`, `herdr agent read codex-<N>`). It must be idle/done, owned by this session, and have no running command. Otherwise stop and report; never close another session's or a human's pane. Outside Herdr, skip pane control.
 4. **Code ticket:** `<skill base directory>/scripts/tk --cwd <REPO> close <KEY> apply --owner <owner>`. Require exit 0. It repeats the proof, closes the idle codex pane when inside Herdr, removes the worktree without force, and deletes the proven branch. On exit 3, inspect what already happened, redo step 1's proof manually, then finish the remaining pane close / `git -C <REPO> worktree remove <worktree>` / `git -C <REPO> branch -D <branch>`; never force worktree removal.

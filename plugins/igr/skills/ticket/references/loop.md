@@ -4,6 +4,10 @@ The working loop for every regular ticket, in any repo. Terms from `../SKILL.md`
 
 Run the whole loop without being asked again, from investigation to a merge-ready PR.
 
+**Continuation checkpoint.** Keep `<LOCAL>/resume.md` current using [resume.md](resume.md#save-the-checkpoint) at fixed events: each report stop below, each `tk step` call, each review or check result, and before a handoff or intentional stop. When the human corrects how I work, append one line to `<LOCAL>/corrections.md`. After a restart or compaction, `/igr:ticket resume` validates that checkpoint and continues at its recorded position.
+
+**Session handoffs.** My session resets at three points only, using [resume.md](resume.md#hand-off-to-a-fresh-session): after approval (Before code, step 7), when codex reports a PR ready (After code, "PR ready"), and when the next PR starts after the previous one merged ("One PR at a time"). The fresh session continues from the checkpoint without repeating intake, design or approval. Trivial changes do not hand off.
+
 **Report only at:**
 - the hidden-decisions poll (Before code, step 1);
 - the approval point (Before code, step 6);
@@ -61,7 +65,7 @@ Never add lines or Before-code steps. A new push resets each invalidated line wi
 
    Then the estimate in minutes, then the one thing to approve. The full B table (with tech and paths) goes on the ticket's living comment and in `<LOCAL>/model-B.md`; the A-to-B reasons go in `<LOCAL>/A-to-B.md`, not on the ticket. Once approved, B is the contract, and I post the living "Suggested implementation" comment on the ticket: the full suggestion, ending with Model B. Each later approved change updates that comment so it always matches what the PR ships.
    For a **decide** ticket the loop ends here: I record the decision in the ticket's Answer and living comment, open or update the implementation tickets, and run `/igr:ticket finish`.
-7. **Fresh session, then implement.** Send `/clear` to codex. Its first prompt points only to the written contract (ticket, acceptance criteria, living comment, plan file for big work) and the stop conditions: "everything there is decided; do not reopen it; if something is missing, ask". Its first answer is a short read-back (scope, steps, out of scope) before any code; a gap means the contract is incomplete, so fix the contract, not the chat. Then codex implements, commits, pushes and opens the PR (Conventional Commit title with the ticket key) without waiting for my review.
+7. **Fresh sessions, then implement.** First hand myself off with phase `develop` ([resume.md](resume.md#hand-off-to-a-fresh-session)); the fresh session runs the rest of this step. Send `/clear` to codex. Its first prompt points only to the written contract (ticket, acceptance criteria, living comment, plan file for big work) and the stop conditions: "everything there is decided; do not reopen it; if something is missing, ask". Its first answer is a short read-back (scope, steps, out of scope) before any code; a gap means the contract is incomplete, so fix the contract, not the chat. Then codex implements, commits, pushes and opens the PR (Conventional Commit title with the ticket key) without waiting for my review.
    Briefs ask for short tool output: `rg -l`, `sed -n` ranges, `| tail`. Never print whole large files or full test logs into the session.
    **Status:** the first push of the ticket's branch to GitHub, by codex or by me, moves the ticket to In Review (`save_issue(KEY, state: "In Review")`) as soon as I see it (watcher fire or codex's report). `/igr:ticket start` already set In Progress.
    On implementing dispatch: `<skill base directory>/scripts/tk step <KEY> implement running --dispatch --agent codex --rounds <low-high> --task "<short>" --model <model>`. Fix dispatches use the affected line (`reviews fixing` or `checks fixing`). `tk` starts the estimate and stores its id under that line in `state.json` → `tk.estimates`; one open id per line. One timer per implementing dispatch; question rounds are not logged. For exit 3, check whether the timer already started before manually using `estimate.py start`; retain its id in the working notes and close it with `estimate.py done` on report.
@@ -70,7 +74,9 @@ Never add lines or Before-code steps. A new push resets each invalidated line wi
 
 **Codex owns every edit**, except on a trivial change (Before code, "Trivial changes"), where I own every edit. Otherwise I do not patch the branch unless told to make a specific edit myself.
 
-**One PR at a time.** "After code" runs per PR. When a ticket ships several PRs, codex stays on the open PR through review, fixes, CI and the review bots until it merges; the next PR starts only after that. Exception: once the open PR is green and in the merge queue, a next PR that touches unrelated files starts at once, with a fresh codex on its own worktree cut from the latest default branch; do not ask.
+**One PR at a time.** "After code" runs per PR. When a ticket ships several PRs, codex stays on the open PR through review, fixes, CI and the review bots until it merges; the next PR starts only after that. Exception: once the open PR is green and in the merge queue, a next PR that touches unrelated files starts at once, with a fresh codex on its own worktree cut from the latest default branch; do not ask. When the next PR starts after the previous one merged, hand off first with phase `develop` for it.
+
+**PR ready.** When codex reports a PR ready, record in the checkpoint the PR number, the observed head and base SHAs, the checks it ran and its deviations from the contract, then hand off with phase `review`. The fresh session starts at step 1 from the ticket, the contract, the actual diff and the recorded evidence.
 
 1. **Three independent reviews, in parallel, once per PR:**
    - an Opus subagent runs `/simplify`, report-only (medium effort for an additive change off production paths, high for a production path, never xhigh);
