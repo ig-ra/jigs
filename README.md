@@ -63,6 +63,19 @@ cleanup lenses reduced to Conventions-only (pair it with `/simplify`, which owns
 explicit per-level reasoning effort on every finder/verifier agent. The file header records the
 upstream generation it was synced from and the re-vendor recipe.
 
+### Diagram preview
+
+`bin/diagram-preview --terminal kitty path/to/diagram.md` opens Markdown/Mermaid in
+an 800 × 600 Kitty window. Press `q` or `Esc` to close. Requires macOS, Python 3,
+[glowm](https://github.com/atani/glowm), and Kitty (Ghostty is also supported).
+For AeroSpace, float Kitty windows whose title starts with `Diagram:`:
+
+```toml
+[[on-window-detected]]
+if = 'test %{app-bundle-id} = net.kovidgoyal.kitty && test %{window-title} ~= ^Diagram:'
+run = 'layout floating'
+```
+
 ### Repo automation
 
 On `main` only, the git hooks auto-bump the plugin version from the conventional-commit type

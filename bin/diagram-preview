@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Open any Markdown diagram in a temporary Kitty or Ghostty viewer on macOS."""
+import argparse
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import termios
+import tty
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('file', type=Path, help='Markdown file containing Mermaid diagrams')
+    parser.add_argument('--terminal', choices=['auto', 'kitty', 'ghostty'], default='auto')
+    parser.add_argument('--wait-for-close', action='store_true', help=argparse.SUPPRESS)
+    args = parser.parse_args()
+    path = args.file.expanduser().resolve()
+    if not path.is_file():
+        parser.error(f'file does not exist: {path}')
+    glowm = shutil.which('glowm')
+    if not glowm:
+        parser.error('glowm is required on PATH')
+    if sys.platform != 'darwin':
+        parser.error('this launcher currently supports macOS')
+    if args.wait_for_close:
+        with open('/dev/tty', 'r+b', buffering=0) as terminal_io:
+            subprocess.run([glowm, '--no-pager', str(path)], stdout=terminal_io, check=True)
+            terminal_io.write(b'\r\nPress q or Esc to close\r\n')
+            fd = terminal_io.fileno()
+            previous = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                termios.tcflush(fd, termios.TCIFLUSH)
+                while terminal_io.read(1) not in (b'q', b'\x1b'):
+                    pass
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, previous)
+        return
+    terminal = args.terminal
+    if terminal == 'auto':
+        preferred = 'ghostty' if os.environ.get('TERM_PROGRAM', '').lower() == 'ghostty' else 'kitty'
+        terminal = next((name for name in [preferred, 'ghostty' if preferred == 'kitty' else 'kitty']
+                         if (Path('/Applications') / ('Ghostty.app' if name == 'ghostty' else 'kitty.app')).is_dir()), None)
+        if terminal is None:
+            parser.error('Kitty or Ghostty must be installed in /Applications')
+    app = Path('/Applications') / ('Ghostty.app' if terminal == 'ghostty' else 'kitty.app')
+    if not app.is_dir():
+        parser.error(f'{terminal} is not installed at {app}')
+    viewer = [glowm, '-p', str(path)]
+    title = f'Diagram: {path.stem}'
+    if terminal == 'kitty':
+        command = ['open', '-na', str(app), '--args', '--title', title,
+                   '-o', 'remember_window_size=no', '-o', 'initial_window_width=800',
+                   '-o', 'initial_window_height=600',
+                   sys.executable, str(Path(__file__).resolve()), '--wait-for-close', str(path)]
+    else:
+        command = ['open', '-na', str(app), '--args', f'--title={title}', '-e',
+                   '/usr/bin/env', 'TERM=xterm-kitty', *viewer]
+    subprocess.run(command, check=True)
+    print(f'Launched {terminal} diagram viewer: {path}')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except subprocess.CalledProcessError as error:
+        sys.exit(error.returncode)
