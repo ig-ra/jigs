@@ -1,5 +1,6 @@
 """Small synthetic logs only. No provider writes or network access."""
 from collections import Counter
+import io
 import importlib.machinery
 import importlib.util
 import json
@@ -108,6 +109,81 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(totals[('IGR-15', 'codex')], dict(estimated_rounds_low=3, estimated_rounds_high=6, completed_dispatch_minutes=3))
         self.assertEqual(totals[('IGR-13', 'claude')]['completed_dispatch_minutes'], None)
         self.assertEqual(usage.estimates(FIXTURES / 'absent'), {})
+
+
+class ReportTests(unittest.TestCase):
+    def test_phase_and_ticket_splits_reconcile_calls_and_raw_buckets(self):
+        rows, _ = load()
+        for provider in ('claude', 'codex'):
+            selected = [r for r in rows if r['provider'] == provider]
+            total = usage.aggregate(selected)
+            phases = usage.phase_totals(selected)
+            tickets = [usage.aggregate([r for r in selected if r['ticket'] == key])
+                       for key in {r['ticket'] for r in selected}]
+            for key in ('calls',) + usage.BUCKETS:
+                self.assertEqual(sum(v[key] or 0 for v in phases.values()), total[key] or 0)
+                self.assertEqual(sum(v[key] or 0 for v in tickets), total[key] or 0)
+        self.assertEqual(usage.percentile([1, 2, 3, 4], .9), 3.7)
+        self.assertEqual(usage.percentile([], .5), None)
+        call = next(r for r in rows if r.get('id') == 'm1')
+        # 10 new + 15*1.25 + 5*2 write + 100*.1 read + 5*5 output.
+        self.assertEqual(usage.weighted(call), 73.75)
+        self.assertEqual(usage.weighted(dict(call, model='claude-sonnet')), 44.25)
+        self.assertEqual(usage.weighted(dict(call, model='unknown')), None)
+        self.assertEqual(usage.weighted(dict(call, provider='codex')), None)
+
+    def test_summary_export_and_one_ticket_row_with_both_providers(self):
+        rows, _ = load()
+        out = io.StringIO()
+        usage.render('summary', rows, out)
+        rendered = out.getvalue()
+        self.assertIn('calls\t7\t2', rendered)
+        self.assertIn(usage.PROXY_LABEL, rendered)
+        self.assertIn('claude\tmixed\t1', rendered)
+        self.assertIn('Phase totals (all calls; unknown included)', rendered)
+        out = io.StringIO()
+        usage.render('tickets', rows, out, usage.estimates(FIXTURES / 'estimates.tsv'))
+        lines = out.getvalue().splitlines()
+        headers = lines[0].split('\t')
+        parsed = {cells[0]: dict(zip(headers, cells)) for cells in (line.split('\t') for line in lines[1:])}
+        self.assertEqual(set(parsed), {'IGR-13', 'IGR-15', 'SAW-42', 'unassigned'})
+        ticket = parsed['IGR-15']
+        self.assertEqual((ticket['claude.calls'], ticket['codex.calls']), ('4', '2'))
+        self.assertEqual(ticket['codex.estimated_rounds_low'], '3.00')
+        self.assertEqual(ticket['codex.completed_dispatch_minutes'], '3.00')
+        self.assertEqual(ticket['claude.completed_dispatch_minutes'], 'null')
+        self.assertEqual(ticket['codex.resume_starts'], '1')
+        self.assertEqual(sum(v['calls'] for v in json.loads(ticket['claude.phase_totals']).values()), 4)
+        out = io.StringIO()
+        usage.render('export', rows, out)
+        exported = [json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertEqual(exported, rows)
+        self.assertTrue(all('_command' not in action for r in exported for action in r.get('tools', [])))
+
+    def test_session_links_claude_children_but_codex_shows_own_thread_only(self):
+        rows, _ = load()
+        main = next(r for r in rows if r.get('id') == 'm1')
+        child = dict(main, id='child', session_id='agent-child', parent_session_id='claude')
+        own = next(r for r in rows if r.get('id') == 'r1')
+        descendant = dict(own, id='child-codex', session_id='codex-child', parent_session_id='codex-main')
+        out = io.StringIO()
+        usage.timeline(rows + [child], 'claude', 'claude', out)
+        self.assertIn('agent-child', out.getvalue())
+        self.assertIn('idle_gap_seconds', out.getvalue())
+        out = io.StringIO()
+        usage.timeline(rows + [descendant], 'codex', 'codex-main', out)
+        self.assertIn('Codex thread: codex-main', out.getvalue())
+        self.assertIn('meter', out.getvalue())
+        self.assertIn('compaction', out.getvalue())
+        self.assertNotIn('codex-child', out.getvalue())
+
+    def test_global_duplicate_keeps_union_and_largest_usage(self):
+        rows = usage.read_claude(FIXTURES / 'claude.jsonl', Counter())
+        counts = Counter()
+        normalized = usage.normalize(rows + rows, counts)
+        self.assertEqual(sum(r['type'] == 'call' for r in normalized), 7)
+        self.assertEqual(next(r['output_tokens'] for r in normalized if r.get('id') == 'm1'), 5)
+        self.assertEqual(counts['duplicate'], 8)
 
 
 if __name__ == '__main__':
