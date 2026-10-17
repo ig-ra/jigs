@@ -78,7 +78,7 @@ Changed HEAD/base, a finished agent or a missing watcher can be normal progress.
 
 ### 3. Continue the recorded next action
 
-Enter the verified worktree with `EnterWorktree`; on its documented fallback, use literal absolute paths. Read `loop.md` and the repo instructions/working memories needed for this phase, then continue from the checkpoint's exact loop position:
+When the session's current directory is already the verified worktree (the usual case after a handoff), skip `EnterWorktree`: it would only prompt again. Otherwise enter the worktree with `EnterWorktree`; on its documented fallback, use literal absolute paths. Read `loop.md` and the repo instructions/working memories needed for this phase, then continue from the checkpoint's exact loop position:
 
 - `design`: continue the pending investigation, compare round or approval from the existing artifacts. Preserve completed independent passes and immutable Model A.
 - `develop`: continue the plan's first unchecked step or the recorded active dispatch. Reuse the existing Codex pane; read a completed reply before sending anything. Dispatch only when no run is already doing that work and the contract authorizes it.
