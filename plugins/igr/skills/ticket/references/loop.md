@@ -87,7 +87,7 @@ Never add lines or Before-code steps. A new push resets each invalidated line wi
 
      For exit 3, follow the [manual fallback rule](../SKILL.md#which-repo): inspect state and the log before a direct `estimate.py start claude --review --task "PR #<PR>: After-code review" --ticket <KEY> --model <model>` or `estimate.py done <id>`; retain/reconcile the review id separately from implementing ids.
 
-   - **My review: gaps, drift, overengineering.** I read every hunk of the diff, tests included, for every commit since the base, and write `<LOCAL>/review-claude.md` with three tables. An empty cell means the review is not done:
+   - **My review: gaps, drift, overengineering.** Done by me in this session, reading the diff myself; not a skill, workflow or subagent. I read every hunk of the diff, tests included, for every commit since the base, and write `<LOCAL>/review-claude.md` with three tables. An empty cell means the review is not done:
      - **Model B → diff:** each B row → the hunk that implements it; each hunk → its row. A hunk with no row is drift or overengineering; a row with no hunk is a gap.
      - **Ticket → diff:** each acceptance criterion and each "What will change" item → the test or hunk that proves it, or "uncovered".
      - **Deleted or changed tests:** each one → every behaviour its assertions proved → where that behaviour is still tested, or "lost" with a prod measurement of whether the state occurs. A test removed as "only about X" often also covers a guard that stays.

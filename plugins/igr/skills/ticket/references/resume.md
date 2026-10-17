@@ -31,8 +31,10 @@ Deviations: <implementation deviations from the contract, with their source, or 
 Unresolved: <findings/decision file and remaining items, or none>
 Follow-ups: <file or list of deferred items, or none>
 Corrections: <igr/corrections.md, or none>
-Next action: <one concrete action; identify any human decision it awaits>
+Next action: <the loop step by its heading, plus this ticket's data (PR, head, pending pass); identify any human decision it awaits>
 ```
+
+`Next action` says where and with what data, never how: do not restate a loop step's method or name a tool, skill or workflow for it. `loop.md` defines how each step runs.
 
 Phase records the actual position: `design` through approval, `develop` for implementation, `review` for PR review/fixes/checks/merge waits, `finish` when the ticket's deliverables are ready for the finish procedure. Record `develop` once the plan is approved, even if dispatch has not happened yet. A pending approval stays `design`. A multi-PR ticket records the current PR and its own next action.
 
@@ -82,7 +84,7 @@ When the session's current directory is already the verified worktree (the usual
 
 Inside Herdr, restore my agent name before any brief to codex, because `/clear` can drop it and codex replies to it: read my pane id with `herdr pane current --current` (the worktree guard refuses commands that name `$HERDR_PANE_ID`), and when `herdr agent get <key>` does not resolve to that pane, run `herdr agent rename <pane id> <key>`. If another live agent holds the name, report it instead.
 
-Read `loop.md` and the repo instructions/working memories needed for this phase, then continue from the checkpoint's exact loop position:
+Read `loop.md` and the repo instructions/working memories needed for this phase, then continue from the checkpoint's exact loop position. `loop.md` decides how a step runs; the checkpoint only says where and with what data. If the checkpoint names a method, tool, skill or workflow that the loop step does not, follow `loop.md`, correct the checkpoint and add a line to `corrections.md`:
 
 - `design`: continue the pending investigation, compare round or approval from the existing artifacts. Preserve completed independent passes and immutable Model A.
 - `develop`: continue the plan's first unchecked step or the recorded active dispatch. Reuse the existing Codex pane; read a completed reply before sending anything. Dispatch only when no run is already doing that work and the contract authorizes it.
