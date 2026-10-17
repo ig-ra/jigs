@@ -46,10 +46,10 @@ The loop hands off at fixed points only (`loop.md`): after approval, before the 
 2. Save the checkpoint with the new phase, and with `Loop position` and `Next action` set to the action after the handoff: the codex dispatch for `develop`, After code step 1 for `review`. A resumed session never repeats the handoff that created it.
 3. Inside Herdr, queue the reset into my own pane by its agent name (`<key>` from start step 3; the worktree guard refuses `$HERDR_PANE_ID`), as two separate submissions without `--wait`:
    - `herdr agent prompt <key> "/clear"`
-   - `herdr agent prompt <key> "/igr:ticket resume <KEY>"`
+   - `herdr agent prompt <key> "/igr:ticket resume <KEY> <worktree>"`, with the worktree's absolute path: after `/clear` the session is back in the directory Claude was launched from, which may not be the worktree or even a Git repository.
 
    Then end the turn with one short line naming the handoff. Claude Code runs the queued `/clear` after the turn ends, which starts a new session, then runs the resume prompt in it.
-4. Outside Herdr, or if the agent name does not resolve to my own pane, report the handoff and ask the human to type `/clear`, then `/igr:ticket resume <KEY>`.
+4. Outside Herdr, or if the agent name does not resolve to my own pane, report the handoff and ask the human to type `/clear`, then `/igr:ticket resume <KEY> <worktree>`.
 
 A failed or interrupted handoff leaves the saved checkpoint; `/igr:ticket resume` in any session continues from it.
 
@@ -57,7 +57,7 @@ A failed or interrupted handoff leaves the saved checkpoint; `/igr:ticket resume
 
 ### 1. Locate the existing worktree
 
-Use the current Git worktree's `igr/resume.md` when present. If a key was supplied, normalize it using `../SKILL.md`'s input rules and require it to match the checkpoint.
+When a worktree path was supplied (a handoff always passes one), use that path's `igr/resume.md`; otherwise use the current Git worktree's `igr/resume.md` when present. If a key was supplied, normalize it using `../SKILL.md`'s input rules and require it to match the checkpoint.
 
 Otherwise, use the supplied key or the ticket identified by the current branch/session. Run `tk --cwd <session cwd> prep <KEY>` as described in `../SKILL.md`; inspect the returned existing same-ticket worktrees for their checkpoint. Use the checkpoint's actual registered worktree, not a newly derived path. If no key is known, inspect `git worktree list --porcelain` for existing checkpoints; use one only when it identifies a single ticket and worktree. Ambiguity needs the key or worktree from the user.
 
@@ -78,13 +78,17 @@ Changed HEAD/base, a finished agent or a missing watcher can be normal progress.
 
 ### 3. Continue the recorded next action
 
-When the session's current directory is already the verified worktree (the usual case after a handoff), skip `EnterWorktree`: it would only prompt again. Otherwise enter the worktree with `EnterWorktree`; on its documented fallback, use literal absolute paths. Read `loop.md` and the repo instructions/working memories needed for this phase, then continue from the checkpoint's exact loop position:
+When the session's current directory is already the verified worktree (the usual case after a handoff), skip `EnterWorktree`: it would only prompt again. Otherwise enter the worktree with `EnterWorktree`; if it refuses (for example from a non-Git directory), run a Bash `cd <worktree>` and retry; if it still refuses, use literal absolute paths and `git -C <worktree>`.
+
+Inside Herdr, restore my agent name before any brief to codex, because `/clear` can drop it and codex replies to it: read my pane id with `herdr pane current --current` (the worktree guard refuses commands that name `$HERDR_PANE_ID`), and when `herdr agent get <key>` does not resolve to that pane, run `herdr agent rename <pane id> <key>`. If another live agent holds the name, report it instead.
+
+Read `loop.md` and the repo instructions/working memories needed for this phase, then continue from the checkpoint's exact loop position:
 
 - `design`: continue the pending investigation, compare round or approval from the existing artifacts. Preserve completed independent passes and immutable Model A.
 - `develop`: continue the plan's first unchecked step or the recorded active dispatch. Reuse the existing Codex pane; read a completed reply before sending anything. Dispatch only when no run is already doing that work and the contract authorizes it.
 - `review`: continue the recorded review/fix/check/merge-wait action. Keep ordinary fix rounds in the existing review context and preserve the loop's review/rerun rules.
 - `finish`: run the existing finish procedure, including its delivery and cleanup proofs.
 
-Restore an agent name only after confirming the pane's identity and absence of a conflicting name. Rearm a missing watcher for an active run only after confirming an equivalent watcher is not already alive. Retain open timers from `state.json`; close/report them through `tk step` when their run actually reports. A resume is neither a new dispatch nor a completed review.
+Restore a codex agent name only after confirming the pane's identity and absence of a conflicting name. Rearm a missing watcher for an active run only after confirming an equivalent watcher is not already alive. Retain open timers from `state.json`; close/report them through `tk step` when their run actually reports. A resume is neither a new dispatch nor a completed review.
 
 Refresh `resume.md` from the verified state, report the phase and immediate next action in one short line, and continue unless that action awaits a human or is blocked. A resumed conversation does not repeat ticket intake, restart the design or re-ask an already recorded approval. New evidence of a contract gap follows the existing decision process.

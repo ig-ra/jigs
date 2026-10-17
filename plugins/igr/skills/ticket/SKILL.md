@@ -7,7 +7,7 @@ description: "Linear ticket lifecycle for any repo. start prepares a ticket and 
 
 Three modes, from the first argument:
 - `start <key>`, for example `/igr:ticket start ABC-123` or `/igr:ticket start 123`. If the first argument is a key with no mode, treat it as `start`.
-- `resume [key]`, for example `/igr:ticket resume ABC-123` or `/igr:ticket resume` in its worktree. Read [references/resume.md](references/resume.md) and continue the existing phase. A restart or compaction of ongoing ticket work uses this mode.
+- `resume [key] [worktree]`, for example `/igr:ticket resume ABC-123`, `/igr:ticket resume ABC-123 /abs/path/to/worktree` (what a handoff queues) or `/igr:ticket resume` in its worktree. Read [references/resume.md](references/resume.md) and continue the existing phase. A restart or compaction of ongoing ticket work uses this mode.
 - `finish`, with no key: the ticket comes from the current session.
 
 If the mode is unclear, ask. Work between start and finish follows `references/loop.md` ("Before code", "After code", "Rules for both halves"). Corrections to the loop go in that file.
