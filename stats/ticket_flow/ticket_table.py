@@ -20,7 +20,7 @@ def pr_totals(prs):
     return result
 
 
-def ticket_rows(stages, estimates=None, prs=None, markers=None, start=None, end=None, unmatched=None):
+def ticket_rows(stages, estimates=None, prs=None, markers=None, start=None, end=None, unmatched=None, queried=()):
     groups = defaultdict(list)
     for stage in stages:
         groups[stage['ticket']].append(stage)
@@ -31,7 +31,7 @@ def ticket_rows(stages, estimates=None, prs=None, markers=None, start=None, end=
         row['dispatches'] = len(selected) if estimates is not None else None
         for field, column in zip(ESTIMATES[1:], ('rounds_low','rounds_high','minutes_low','minutes_high','actual_minutes')):
             row[field] = sum_required(e[column] for e in selected) if estimates is not None else None
-        related = [p for p in prs if p['ticket'] == ticket] if prs is not None else None
+        related = [p for p in prs if p['ticket'] == ticket] if prs is not None and ticket in queried else None
         row.update(pr_totals(related))
         local = [m for m in markers if m.ticket == ticket] if markers is not None else None
         row['review_after_bot'] = review_after_bot(local, related, start, end) if start is not None else None

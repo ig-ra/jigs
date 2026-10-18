@@ -14,10 +14,11 @@ def measure(start, end):
                                            collected['estimates'], start, end)
     tickets = population.repo_tickets(collected, selected)
     remote, prs = github_fetch.collect(tickets)
+    queried = set().union(*tickets.values())
     markers = [m for m in collected['markers'] if m.ticket in selected] + remote
     stages.assign(collected['turns'], markers)
     return tables.assemble(collected['turns'], start, end, collected['counts'],
-                           collected['unmatched'], prs, markers, collected['estimates'])
+                           collected['unmatched'], prs, markers, collected['estimates'], queried)
 
 
 def utc_date(value):

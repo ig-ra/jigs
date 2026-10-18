@@ -65,7 +65,7 @@ class CliTests(unittest.TestCase):
                     fetch.assert_called_once_with({'ig-ra/jigs': {'IGR-15'},
                         'Sawmills/condition-curator': {'SAW-100'}, 'Sawmills/agent-platform': {'SAW-200'}})
                     assign.assert_called_once_with(collected['turns'], [marker, remote])
-                    assemble.assert_called_once_with(collected['turns'], at(), at(60), {}, {}, [], [marker, remote], [])
+                    assemble.assert_called_once_with(collected['turns'], at(), at(60), {}, {}, [], [marker, remote], [], {'IGR-15', 'SAW-100', 'SAW-200'})
 
     def test_import_has_no_collection_or_publication_side_effect(self):
         with patch.object(cli.local, 'collect') as collect, patch.object(cli.github_fetch, 'collect') as fetch:

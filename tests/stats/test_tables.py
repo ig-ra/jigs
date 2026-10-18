@@ -84,10 +84,10 @@ class TableTests(unittest.TestCase):
     def test_available_empty_sources_can_be_complete_and_unmatched_keeps_work(self):
         markers=[Marker('IGR-15',at(),'design','start')]
         one=stages.assign([turn(wait=0,calls=[call(activity='reply',repo='ig-ra/jigs')])],markers)[0]
-        result=tables.assemble([one],at(),at(60),Counter(),{},[],markers,[])
+        result=tables.assemble([one],at(),at(60),Counter(),{},[],markers,[], {'IGR-15'})
         self.assertEqual(result['tickets'][0]['coverage'],'complete')
         self.assertEqual(result['tickets'][0]['prs'],0)
-        partial=tables.assemble([one],at(),at(60),Counter(),{'IGR-15':1},[],markers,[])
+        partial=tables.assemble([one],at(),at(60),Counter(),{'IGR-15':1},[],markers,[], {'IGR-15'})
         self.assertEqual(partial['tickets'][0]['coverage'],'partial')
         self.assertEqual(partial['tickets'][0]['claude_main_minutes_raw'],one.minutes)
 
@@ -95,7 +95,7 @@ class TableTests(unittest.TestCase):
         from github_support import fact
         markers=[Marker('IGR-15',at(20),'simplify','review')]
         prs=[fact(first_bot=at(10).isoformat()),fact(2,'Sawmills/agent-platform')]
-        result=tables.assemble([turn()],at(),at(60),Counter(),{},prs,markers)
+        result=tables.assemble([turn()],at(),at(60),Counter(),{},prs,markers,queried={'IGR-15'})
         self.assertEqual(len(result['tickets']),1)
         self.assertEqual(result['tickets'][0]['review_after_bot'],1)
         self.assertEqual(result['tickets'][0]['prs'],2)

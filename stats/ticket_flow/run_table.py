@@ -28,7 +28,7 @@ def actor_rows(ticket, actor, turns, calls, start, end):
     return result
 
 
-def source_rows(turns, calls, start, end, prs, counts, unmatched, markers=()):
+def source_rows(turns, calls, start, end, prs, counts, unmatched, markers=(), queried=()):
     result = [dict(metric='window_start',value=iso(start)),dict(metric='window_end_exclusive',value=iso(end))]
     selected = [t for t in turns if in_window(t.end,start,end) or any(
         c['provider'] == t.provider and c['session'] == t.session and c['turn'] == t.identity for c in calls)]
@@ -44,7 +44,8 @@ def source_rows(turns, calls, start, end, prs, counts, unmatched, markers=()):
         unknown_calls=sum(c['stage'] == 'unknown' for c in calls),
         ambiguous_turns=sum(t.order == 'ambiguous' for t in selected),
         multi_repo_tickets=sum(len(r) > 1 for r in repos.values()),
-        no_pr_tickets=sum(not any(p['ticket'] == t for p in prs) for t in tickets if t) if prs is not None else None,
+        no_pr_tickets=sum(not any(p['ticket'] == t for p in prs) for t in tickets if t)
+            if prs is not None and all(t in queried for t in tickets if t) else None,
         pr_heads=len({(p['repo'],p['head_sha']) for p in prs}) if prs is not None and all(
             p.get('head_sha') is not None for p in prs) else None)
     result.extend(dict(metric=k,value=v) for k,v in totals.items())
@@ -54,13 +55,14 @@ def source_rows(turns, calls, start, end, prs, counts, unmatched, markers=()):
         values = dict(calls=sum(c['ticket'] == ticket for c in calls), unmatched_starts=unmatched.get(ticket,0),
             claude_duration_records=sum(t.actor == 'claude_main' for t in completed),
             codex_completed_pairs=sum(t.actor == 'codex' for t in completed),
-            prs_found=sum(p['ticket'] == ticket for p in prs) if prs is not None else None)
+            pr_lookup_available=int(prs is not None and ticket in queried),
+            prs_found=sum(p['ticket'] == ticket for p in prs) if prs is not None and ticket in queried else None)
         result.extend(dict(ticket=ticket,metric=k,value=v) for k,v in values.items())
     return result, tickets
 
 
-def run_rows(turns, calls, start, end, counts, unmatched, prs, markers, estimates=None):
-    result, tickets = source_rows(turns,calls,start,end,prs,counts,unmatched,markers)
+def run_rows(turns, calls, start, end, counts, unmatched, prs, markers, estimates=None, queried=()):
+    result, tickets = source_rows(turns,calls,start,end,prs,counts,unmatched,markers,queried)
     for ticket in sorted(tickets,key=lambda t: t or ''):
         for actor in ACTORS:
             result.extend(actor_rows(ticket,actor,turns,calls,start,end))

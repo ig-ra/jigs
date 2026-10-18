@@ -12,7 +12,7 @@ class RunTableTests(unittest.TestCase):
                turn('two',ticket='IGR-16',calls=[call('two',ticket='IGR-16')]),
                turn('unassigned',ticket=None,calls=[call('none',ticket=None)])]
         prs=[fact(),fact(2,'Sawmills/agent-platform')]
-        rows=tables.assemble(turns,at(),at(60),Counter(malformed=1),defaultdict(int),prs,[])['run']
+        rows=tables.assemble(turns,at(),at(60),Counter(malformed=1),defaultdict(int),prs,[],queried={'IGR-15','IGR-16'})['run']
         overall={r['metric']:r['value'] for r in rows if 'ticket' not in r}
         self.assertEqual(overall['unassigned_calls'],1)
         self.assertEqual(overall['multi_repo_tickets'],1)

@@ -45,16 +45,16 @@ def missing_reason(turn, call):
     return ';'.join(reasons) or None
 
 
-def assemble(turns, start, end, counts, unmatched, prs, markers, estimates=None):
+def assemble(turns, start, end, counts, unmatched, prs, markers, estimates=None, queried=()):
     calls = audit_rows(turns, start, end)
     identities = [(c['provider'], c['id']) for c in calls]
     if len(identities) != len(set(identities)):
         raise ValueError('duplicate canonical call in audit')
     stages = stage_rows(turns, calls, start, end, markers)
     selected = [e for e in estimates if in_window(e['time'], start, end)] if estimates is not None else None
-    tickets = ticket_rows(stages, selected, prs, markers, start, end, unmatched)
+    tickets = ticket_rows(stages, selected, prs, markers, start, end, unmatched, queried)
     if counts.get('malformed', 0):
         for row in stages + tickets:
             row['coverage'] = 'partial'
     return {'calls': calls, 'stages': stages, 'tickets': tickets,
-            'run': run_rows(turns, calls, start, end, counts, unmatched, prs, markers, selected)}
+            'run': run_rows(turns, calls, start, end, counts, unmatched, prs, markers, selected, queried)}

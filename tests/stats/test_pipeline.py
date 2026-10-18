@@ -157,6 +157,16 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(any(r['ticket'] == 'IGR-99' and r['metric'] == 'marker_design'
                             for r in self.rows('run')))
         self.assertFalse(any('999' in endpoint for endpoint in self.requests))
+        tickets = {r['ticket']: r for r in self.rows('tickets')}
+        self.assertEqual(tickets['IGR-99']['prs'], '0')
+        self.assertEqual(tickets['SAW-999']['coverage'], 'partial')
+        for field in ('prs', 'pr_commits', 'bot_reviews', 'bot_comments', 'review_after_bot'):
+            self.assertEqual(tickets['SAW-999'][field], '')
+        metrics = {(r['ticket'], r['metric']): r['value'] for r in self.rows('run')}
+        self.assertEqual(metrics['SAW-999', 'pr_lookup_available'], '0')
+        self.assertEqual(metrics['SAW-999', 'prs_found'], '')
+        self.assertEqual(metrics['IGR-99', 'pr_lookup_available'], '1')
+        self.assertEqual(metrics['', 'no_pr_tickets'], '')
 
     def test_failed_fetch_preserves_previous_set_and_never_publishes_fresh_set(self):
         self.assertEqual(self.command()[0], 0)
