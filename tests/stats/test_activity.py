@@ -37,3 +37,45 @@ class ActivityTests(unittest.TestCase):
             'type':'custom_tool_call','name':'functions.exec','call_id':'c',
             'input':'await tools.exec_command({cmd: "gh pr view 3"})'}}, 'codex')
         self.assertEqual(activity.classify([(action[1],activity.tool_text(action[2]))]), 'github / CI / bot threads')
+
+    def test_verified_native_tool_kinds_use_truthful_existing_activities(self):
+        for name, text, expected in (
+                ('ToolSearch', 'select:mcp__linear__get_issue', 'code / doc reading'),
+                ('Skill', 'simplify', 'skill / memory reads'),
+                ('EnterWorktree', '/repo', 'worktree setup / cleanup'),
+                ('ExitWorktree', 'keep', 'worktree setup / cleanup'),
+                ('SubagentHandback', 'result', 'agent communication'),
+                ('send_message', 'result', 'agent communication'),
+                ('Monitor', 'gh pr checks 3', 'github / CI / bot threads'),
+                ('Monitor', 'until ready; do sleep 5; done', 'waiting'),
+                ('Monitor', '', 'waiting')):
+            with self.subTest(name=name, text=text):
+                self.assertEqual(activity.classify([(name, text)]), expected)
+
+    def test_custom_exec_classifies_visible_operations_not_the_wrapper(self):
+        for code, expected in (
+                ('await tools.apply_patch("*** Begin Patch\\n*** End Patch")', 'source edits'),
+                ('await tools.mcp__linear_igor__get_issue({id: "IGR-19"})', 'linear'),
+                ('const r = await tools.web__run({search_query: [{q: "docs"}]})', 'code / doc reading'),
+                ('await tools.exec_command({cmd: "gh pr view 3"})', 'github / CI / bot threads'),
+                ('await tools.exec_command({cmd: "pytest"})', 'tests / measurements'),
+                ('const r = await tools.exec_command({cmd: "python3 /tmp/opaque.py"})', 'other')):
+            with self.subTest(code=code):
+                action, = activity.actions({'type':'response_item', 'payload':{
+                    'type':'custom_tool_call', 'name':'exec', 'call_id':'c', 'input':code}}, 'codex')
+                self.assertEqual(activity.classify([(action[1], activity.tool_text(action[2]))]), expected)
+
+    def test_nested_tool_detection_skips_quoted_examples_and_comments(self):
+        code = """const sample = "tools.apply_patch('not a call')";
+            // tools.mcp__linear__get_issue({})
+            /* tools.apply_patch('also not a call') */
+            const template = `tools.apply_patch('example')`;
+            await tools.exec_command({cmd: "python3 /tmp/opaque.py"});"""
+        self.assertEqual([name for name, _ in activity.expanded_tools([('exec', code)])], ['exec_command'])
+        self.assertEqual(activity.classify([('exec', code)]), 'other')
+
+    def test_script_location_does_not_invent_its_activity(self):
+        self.assertEqual(activity.classify([('Bash', 'bash /tmp/scratchpad/opaque.sh')]), 'other')
+        self.assertEqual(activity.classify([('Bash', 'python3 /tmp/scratchpad/opaque.py')]), 'other')
+        self.assertEqual(activity.classify([('Bash', 'gh run view 3'), ('ToolSearch', '')]),
+                         'github / CI / bot threads')

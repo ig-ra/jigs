@@ -31,20 +31,17 @@ def tool_text(args):
                      if args.get(k) is not None), ''))
 
 
-def classify(tools):
-    names = [name.rsplit('.', 1)[-1] for name, _ in tools]
-    command = ' '.join(text for (name, text), short in zip(tools, names)
-                       if short in ('Bash', 'exec_command', 'exec', 'write_stdin'))
-    paths = ' '.join(text for (name, text), short in zip(tools, names)
-                     if short in ('Read', 'Write', 'Edit', 'apply_patch'))
-    if not tools:
-        return 'reply / communication (no tool)'
-    for label, matches in (
-        ('human poll', any(n in ('AskUserQuestion', 'request_user_input', 'request_user_input_async') for n in names)),
-        ('subagent dispatch', any(n in ('Agent', 'Task', 'spawn_agent') for n in names)),
-        ('linear', any('linear' in n.lower() for n in names))):
-        if matches:
-            return label
+def expanded_tools(tools):
+    """Read direct tools.NAME calls; skip JS strings/comments and never execute."""
+    pattern = (r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`|"
+               r'//[^\n]*|/\*.*?\*/|\btools\.([A-Za-z_][A-Za-z_0-9]*)\s*\(')
+    for name, text in tools:
+        names = [m[1] for m in re.finditer(pattern, text, re.S) if m[1]] if name.rsplit('.', 1)[-1] == 'exec' else []
+        for nested in names or [name]:
+            yield nested, text
+
+
+def command_activity(command):
     for label, pattern in (
         ('native codex review', r'codex-companion'),
         ('codex management (herdr)', r'\bherdr\b|watch-codex'),
@@ -55,6 +52,29 @@ def classify(tools):
         ('git', r'\bgit\b'), ('waiting', r'\bsleep\b|\bwatch\b')):
         if re.search(pattern, command):
             return label
+
+
+def classify(tools):
+    tools = list(expanded_tools(tools))
+    names = [name.rsplit('.', 1)[-1] for name, _ in tools]
+    command = ' '.join(text for (name, text), short in zip(tools, names)
+                       if short in ('Bash', 'exec_command', 'exec', 'write_stdin', 'Monitor'))
+    paths = ' '.join(text for (name, text), short in zip(tools, names)
+                     if short in ('Read', 'Write', 'Edit', 'apply_patch'))
+    if not tools:
+        return 'reply / communication (no tool)'
+    for label, matches in (
+        ('human poll', any(n in ('AskUserQuestion', 'request_user_input', 'request_user_input_async') for n in names)),
+        ('subagent dispatch', any(n in ('Agent', 'Task', 'spawn_agent') for n in names)),
+        ('agent communication', any(n in ('SubagentHandback', 'SendMessage', 'send_message') for n in names)),
+        ('worktree setup / cleanup', any(n in ('EnterWorktree', 'ExitWorktree') for n in names)),
+        ('skill / memory reads', 'Skill' in names),
+        ('linear', any('linear' in n.lower() for n in names))):
+        if matches:
+            return label
+    command_label = command_activity(command)
+    if command_label:
+        return command_label
     for label, pattern in (
         ('codex briefs and replies', r'(?:^|/)igr/(brief-|codex-|impl-|compare|findings)'),
         ('design docs (models, plan, KISS)', r'(?:^|/)igr/(model-|A-to-B|kiss-pass|plan-|living|investigation|new-work)'),
@@ -64,10 +84,10 @@ def classify(tools):
             return label
     if any(n in ('Write', 'Edit', 'apply_patch') for n in names):
         return 'source edits'
-    if paths or any(n in ('Grep', 'Glob', 'LSP', 'Read') for n in names) or re.search(
+    if paths or any(n in ('Grep', 'Glob', 'LSP', 'Read', 'ToolSearch', 'web__run') for n in names) or re.search(
             r'\b(rg|grep|sed|cat|ls|find|head|tail|wc)\b', command):
         return 'code / doc reading'
-    if any(n in ('wait', 'wait_agent', 'sleep') for n in names):
+    if any(n in ('wait', 'wait_agent', 'sleep', 'Monitor') for n in names):
         return 'waiting'
     return 'other'
 
