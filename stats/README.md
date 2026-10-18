@@ -6,7 +6,7 @@
 python3 -B -m stats.ticket_flow 2026-10-05 2026-10-18
 ```
 
-Two positional `YYYY-MM-DD` dates, UTC, START inclusive and END exclusive; END must be later. Python stdlib only. Run from the jigs checkout outside the sandbox. Local discovery uses fixed home-relative roots: `~/my/dev-tools/jigs` (`ig-ra/jigs`), `~/work/condition-curator` (`Sawmills/condition-curator`), and `~/work/agent-platform` (`Sawmills/agent-platform`). Lexical cwd mapping includes deleted worktrees; recorded session/parent links resolve tickets without majority attribution. Canonical calls, JSON iteration and timestamp parsing come from `bin/usage` through one SourceFileLoader bridge; its behavior is unchanged.
+Two positional `YYYY-MM-DD` dates, UTC, START inclusive and END exclusive; END must be later. Python stdlib only. Run from the jigs checkout outside the sandbox. Local discovery uses fixed home-relative roots: `~/my/dev-tools/jigs` (`ig-ra/jigs`), `~/work/condition-curator` (`Sawmills/condition-curator`), and `~/work/agent-platform` (`Sawmills/agent-platform`). Lexical cwd mapping includes deleted worktrees; authored-commit lookup uses their configured home-relative repository when the recorded worktree is gone, retaining unavailable status for absent objects; recorded session/parent links resolve tickets without majority attribution. Canonical calls, JSON iteration and timestamp parsing come from `bin/usage` through one SourceFileLoader bridge; its behavior is unchanged.
 
 GitHub access is read-only, using the host keyring. The collector authenticates first, then prefixes every paginated GET with:
 

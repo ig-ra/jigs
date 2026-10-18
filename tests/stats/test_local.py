@@ -1,10 +1,11 @@
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
 
 from stats.ticket_flow import local
-from support import at, call, claude_records, dump
+from support import at, call, claude_records, dump, turn
 
 
 class LocalTests(unittest.TestCase):
@@ -42,6 +43,62 @@ class LocalTests(unittest.TestCase):
             markers = local.commit_markers(wrapped,'IGR-15','source:2','/repo',Path(name),
                                            lambda sha, repo: at(20))
             self.assertEqual(markers[0].identity,'abcdef1')
+
+    def test_deleted_mapped_cwd_recovers_real_object_from_custom_home(self):
+        from stats.ticket_flow import stages, tables
+        from stats.ticket_flow.model import Marker
+        with tempfile.TemporaryDirectory() as name:
+            home = Path(name) / 'custom-home'
+            repo = home / 'my/dev-tools/jigs'
+            repo.mkdir(parents=True)
+            def git(*args):
+                return subprocess.run(['git', '-C', str(repo), *args], check=True,
+                                      capture_output=True, text=True).stdout.strip()
+            git('init', '-q')
+            git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+                '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-qm', 'fixture',
+                '--date=2026-10-17T00:00:20Z')
+            sha = git('rev-parse', 'HEAD')
+            for exists in (False, True):
+                cwd = repo / '.worktrees/igr-15' / str(exists)
+                if exists:
+                    cwd.mkdir(parents=True)
+                path = dump(home / 'session.jsonl', [dict(type='user', cwd=str(cwd),
+                    timestamp=at(30).isoformat(), message={'content': [dict(type='tool_result',
+                    content=f'[igr-15 {sha[:7]}] fixture')]})])
+                markers = local.native_markers({str(path): 'claude'}, [], Path(name), home=home)
+                marker, = markers
+                self.assertEqual((marker.time, marker.repo, marker.identity, marker.source),
+                                 (at(20), 'ig-ra/jigs', sha[:7], f'{path}:1'))
+                # GitHub and native evidence of the same authored boundary do not add fix rounds.
+                remote = Marker('IGR-15', at(20), 'commit', 'github:commit', marker.repo, marker.identity)
+                context = [Marker('IGR-15', at(), 'own_review', 'review')]
+                one = turn(start=25, end=35)
+                stages.assign([one], context + markers + [remote])
+                result = tables.assemble([one], at(), at(60), {}, {}, [], context + markers + [remote])
+                self.assertEqual((one.stage, one.cycle), ('fix', 1))
+                self.assertEqual(result['tickets'][0]['fix_rounds'], 0)
+                self.assertEqual(result['tickets'][0]['fix_cycles'], 1)
+            self.assertIsNone(local.authored_time('0' * 40, repo))
+
+    def test_unmapped_and_absent_cwd_keep_existing_lookup_and_missing_stays_missing(self):
+        with tempfile.TemporaryDirectory() as name:
+            home = Path(name)
+            fallback = home / 'fallback'
+            for cwd, expected in ((str(home / 'unmapped/.worktrees/igr-15'),
+                                   home / 'unmapped/.worktrees/igr-15'), (None, fallback)):
+                path = dump(home / 'session.jsonl', [dict(type='user', cwd=cwd,
+                    timestamp=at(30).isoformat(), message={'content': [dict(type='tool_result',
+                    content='[igr-15 abcdef1] fix')]})])
+                for time in (at(20), None):
+                    with self.subTest(cwd=cwd, time=time):
+                        with patch.object(local, 'authored_time', return_value=time) as lookup:
+                            markers = local.native_markers({str(path): 'claude'}, [call(time=10)],
+                                fallback, commit_time=lookup, home=home)
+                        lookup.assert_called_once_with('abcdef1', expected)
+                        self.assertEqual(len(markers), int(time is not None))
+                        if markers:
+                            self.assertIsNone(markers[0].repo)
 
     def test_missing_estimate_log_is_not_empty_evidence(self):
         with self.assertRaises(FileNotFoundError):

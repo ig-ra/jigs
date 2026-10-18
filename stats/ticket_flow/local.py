@@ -7,7 +7,7 @@ from .model import Marker
 from . import estimates
 from .activity import actions
 from .invocations import native_review
-from .sources import raw_records, reader, reference, repo_for, stamp
+from .sources import REPOS, raw_records, reader, reference, repo_for, stamp
 from .native import ticket_at, ticket_index
 
 
@@ -65,18 +65,19 @@ def shell_outputs(output):
             yield result['output']
 
 
-def commit_markers(output, ticket, source, cwd, repo, commit_time):
+def commit_markers(output, ticket, source, cwd, repo, commit_time, home=None):
     result = []
     for text in shell_outputs(output or ''):
         for match in re.finditer(r'^\[[^\]\n]+ ([0-9a-f]{7,40})\]', text, re.M):
             authored = commit_time(match[1], repo)
             if authored is not None:
                 result.append(Marker(ticket, authored, 'commit', source,
-                                     repo_for(cwd), match[1]))
+                                     repo_for(cwd, home), match[1]))
     return result
 
 
-def native_markers(paths, rows, repo, commit_time=authored_time):
+def native_markers(paths, rows, repo, commit_time=authored_time, home=None):
+    home = Path(home or Path.home())
     result = []
     rows = ticket_index(rows)
     for path, provider in sorted(paths.items()):
@@ -95,12 +96,13 @@ def native_markers(paths, rows, repo, commit_time=authored_time):
             if not ticket:
                 continue
             source = reference(path, line)
+            mapped = repo_for(cwd, home)
             content = (record.get('message') or {}).get('content', [])
             if record.get('type') == 'user' and isinstance(content, str):
                 simplify_group = None
                 if re.fullmatch(r'/simplify(?:\s+.*)?', content.strip()) or '<command-name>/simplify</command-name>' in content:
                     simplify_group = source
-                    result.append(Marker(ticket, time, 'simplify', source, repo_for(cwd), group=source))
+                    result.append(Marker(ticket, time, 'simplify', source, mapped, group=source))
             for identity, name, arguments, output, error in actions(record, provider):
                 kind = invocation_kind(name, arguments)
                 if kind:
@@ -108,16 +110,18 @@ def native_markers(paths, rows, repo, commit_time=authored_time):
                     if kind == 'simplify' and name.rsplit('.', 1)[-1] == 'Skill':
                         group = identity or source
                         simplify_group = group
-                    result.append(Marker(ticket, time, kind, source, repo_for(cwd), identity, group))
+                    result.append(Marker(ticket, time, kind, source, mapped, identity, group))
                 if not error and reader().successful(output or '', require_exit=provider == 'codex'):
-                    result.extend(commit_markers(output, ticket, source, cwd, Path(cwd) if cwd else repo, commit_time))
+                    directory = next((home / relative for relative, name in REPOS if name == mapped),
+                                     Path(cwd) if cwd else repo)
+                    result.extend(commit_markers(output, ticket, source, cwd, directory, commit_time, home))
     return list({(m.ticket, m.time, m.kind, m.source, m.identity): m for m in result}.values())
 
 
 def collect_markers(paths, rows, home=None, repo=None):
     home = home or Path.home()
     return (event_markers(rows) + estimate_markers(home / '.claude/agent-estimates.tsv') +
-            native_markers(paths, rows, repo or Path.cwd()))
+            native_markers(paths, rows, repo or Path.cwd(), home=home))
 
 
 def collect(end, home=None):
@@ -128,7 +132,7 @@ def collect(end, home=None):
     activity.enrich(rows, paths)
     turns, unmatched = native.hydrate(paths, rows, end=end)
     dispatches = estimates.collect(home / '.claude/agent-estimates.tsv')
-    markers = event_markers(rows) + estimates.markers(dispatches) + native_markers(paths, rows, Path.cwd())
+    markers = event_markers(rows) + estimates.markers(dispatches) + native_markers(paths, rows, Path.cwd(), home=home)
     timing.attribute_overlap(turns)
     timing.attribute_waits(turns, timing.wait_intervals(paths))
     return dict(rows=rows, turns=turns, markers=markers, estimates=dispatches,
