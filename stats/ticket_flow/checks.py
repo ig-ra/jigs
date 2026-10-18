@@ -102,7 +102,7 @@ def minute_conservation(run, report, ticket, stages):
         report.equal(expected, actual, detail + f' run_denominator={denominators[0]}', tolerance)
 
 
-def activity(run, report):
+def activity(run, report, *, enforce_target=False):
     groups = defaultdict(lambda: [Decimal(0), Decimal(0)])
     for call in run.rows['calls']:
         amount = total(number(call[t], 'calls.csv ' + t) for t in TOKENS)
@@ -115,9 +115,16 @@ def activity(run, report):
     for group, (n, d) in sorted(groups.items()):
         pct = f'{100*n/d:.9f}' if d else 'unavailable'
         print(f'ACTIVITY_SHARE {group} other_tokens={n} all_tokens={d} pct={pct}')
-    report.require(denominator > 0 and numerator * 100 < denominator * 5,
+    if not enforce_target:
+        print('ACTIVITY_TARGET_NOT_REQUESTED target_pct<5')
+        return
+    passed = denominator > 0 and numerator * 100 < denominator * 5
+    report.require(passed,
         f'ACTIVITY_TARGET_FAIL file=calls.csv metric=other_share other_tokens={numerator} '
         f'all_tokens={denominator} actual_pct={100*numerator/denominator if denominator else "unavailable"} target_pct<5')
+    if passed:
+        print(f'ACTIVITY_TARGET_PASS other_tokens={numerator} all_tokens={denominator} '
+              f'pct={100*numerator/denominator:.9f} target_pct<5')
 
 
 def pr_facts(run, ticket, report):

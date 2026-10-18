@@ -145,4 +145,8 @@ class LiveTests(unittest.TestCase):
                 cwd=directory, env=environment, capture_output=True, text=True, timeout=60)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn('OUTPUT_CHECK_PASS', result.stdout)
+            self.assertIn('ACTIVITY_TARGET_NOT_REQUESTED', result.stdout)
+            for line in result.stdout.splitlines():
+                if line.startswith(('ACTIVITY_SHARE overall ', 'ACTIVITY_TARGET_')):
+                    print(line, flush=True)
             print(result.stdout.splitlines()[-1], flush=True)

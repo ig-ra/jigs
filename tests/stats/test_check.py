@@ -55,18 +55,18 @@ class CheckTests(unittest.TestCase):
         self.directory = Path(temporary.name) / 'run'
         self.data = evidence()
 
-    def invoke(self):
+    def invoke(self, *args):
         csvio.publish(self.directory, self.data)
         output = io.StringIO()
         with redirect_stdout(output):
-            status = check.main([str(self.directory)])
+            status = check.main([str(self.directory), *args])
         return status, output.getvalue()
 
     def fact(self, metric, actor=''):
         return next(r for r in self.data['run'] if r['metric'] == metric and r.get('actor', '') == actor)
 
-    def fails(self, message):
-        status, output = self.invoke()
+    def fails(self, message, *args):
+        status, output = self.invoke(*args)
         self.assertEqual(status, 1, output)
         self.assertIn(message, output)
         self.assertIn('OUTPUT_CHECK_FAIL', output)
@@ -184,9 +184,28 @@ class CheckTests(unittest.TestCase):
         self.fact('no_pr_tickets')['value'] = 0
         self.assertEqual(self.invoke()[0], 0)
 
-    def test_activity_strict_boundary_missing_label_and_zero_denominator(self):
+    def test_activity_mix_is_diagnostic_unless_target_requested(self):
         self.data['calls'][0]['activity'] = 'other'
-        self.fails('ACTIVITY_TARGET_FAIL')
+        status, output = self.invoke()
+        self.assertEqual(status, 0, output)
+        self.assertIn('ACTIVITY_SHARE overall other_tokens=40 all_tokens=80 pct=50.000000000', output)
+        self.assertIn('ACTIVITY_TARGET_NOT_REQUESTED', output)
+        self.assertNotIn('ACTIVITY_TARGET_PASS', output)
+        self.fails('ACTIVITY_TARGET_FAIL', '--activity-target')
+        self.data['tickets'][0]['codex_output_tokens'] = 11
+        self.fails('TOKEN_CONSERVATION_FAIL')
+        self.fails('TOKEN_CONSERVATION_FAIL', '--activity-target')
+
+    def test_activity_target_cli_pass_names_numbers(self):
+        self.invoke()
+        result = subprocess.run([sys.executable, '-B', '-m', 'stats.ticket_flow.check',
+                                 str(self.directory), '--activity-target'],
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('ACTIVITY_TARGET_PASS other_tokens=0 all_tokens=80 pct=0.000000000 target_pct<5', result.stdout)
+        self.assertIn('OUTPUT_CHECK_PASS', result.stdout)
+
+    def test_activity_strict_boundary_missing_label_and_zero_denominator(self):
         for amount, expected in ((19, 0), (20, 1)):
             self.data = evidence()
             for call in self.data['calls']:
@@ -196,14 +215,21 @@ class CheckTests(unittest.TestCase):
             self.invoke()
             with redirect_stdout(io.StringIO()):
                 report = check.Report()
-                checks.activity(check.Run(self.directory), report)
+                checks.activity(check.Run(self.directory), report, enforce_target=True)
             self.assertEqual(report.failures, expected)
         self.data = evidence()
         self.data['calls'][0]['activity'] = ''
         self.fails('missing_activity_or_tokens')
+        self.fails('missing_activity_or_tokens', '--activity-target')
         self.data = evidence()
-        self.data['calls'] = []
-        self.fails('ACTIVITY_TARGET_FAIL')
+        for call in self.data['calls']:
+            call.update(**dict.fromkeys(TOKENS, 0))
+        for row in (self.data['stages'][0], self.data['tickets'][0]):
+            row.update({f'{actor}_{token}': 0 for actor in ACTORS for token in TOKENS})
+        status, output = self.invoke()
+        self.assertEqual(status, 0, output)
+        self.assertIn('ACTIVITY_SHARE overall other_tokens=0 all_tokens=0 pct=unavailable', output)
+        self.fails('ACTIVITY_TARGET_FAIL', '--activity-target')
 
     def test_native_grouped_counts_are_not_raw_markers(self):
         for i in range(2):

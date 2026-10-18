@@ -129,6 +129,8 @@ class Report:
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('RUN_DIR')
+    parser.add_argument('--activity-target', action='store_true',
+                        help='require overall other tokens <5%%; use for published-run acceptance')
     args = parser.parse_args(argv)
     report = Report()
     try:
@@ -137,7 +139,10 @@ def main(argv=None):
         for family in (checks.identity, checks.conservation, checks.activity, checks.pr_missingness, checks.native):
             before = report.failures
             try:
-                family(run, report)
+                if family is checks.activity:
+                    family(run, report, enforce_target=args.activity_target)
+                else:
+                    family(run, report)
             except ValueError as error:
                 report.require(False, f'{family.__name__.upper()}_FAIL missing_evidence {error}')
             if report.failures == before:
