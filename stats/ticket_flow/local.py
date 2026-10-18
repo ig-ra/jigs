@@ -1,10 +1,11 @@
-"""Collect timestamped local and estimate markers for the coverage pilot."""
-import csv
+"""Collect local measurements and timestamped native/estimate markers."""
 from pathlib import Path
 import re
 import subprocess
 
-from .model import Marker, PILOT
+from .model import Marker
+from . import estimates
+from .activity import actions, tool_text
 from .sources import raw_records, reader, reference, repo_for, stamp
 from .native import ticket_at, ticket_index
 
@@ -23,32 +24,26 @@ def event_markers(rows):
             elif row['status'] == 'running':
                 kind = 'implement' if row['step'] == 'implement' else (
                     'own_review' if row['step'] == 'reviews' else 'bots_ci')
+            elif row['status'] == 'done':
+                kind = 'implement' if row['step'] == 'implement' else 'bots_ci'
         if kind:
             markers.append(Marker(row['ticket'], stamp(row['timestamp']), kind,
-                                  reference(**row['source']), repo_for(row.get('cwd'))))
+                                  reference(**row['source']), row.get('repo') or repo_for(row.get('cwd')),
+                                  row.get('tool_id')))
     return markers
 
 
 def estimate_markers(path):
-    if not path.exists():
-        raise FileNotFoundError(f'estimate log unavailable: {path}')
-    markers = []
-    with path.open(newline='') as stream:
-        for line, row in enumerate(csv.DictReader(stream, delimiter='\t'), 2):
-            if row.get('ticket') not in PILOT:
-                continue
-            task = row.get('task', '').lower()
-            kind = 'review' if row['agent'] == 'claude-review' else (
-                'fix' if re.search(r'findings|\bfix|round \d|final review', task) else 'implement')
-            markers.append(Marker(row['ticket'], stamp(row['started']), kind,
-                                  reference(path, line), identity=row['id']))
-    return markers
+    return estimates.markers(estimates.collect(path))
 
 
 def invocation_kind(name, arguments):
     skill = str(arguments.get('skill', '')).lower()
-    command = arguments.get('command') or arguments.get('cmd') or ''
+    command = tool_text(arguments)
     if skill.rsplit(':', 1)[-1] == 'simplify':
+        return 'simplify'
+    if name.rsplit('.', 1)[-1] in ('Agent', 'Task') and re.search(
+            r'\bsimplify\b', arguments.get('description', ''), re.I):
         return 'simplify'
     if re.search(r'\bcodex-companion(?:\.mjs)?\s+review\b', command):
         return 'native_review'
@@ -81,47 +76,41 @@ def commit_markers(output, ticket, source, cwd, repo, commit_time):
     return result
 
 
-def record_actions(record, provider):
-    if provider == 'claude':
-        content = (record.get('message') or {}).get('content', [])
-        if isinstance(content, list):
-            for block in content:
-                if block.get('type') == 'tool_use':
-                    yield block['name'], block.get('input') or {}, None
-                elif block.get('type') == 'tool_result' and not block.get('is_error'):
-                    yield '', {}, reader().text_content(block.get('content', ''))
-    else:
-        payload = record.get('payload') or {}
-        kind = payload.get('type')
-        if kind in ('function_call', 'custom_tool_call'):
-            yield payload.get('name', ''), reader().arguments(
-                payload.get('arguments', payload.get('input', ''))), None
-        elif kind in ('function_call_output', 'custom_tool_call_output'):
-            yield '', {}, reader().text_content(payload.get('output', ''))
-
-
 def native_markers(paths, rows, repo, commit_time=authored_time):
     result = []
     rows = ticket_index(rows)
     for path, provider in sorted(paths.items()):
-        session, cwd = Path(path).stem, None
+        session, cwd, meta_seen = Path(path).stem, None, False
+        simplify_group = None
         for line, record in raw_records(path, provider):
             payload = record.get('payload') or {}
-            if record.get('type') == 'session_meta':
+            if record.get('type') == 'session_meta' and not meta_seen:
                 session, cwd = payload['id'], payload.get('cwd')
+                meta_seen = True
             cwd = record.get('cwd') or (payload.get('cwd') if record.get('type') == 'turn_context' else None) or cwd
             if not record.get('timestamp'):
                 continue
             time = stamp(record['timestamp'])
-            ticket = ticket_at(rows, session, time, cwd)
-            if ticket not in PILOT:
+            ticket = ticket_at(rows, session, time, cwd, provider)
+            if not ticket:
                 continue
             source = reference(path, line)
-            for name, arguments, output in record_actions(record, provider):
+            content = (record.get('message') or {}).get('content', [])
+            if record.get('type') == 'user' and isinstance(content, str):
+                simplify_group = None
+                if re.fullmatch(r'/simplify(?:\s+.*)?', content.strip()) or '<command-name>/simplify</command-name>' in content:
+                    simplify_group = source
+                    result.append(Marker(ticket, time, 'simplify', source, repo_for(cwd), group=source))
+            for identity, name, arguments, output, error in actions(record, provider):
                 kind = invocation_kind(name, arguments)
                 if kind:
-                    result.append(Marker(ticket, time, kind, source, repo_for(cwd)))
-                result.extend(commit_markers(output, ticket, source, cwd, repo, commit_time))
+                    group = simplify_group if kind == 'simplify' else None
+                    if kind == 'simplify' and name.rsplit('.', 1)[-1] == 'Skill':
+                        group = identity or source
+                        simplify_group = group
+                    result.append(Marker(ticket, time, kind, source, repo_for(cwd), identity, group))
+                if not error and reader().successful(output or '', require_exit=provider == 'codex'):
+                    result.extend(commit_markers(output, ticket, source, cwd, Path(cwd) if cwd else repo, commit_time))
     return list({(m.ticket, m.time, m.kind, m.source, m.identity): m for m in result}.values())
 
 
@@ -129,3 +118,19 @@ def collect_markers(paths, rows, home=None, repo=None):
     home = home or Path.home()
     return (event_markers(rows) + estimate_markers(home / '.claude/agent-estimates.tsv') +
             native_markers(paths, rows, repo or Path.cwd()))
+
+
+def collect(end, home=None):
+    """Complete local slice; the entry point's full orchestration is step 4."""
+    from . import activity, native, sources, timing
+    home = Path(home or Path.home())
+    rows, paths, counts = sources.collect_local(end, home)
+    activity.enrich(rows, paths)
+    turns, unmatched = native.hydrate(paths, rows)
+    dispatches = estimates.collect(home / '.claude/agent-estimates.tsv')
+    markers = event_markers(rows) + estimates.markers(dispatches) + native_markers(paths, rows, Path.cwd())
+    turns = [t for t in turns if t.start is None or t.start < end]
+    timing.attribute_overlap(turns)
+    timing.attribute_waits(turns, timing.wait_intervals(paths))
+    return dict(rows=rows, turns=turns, markers=markers, estimates=dispatches,
+                counts=counts, unmatched=unmatched)

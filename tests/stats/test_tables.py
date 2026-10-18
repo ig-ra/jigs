@@ -1,7 +1,7 @@
 from collections import Counter, defaultdict
 import unittest
 
-from stats.ticket_flow import stages, tables
+from stats.ticket_flow import stages, tables, timing
 from stats.ticket_flow.model import Marker
 from support import at, call, turn
 
@@ -42,3 +42,40 @@ class TableTests(unittest.TestCase):
         self.assertEqual(row['marker_source'],'marker:1')
         self.assertEqual(row['start_basis'],'first_call')
         self.assertEqual(row['timestamp'],at(10).isoformat())
+
+    def test_wait_overlap_invocation_counts_and_fix_rounds_conserve(self):
+        turns = [turn('a',start=10,end=30,source='session.jsonl:9'),
+                 turn('b',start=15,end=25,source='session.jsonl:10')]
+        markers = [Marker('IGR-15',at(0),'simplify','m0',group='launch'),
+                   Marker('IGR-15',at(1),'simplify','m1',group='launch'),
+                   Marker('IGR-15',at(12),'fix','m2',group='one'),
+                   Marker('IGR-15',at(13),'fix','m3',group='two'),
+                   Marker('IGR-15',at(14),'commit','m4',identity='abc')]
+        timing.attribute_overlap(turns)
+        timing.attribute_waits(turns,[('session.jsonl',8,at(12),at(16))])
+        stages.assign(turns,markers)
+        result = tables.assemble(turns,at(),at(60),Counter(),defaultdict(int),[],markers)
+        ticket, = result['tickets']
+        self.assertEqual(ticket['simplify_passes'], 1)
+        self.assertEqual(ticket['fix_rounds'], 2)
+        self.assertAlmostEqual(ticket['foreground_wait_min'],4/60)
+        self.assertAlmostEqual(ticket['turn_overlap_min'],10/60)
+        for metric in ('foreground_wait_min','turn_overlap_min','claude_main_minutes_raw'):
+            self.assertAlmostEqual(sum(row[metric] for row in result['stages']), ticket[metric])
+
+    def test_child_audit_and_required_estimate_missingness(self):
+        one = turn(parent='parent',child_description='full description',
+                   calls=[call(activity='other',activity_basis='missing_tool_input')])
+        estimate = dict(ticket='IGR-15',time=at(),identity='dispatch',agent='codex',source='estimates:2',
+                        rounds_low=1,rounds_high=2,minutes_low=None,minutes_high=None,actual_minutes=None)
+        result = tables.assemble([one],at(),at(60),Counter(),defaultdict(int),[],[],[estimate])
+        row, = result['calls']
+        self.assertIn('missing_child_type',row['missing_reason'])
+        self.assertIn('missing_tool_input',row['missing_reason'])
+        self.assertIsNone(row['child_family'])
+        self.assertEqual(row['child_description'],'full description')
+        ticket, = result['tickets']
+        self.assertEqual(ticket['dispatches'],1)
+        self.assertEqual(ticket['estimated_rounds_high'],2)
+        self.assertIsNone(ticket['estimated_minutes_low'])
+        self.assertTrue(any(r['source'] == 'estimates:2' for r in result['run'] if 'source' in r))

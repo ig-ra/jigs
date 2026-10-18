@@ -39,3 +39,43 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(sources.repo_for('/a/person/my/dev-tools/jigs/.worktrees/gone', home), 'ig-ra/jigs')
         self.assertIsNone(sources.repo_for('/a/person/my/dev-tools/jigs-other', home))
         self.assertEqual(sources.stamp('2026-10-17T03:00:00+03:00'), at())
+
+    def test_complete_collection_three_roots_cross_repo_and_unassigned(self):
+        with tempfile.TemporaryDirectory() as name:
+            home = Path(name)
+            (home/'.codex/sessions').mkdir(parents=True)
+            for index, (relative, repo) in enumerate(sources.REPOS):
+                cwd = home/relative/'.worktrees/igor/saw-100'
+                records = claude_records(cwd)
+                records[0]['message']['content'] = '/igr:ticket start SAW-100'
+                records[1]['message']['id'] = f'm{index}'
+                root = home/'.claude/projects'/str(home/relative).replace('/', '-')
+                dump(root/f's{index}.jsonl', records)
+            records = claude_records(home/'my/dev-tools/jigs')
+            records[1]['message']['id'] = 'unassigned'
+            dump(root/'unassigned.jsonl', records[1:2])
+            sibling = home/'.claude/projects'/str(home/'my/dev-tools/jigs-other').replace('/', '-')
+            dump(sibling/'sibling.jsonl',claude_records(home/'my/dev-tools/jigs-other/.worktrees/igr-16'))
+            rows, paths, _ = sources.collect_local(at(30), home)
+            calls = [r for r in rows if r['type'] == 'call']
+            self.assertEqual({r['repo'] for r in calls}, {r for _, r in sources.REPOS})
+            self.assertEqual(sum(r['ticket'] == 'SAW-100' for r in calls), 3)
+            self.assertEqual(sum(r['ticket'] is None for r in calls), 1)
+            self.assertEqual(len(paths), 4)
+            self.assertNotIn(str(sibling/'sibling.jsonl'),paths)
+
+    def test_complete_codex_collection_includes_children_and_pre_window_context(self):
+        with tempfile.TemporaryDirectory() as name:
+            home = Path(name)
+            (home/'.claude/projects').mkdir(parents=True)
+            records = Path('tests/usage/fixtures/codex.jsonl').read_text().replace(
+                '/repo/.worktrees/igr-15', str(home/'work/agent-platform/.worktrees/igor/saw-100'))
+            path = home/'.codex/sessions/day/child.jsonl'
+            path.parent.mkdir(parents=True)
+            path.write_text(records)
+            rows, paths, _ = sources.collect_local(at(30), home)
+            calls = [r for r in rows if r['type'] == 'call']
+            self.assertTrue(calls)
+            self.assertEqual(calls[0]['repo'], 'Sawmills/agent-platform')
+            self.assertIn(str(path), paths)
+            self.assertTrue(any(r['type'] == 'event' for r in rows))

@@ -10,7 +10,7 @@ UTC, END exclusive. This implementation slice measures **IGR-15/16 only**; full 
 
 Outputs: `stats/runs/2026-10-17_2026-10-18/{stages,tickets,run}.csv` are tracked; `calls.csv` in that directory is generated and ignored. The command returns nonzero for a failed numeric pilot gate, retaining the measured evidence; a collection error publishes no new set. Hand reconciliation is a one-time documented check, not implied by command exit 0 alone. Identical sources give stable CSV formatting/order; no generated wall-clock time is written. Event timestamps remain evidence.
 
-Current columns:
+Accepted step-1 output columns (the tracked pilot files retain this schema):
 
 - `calls.csv`: canonical provider/call ID/timestamp and ticket basis; repo, actor, session/parent/turn; native or first-call start/basis; call source path/line; chosen marker timestamp/source/repo; stage, stage_order, review_pass, cycle; four raw token buckets; missing_reason. `repo` comes from lexical fixed-root cwd mapping; non-repo parent-directory cwd stays blank.
 - `stages.csv`: ticket/stage/review_pass/cycle keys; each actor's new_input_tokens/cache_read_tokens/cache_write_tokens/output_tokens; Claude-main and Codex minutes_raw; turn_overlap_min; calls/turns; coverage. `tickets.csv` sums these measures by ticket. Repo is not an aggregate key. Actor names are claude_main, claude_subagents and codex; no reasoning-token double count.
@@ -42,6 +42,20 @@ Both >5-point gaps are explained. The hand implement boundary is 15:15 UTC; the 
 That diagnostic accounts for 6.907 points of displacement, leaving design/implement comparison residuals about -0.017 / +1.005 points. It does not reassign or split any turn. All other bins differ by <5 points; high ambiguity does not prevent this evidence-based explanation. Numeric and hand check output: `NUMERIC_GATE PASS failures=0; hand reconciliation requires report`, `TOKEN_BUCKET_CONSERVATION PASS checks=24`, `HAND_RECONCILIATION PASS: all >5pp gaps explained; stage assignments unchanged`. Full local gate evidence: `igr/gate-1.md`.
 
 Not yet exercised: full three-repo/window output, complete activity/family/wait/estimate enrichment, full GitHub review/fix/bot/size and churn, combined pipeline fixture, 57% simplify claim, Claude's 50-call audit/IGR-14 note. Existing dashboard notes below describe the separate unchanged dashboard; prototype cleanup and the full column dictionary are scheduled for later approved steps.
+
+### Local measurements (step 2)
+
+`local.collect(end)` now collects the local slice for the fixed home-relative jigs, condition-curator and agent-platform roots. It reuses canonical `bin/usage.collect` records, retaining earlier context and unassigned calls. Repo mapping is lexical and does not require surviving worktree directories. This slice is fixture-tested; the command above remains the explicit two-ticket pilot until step 4 integrates the full command. The accepted pilot CSVs have not been regenerated.
+
+Local audit additions: `activity`, `activity_basis`, `activity_source`, `child_type`, full `child_description`, `child_family`, and `child_basis`. Activity uses native tool inputs with the prototype's first-match vocabulary, extended to Codex tool names/source. Missing inputs remain `other` with a missing-input reason. Child identity comes from sidecars/native metadata and linked launch inputs. A recorded simplify launch can supply its lenses' family. Missing identity remains blank; parent-session links can supply a ticket from prior evidence, never a future/majority ticket. Audit missing reasons name absent child fields and attribution evidence.
+
+Local stage/ticket additions: `foreground_wait_min`, `simplify_passes`, `native_review_passes`, `own_review_passes`, and `fix_rounds`. Waits are the union of matched foreground invocation/result intervals, clipped to completed raw turn intervals: an observed floor, never subtracted from raw work. Explicit background waits and unmatched results supply no interval. `turn_overlap_min` charges same-session overlap to later source-ordered turns; cross-session work remains parallel. Both minute diagnostics sum through stages to tickets. Missing wait collection is blank; observed no-wait is zero. Review counts use distinct invocation groups, including reruns; simplify lenses share their launch group. Fix dispatches/transitions count rounds, while commits remain cycle evidence rather than rounds.
+
+Ticket estimate additions: `dispatches`, `estimated_rounds_low/high`, `estimated_minutes_low/high`, and `completed_dispatch_minutes`, from deduplicated estimate TSV dispatch IDs whose start is in the requested window. Each dispatch's raw identity, bounds, actual minutes and TSV row source are also run provenance. Blank required bounds/actuals propagate through sums; a known empty dispatch set is zero. Raw provider minutes remain independent of dispatch elapsed-minute estimates.
+
+Native hydration now prefers recorded starts, retains completion-only/incomplete turns, deduplicates provider identities and durations, and includes recorded Codex children. Full completed duration is selected by completion timestamp; incomplete turns supply calls but no duration. No Claude-child duration is manufactured. Successful step receipts and native/estimate invocation markers feed the existing ticket-wide, whole-turn stage latch; only another session of the same ticket overlapping the turn marks stage order ambiguous.
+
+Not exercised in step 2: real three-repo/full-window collection, pilot regeneration, full GitHub enrichment, combined pipeline fixture, existing usage suite, full suite or CI, the 57% simplify measurement, and the externally owned 50-call audit/IGR-14 note. Their planned gates and ownership remain unchanged.
 
 Goal: same quality, fewer tokens per ticket. The flow started on 2026-10-05.
 

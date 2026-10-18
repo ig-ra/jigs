@@ -15,6 +15,7 @@ class Marker:
     source: str
     repo: str | None = None
     identity: str | None = None
+    group: str | None = None
 
 
 @dataclass
@@ -38,6 +39,12 @@ class Turn:
     review_pass: int | None = None
     cycle: int | None = None
     overlap: float = 0.0
+    wait: float | None = None
+    child_type: str | None = None
+    child_description: str | None = None
+    child_family: str | None = None
+    child_basis: str | None = None
+    ticket_basis: str | None = None
 
     @property
     def actor(self):

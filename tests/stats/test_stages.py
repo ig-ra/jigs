@@ -29,10 +29,40 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result.stage,'implement')
         self.assertEqual(result.order,'timestamp')
 
-    def test_review_lenses_do_not_increment_estimate_invocation_pass(self):
-        markers = [Marker('IGR-15',at(i),kind,str(i)) for i,kind in enumerate(
-            ['review','simplify','native_review','fix','review','simplify'])]
+    def test_review_kinds_reruns_and_grouped_lenses(self):
+        markers = [Marker('IGR-15', at(0), 'review', '0', group='dispatch'),
+                   Marker('IGR-15', at(1), 'own_review', '1'),
+                   Marker('IGR-15', at(2), 'simplify', '2', group='s1'),
+                   Marker('IGR-15', at(3), 'simplify', '3', group='s1'),
+                   Marker('IGR-15', at(4), 'native_review', '4', identity='native'),
+                   Marker('IGR-15', at(5), 'fix', '5', identity='fix-dispatch'),
+                   Marker('IGR-15', at(6), 'commit', '6', identity='abc'),
+                   Marker('IGR-15', at(7), 'review', '7', group='rerun'),
+                   Marker('IGR-15', at(8), 'simplify', '8', group='s2')]
         result = stages.assign([turn()],markers)[0]
-        self.assertEqual(result.review_pass,2)
+        self.assertEqual(result.review_pass,5)
         self.assertEqual(result.cycle,1)
         self.assertEqual(result.stage,'further_review')
+
+    def test_consecutive_fix_dispatches_are_rounds_within_one_cycle(self):
+        markers = [Marker('IGR-15',at(i),kind,str(i)) for i,kind in enumerate(
+            ['review','fix','fix','commit','review','fix','commit'])]
+        result = stages.assign([turn()], markers)[0]
+        self.assertEqual((result.cycle, result.stage), (2, 'fix'))
+
+    def test_own_review_receipt_before_dispatch_is_the_same_invocation(self):
+        markers = [Marker('IGR-15',at(0),'own_review','step',identity='receipt'),
+                   Marker('IGR-15',at(1),'review','estimate',group='dispatch'),
+                   Marker('IGR-15',at(2),'review','rerun',group='dispatch-two')]
+        result = stages.assign([turn()],markers)[0]
+        self.assertEqual(result.review_pass, 2)
+
+    def test_fixing_receipt_and_dispatch_group_in_both_orders(self):
+        for kinds in [('receipt','dispatch'),('dispatch','receipt')]:
+            markers = [Marker('IGR-15',at(i),'fix',kind,group='one' if kind == 'dispatch' else None)
+                       for i,kind in enumerate(kinds)]
+            markers += [Marker('IGR-15',at(3),'commit','commit'),
+                        Marker('IGR-15',at(4),'fix','rerun',group='two')]
+            events = stages.timeline(markers)['IGR-15']
+            self.assertEqual(sum(row[-1] == 'fix_round' for row in events), 2)
+            self.assertEqual(events[-1][4], 1)

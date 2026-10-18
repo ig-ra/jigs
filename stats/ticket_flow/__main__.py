@@ -5,11 +5,12 @@ import subprocess
 import sys
 
 from . import csvio, gate, github, local, native, sources, stages, tables, timing
+from .model import PILOT
 
 
 def measure(start, end):
     rows, paths, counts = sources.collect_pilot(end)
-    turns, unmatched = native.hydrate(paths, rows)
+    turns, unmatched = native.hydrate(paths, rows, tickets=PILOT)
     markers = local.collect_markers(paths, rows)
     remote, prs = github.pilot_markers()
     markers += remote
