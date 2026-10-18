@@ -1,5 +1,4 @@
 """Recognize executable native-review commands without evaluating recorded text."""
-import ast
 from pathlib import PurePosixPath
 import re
 import shlex
@@ -74,6 +73,50 @@ def shell_review(command):
     return any(review_segment(words) for words in shell_segments(command))
 
 
+def js_escape(body, position):
+    """Decode one ECMAScript module escape; return its value and next position."""
+    match = re.match(r'\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|\r\n|.)',
+                     body[position:], re.S)
+    if not match:
+        raise ValueError('incomplete escape')
+    escaped = match[0][1:]
+    if any(match.groups()):
+        codepoint = int(next(g for g in match.groups() if g is not None), 16)
+        if codepoint > 0x10ffff:
+            raise ValueError('invalid code point')
+        value = chr(codepoint)
+    elif escaped in ('\n', '\r', '\r\n', '\u2028', '\u2029'):
+        value = ''
+    elif escaped[0] in 'ux123456789' or escaped == '0' and body[position + 2:position + 3].isdigit():
+        raise ValueError('invalid escape')
+    else:
+        value = {'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'v': '\v', '0': '\0'}.get(escaped, escaped)
+    return value, position + len(match[0])
+
+
+def js_string(literal):
+    """Read a static JS literal, never evaluate code or template substitutions."""
+    if len(literal) < 2 or literal[0] not in '\'"`' or literal[-1] != literal[0]:
+        raise ValueError('not a string literal')
+    quote, body = literal[0], literal[1:-1]
+    if quote == '`':
+        body = body.replace('\r\n', '\n').replace('\r', '\n')
+    result, position = [], 0
+    while position < len(body):
+        char = body[position]
+        if char == '\\':
+            value, position = js_escape(body, position)
+            result.append(value)
+            continue
+        if char == quote or quote == '`' and body.startswith('${', position):
+            raise ValueError('non-static literal')
+        if quote != '`' and char in '\r\n':
+            raise ValueError('unescaped newline')
+        result.append(char)
+        position += 1
+    return ''.join(result).encode('utf-16', 'surrogatepass').decode('utf-16', 'surrogatepass')
+
+
 def nested_commands(code):
     """Literal cmd fields of direct tools.exec_command calls in Codex JS wrappers."""
     pattern = (r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`|"
@@ -98,11 +141,10 @@ def nested_commands(code):
             if tokens[position + 3] not in (',', '}'):
                 continue
             try:
-                value = ast.literal_eval(literal)
-            except (ValueError, SyntaxError):
+                value = js_string(literal)
+            except ValueError:
                 continue
-            if isinstance(value, str):
-                yield value
+            yield value
 
 
 def native_review(name, arguments):

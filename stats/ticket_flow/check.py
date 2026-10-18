@@ -87,7 +87,7 @@ class Run:
                     fields += (ESTIMATES + ('prs', *PR_SUMS, 'churn_ratio', 'review_after_bot')
                                          if name == 'tickets' else ())
                 for field in fields:
-                    integer = not any(s in field for s in ('minutes', '_min', 'ratio'))
+                    integer = not any(s in field for s in ('minutes', '_min', 'ratio', 'estimated_rounds_'))
                     number(row[field], f'file={name}.csv row={i} metric={field}', integer)
                 if name == 'run':
                     metric = row['metric']
@@ -96,7 +96,7 @@ class Run:
                                    'pr_first_review', 'pr_first_bot', 'pr_fix_split_status', 'estimate_identity'))
                     if numeric:
                         number(row['value'], f'file=run.csv row={i} metric={metric}',
-                               not any(s in metric for s in ('minutes', 'pct', 'ratio')))
+                               not any(s in metric for s in ('minutes', 'pct', 'ratio', 'estimate_rounds_')))
                     for field in ('numerator', 'denominator'):
                         number(row[field], f'file=run.csv row={i} metric={metric}.{field}')
 
@@ -146,7 +146,8 @@ def main(argv=None):
             except ValueError as error:
                 report.require(False, f'{family.__name__.upper()}_FAIL missing_evidence {error}')
             if report.failures == before:
-                print(f'{family.__name__.upper()}_PASS')
+                label = 'ACTIVITY_EVIDENCE' if family is checks.activity else family.__name__.upper()
+                print(f'{label}_PASS')
         for row in run.rows['run']:
             if row['metric'] in ('unknown_tokens_pct', 'ambiguous_tokens_pct',
                                   'unknown_minutes_pct', 'ambiguous_minutes_pct'):

@@ -77,7 +77,7 @@ class CheckTests(unittest.TestCase):
              patch('stats.ticket_flow.github_fetch.request', side_effect=AssertionError('network')):
             status, output = self.invoke()
         self.assertEqual(status, 0, output)
-        for family in ('IDENTITY', 'CONSERVATION', 'ACTIVITY', 'PR_MISSINGNESS', 'NATIVE'):
+        for family in ('IDENTITY', 'CONSERVATION', 'ACTIVITY_EVIDENCE', 'PR_MISSINGNESS', 'NATIVE'):
             self.assertIn(family + '_PASS', output)
         self.assertIn('OUTPUT_CHECK_PASS checks=', output)
         self.assertIn('RECORDED_SHARE', output)
@@ -191,6 +191,8 @@ class CheckTests(unittest.TestCase):
         self.assertIn('ACTIVITY_SHARE overall other_tokens=40 all_tokens=80 pct=50.000000000', output)
         self.assertIn('ACTIVITY_TARGET_NOT_REQUESTED', output)
         self.assertNotIn('ACTIVITY_TARGET_PASS', output)
+        self.assertIn('ACTIVITY_EVIDENCE_PASS', output)
+        self.assertNotIn('ACTIVITY_PASS', output)
         self.fails('ACTIVITY_TARGET_FAIL', '--activity-target')
         self.data['tickets'][0]['codex_output_tokens'] = 11
         self.fails('TOKEN_CONSERVATION_FAIL')
@@ -262,3 +264,23 @@ class CheckTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()) as output:
             self.assertEqual(check.main([str(self.directory / 'absent')]), 1)
         self.assertIn('missing_evidence', output.getvalue())
+
+    def test_fractional_estimate_rounds_and_invalid_values(self):
+        for name, fields in (('tickets', ('estimated_rounds_low', 'estimated_rounds_high')),
+                             ('run', ('estimate_rounds_low', 'estimate_rounds_high'))):
+            for field in fields:
+                for value in ('0.5', '1.25', '0', '-0.5', 'NaN', 'Infinity', '-Infinity', 'bad', '1-2'):
+                    with self.subTest(name=name, field=field, value=value):
+                        self.data = evidence()
+                        if name == 'tickets':
+                            self.data[name][0][field] = value
+                        else:
+                            self.data[name].append(dict(ticket='IGR-15', metric=field, value=value))
+                        if value in ('0.5', '1.25', '0'):
+                            self.assertEqual(self.invoke()[0], 0)
+                        else:
+                            self.fails('invalid_number=')
+        for field in ('dispatches', 'fix_rounds'):
+            self.data = evidence()
+            self.data['tickets'][0][field] = '0.5'
+            self.fails('invalid_number=')
