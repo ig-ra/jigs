@@ -1,41 +1,48 @@
-"""Pilot entry point: two-ticket coverage slice; full command follows in step 4."""
+"""Measure ticket-flow tokens and recorded agent time for two UTC dates (END exclusive)."""
 import argparse
+from datetime import date
 from pathlib import Path
 import subprocess
 import sys
 
-from . import csvio, gate, github, local, native, sources, stages, tables, timing
-from .model import PILOT
+from . import csvio, github_fetch, local, sources, stages, tables
 
 
 def measure(start, end):
-    rows, paths, counts = sources.collect_pilot(end)
-    turns, unmatched = native.hydrate(paths, rows, tickets=PILOT)
-    markers = local.collect_markers(paths, rows)
-    remote, prs = github.pilot_markers()
-    markers += remote
-    turns = [t for t in turns if t.start is None or t.start < end]
-    timing.attribute_overlap(turns)
-    stages.assign(turns, markers)
-    result = tables.assemble(turns, start, end, counts, unmatched, prs, markers)
-    lines, failures = gate.numeric_checks(rows, turns, result, start, end)
-    return result, lines, failures
+    collected = local.collect(end)
+    tickets = {repo: set() for _, repo in sources.REPOS}
+    evidence = collected['rows'] + [vars(t) for t in collected['turns']] + [
+        vars(m) for m in collected['markers']]
+    for row in evidence:
+        if row.get('ticket') and row.get('repo') in tickets:
+            tickets[row['repo']].add(row['ticket'])
+    remote, prs = github_fetch.collect(tickets)
+    markers = collected['markers'] + remote
+    stages.assign(collected['turns'], markers)
+    return tables.assemble(collected['turns'], start, end, collected['counts'],
+                           collected['unmatched'], prs, markers, collected['estimates'])
+
+
+def utc_date(value):
+    if date.fromisoformat(value).isoformat() != value:
+        raise ValueError('dates must use YYYY-MM-DD')
+    return sources.stamp(value)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('START')
-    parser.add_argument('END')
+    parser.add_argument('START', help='UTC date, YYYY-MM-DD (inclusive)')
+    parser.add_argument('END', help='UTC date, YYYY-MM-DD (exclusive)')
     args = parser.parse_args(argv)
     try:
-        start, end = sources.stamp(args.START), sources.stamp(args.END)
+        start, end = utc_date(args.START), utc_date(args.END)
         if start >= end:
             raise ValueError('END must be later than START')
-        result, lines, failures = measure(start, end)
-        csvio.publish(Path('stats/runs') / f'{args.START}_{args.END}', result)
-        print('\n'.join(lines))
-        print('PILOT_OUTPUT_WRITTEN; complete enrichment and hand reconciliation not implied')
-        return 1 if failures else 0
+        result = measure(start, end)
+        directory = Path('stats/runs') / f'{args.START}_{args.END}'
+        csvio.publish(directory, result)
+        print(f'TICKET_FLOW_OUTPUT_WRITTEN {directory}')
+        return 0
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(f'ticket_flow: {error}', file=sys.stderr)
         return 2

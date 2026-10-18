@@ -1,16 +1,16 @@
 # stats: ticket-flow token usage
 
-## IGR-19 coverage pilot (step 1)
+## IGR-19 command (step 4)
 
 ```sh
 python3 -B -m stats.ticket_flow 2026-10-17 2026-10-18
 ```
 
-UTC, END exclusive. This implementation slice measures **IGR-15/16 only**; full three-repo collection and review/activity enrichment follow after the approved gate. It reads the existing bin/usage readers, native transcripts, estimate dispatch timestamps and available local commit author dates. GitHub reads only jigs PR 3/4 identity, creation, merge and first bot activity time. No input logs, GitHub state, bin/usage behavior or dashboard assets are changed.
+Two positional `YYYY-MM-DD` dates, UTC, END exclusive; END must be later than START. The command now combines local activity/time/estimate collection and full GitHub enrichment for the fixed home-relative jigs, condition-curator and agent-platform roots. It retains earlier context for stage attribution, selects calls by call timestamp and full completed durations by completion timestamp. Run outside the sandbox for host-keyring GitHub access; authentication and read-only requests use the prefix documented below.
 
-Outputs: `stats/runs/2026-10-17_2026-10-18/{stages,tickets,run}.csv` are tracked; `calls.csv` in that directory is generated and ignored. The command returns nonzero for a failed numeric pilot gate, retaining the measured evidence; a collection error publishes no new set. Hand reconciliation is a one-time documented check, not implied by command exit 0 alone. Identical sources give stable CSV formatting/order; no generated wall-clock time is written. Event timestamps remain evidence.
+Outputs: `stats/runs/2026-10-17_2026-10-18/{stages,tickets,run}.csv` are tracked; `calls.csv` in that directory is generated and ignored. The command returns 0 only after all collection, assembly and publication succeeds; a local/API collection failure returns 2 and preserves any previous output set. The accepted numeric pilot gate below is historical evidence and is not rerun by this command. Hand reconciliation is a one-time documented check, not implied by command exit 0 alone. Identical sources give stable CSV formatting/order; no generated wall-clock time is written. Event timestamps remain evidence.
 
-Accepted step-1 output columns (the tracked pilot files retain this schema):
+The command writes the enriched schemas described in the step-2/3 sections below. The tracked pilot CSVs have not been regenerated. Historical accepted step-1 columns:
 
 - `calls.csv`: canonical provider/call ID/timestamp and ticket basis; repo, actor, session/parent/turn; native or first-call start/basis; call source path/line; chosen marker timestamp/source/repo; stage, stage_order, review_pass, cycle; four raw token buckets; missing_reason. `repo` comes from lexical fixed-root cwd mapping; non-repo parent-directory cwd stays blank.
 - `stages.csv`: ticket/stage/review_pass/cycle keys; each actor's new_input_tokens/cache_read_tokens/cache_write_tokens/output_tokens; Claude-main and Codex minutes_raw; turn_overlap_min; calls/turns; coverage. `tickets.csv` sums these measures by ticket. Repo is not an aggregate key. Actor names are claude_main, claude_subagents and codex; no reasoning-token double count.
@@ -45,7 +45,7 @@ Not yet exercised: full three-repo/window output, complete activity/family/wait/
 
 ### Local measurements (step 2)
 
-`local.collect(end)` now collects the local slice for the fixed home-relative jigs, condition-curator and agent-platform roots. It reuses canonical `bin/usage.collect` records, retaining earlier context and unassigned calls. Repo mapping is lexical and does not require surviving worktree directories. This slice is fixture-tested; the command above remains the explicit two-ticket pilot until step 4 integrates the full command. The accepted pilot CSVs have not been regenerated.
+`local.collect(end)` now collects the local slice for the fixed home-relative jigs, condition-curator and agent-platform roots. It reuses canonical `bin/usage.collect` records, retaining earlier context and unassigned calls. Repo mapping is lexical and does not require surviving worktree directories. Step 4 integrates this fixture-tested slice into the command above. The accepted pilot CSVs have not been regenerated.
 
 Local audit additions: `activity`, `activity_basis`, `activity_source`, `child_type`, full `child_description`, `child_family`, and `child_basis`. Activity uses native tool inputs with the prototype's first-match vocabulary, extended to Codex tool names/source. Missing inputs remain `other` with a missing-input reason. Child identity comes from sidecars/native metadata and linked launch inputs. A recorded simplify launch can supply its lenses' family. Missing identity remains blank; parent-session links can supply a ticket from prior evidence, never a future/majority ticket. Audit missing reasons name absent child fields and attribution evidence.
 
@@ -59,7 +59,7 @@ Not exercised in step 2: real three-repo/full-window collection, pilot regenerat
 
 ### GitHub enrichment and tables (step 3)
 
-`github_fetch.collect({repo: ticket_keys})` now supplies the full read-only PR snapshot and timestamp markers for table assembly. It checks host-keyring authentication first and uses the same `env -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN gh` prefix for every request. Call it outside the sandbox. PR listings, submitted reviews, inline/issue comments and current commits use paginated GET requests. Exact case-insensitive separator-bounded ticket keys join head refs, including zero or multiple PRs. A failed request or incomplete current commit list aborts collection; it cannot become an empty successful result. Command integration remains step 4; accepted pilot CSVs remain unchanged.
+`github_fetch.collect({repo: ticket_keys})` now supplies the full read-only PR snapshot and timestamp markers for table assembly. It checks host-keyring authentication first and uses the same `env -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN gh` prefix for every request. Call it outside the sandbox. PR listings, submitted reviews, inline/issue comments and current commits use paginated GET requests. Exact case-insensitive separator-bounded ticket keys join head refs, including zero or multiple PRs. A failed request or incomplete current commit list aborts collection; it cannot become an empty successful result. Step 4 integrates this collector into the command above; accepted pilot CSVs remain unchanged.
 
 Ticket snapshot columns: `prs`, `pr_files`, `pr_additions`, `pr_deletions`, `pr_commits`, `initial_commits`, `fix_commits`, `initial_additions/deletions`, `fix_additions/deletions`, `churn_ratio`, `fix_split_status`, `bot_reviews`, `bot_comments`, `bot_threads`, and `review_after_bot`. `pr_files` sums each PR's changed-file count; it is not a count of unique files across PRs. Bot identity uses API user type. Review/comment IDs deduplicate within their API surface; inline replies roll up to thread roots, including a bot reply to a human root. Draft reviews do not supply submitted-review boundaries or bot review counts.
 
@@ -72,6 +72,12 @@ Shared schemas and required-component sums live in `table_common.py`; stage, tic
 Run provenance includes each PR's repo, number, current head ref/SHA, snapshot sizes, split counts/status and bot counts, plus existing event/source references. Run diagnostics count measured source files/sessions, PR heads, unassigned calls, unknown calls, ambiguous turns, unmatched starts, multi-repo tickets, no-PR tickets and native-review usage gaps. Completion-only turns contribute source/repo coverage; unavailable token buckets cannot fabricate a coverage-share denominator. No per-repo aggregate rows or warning matrix is added. CSV formatting/publication is shared; source/serialization failure before publication preserves the previous four output files.
 
 Step 3 validation is offline fixtures plus build/import. Live checks were limited to host-keyring authentication and one jigs repository metadata GET. Full PR/API and Sawmills access, live churn, full-window output, the combined pipeline fixture and later acceptance gates remain unexercised.
+
+### Combined command validation (step 4)
+
+An offline combined native-source/API fixture exercises the actual command, canonical usage bridge, local hydration/enrichment, GitHub interpretation and CSV publication. It checks all three repo roots, a ticket spanning repos, Claude main/child and Codex token buckets, recorded-duration conservation through stages/tickets, completion-only work, pre-window context, END exclusion, sorted rows, blanks versus zero, empty-window headers and byte-identical repeated output. Failed late API collection and missing local sources preserve previous outputs and return nonzero. Imports perform no collection/publication. Existing usage tests are the bridge compatibility check.
+
+Full live three-repo/window collection, cleanup/preservation and the complete column dictionary remain step 5. The 50-call classification audit and IGR-14 note remain Claude's work, for Igor to review.
 
 Goal: same quality, fewer tokens per ticket. The flow started on 2026-10-05.
 
