@@ -147,10 +147,12 @@ messages to get right; nine of them drove rounds I should have driven myself.
 mechanism I have only grepped. If I cannot state how the thing works in my own words, I am not ready
 to ask codex anything.
 
-**1. Two independent passes, then converge.** Codex judges the problem without
-seeing my solution: the brief gives the goal, context, decisions and facts, never my design. I write
-my own solution down first, independently. Communication starts only when both exist: share mine,
-compare the two, and decide together what to keep, do and change. *"If they are the same, say so in
+**1. Independent judgment, then converge.** Codex judges the problem without
+seeing my solution: the brief gives the goal, context, decisions and facts, never my design. On a
+ticket's design-choice route (`loop.md`, Before code step 1) each of us writes a design; on the
+bounded route codex challenges the premises and designs the smallest change, and I judge its
+contract independently. Communication starts only when both judgments exist: share mine (my
+design, or my cut answer and contract read), compare the two, and decide together what to keep, do and change. *"If they are the same, say so in
 one line and do not manufacture a difference."* Handing it my design to attack is a review
 relationship, not a partnership, and it anchors its answer on mine. Codex reads Linear comments, so
 nothing of my solution goes on the ticket before its pass. The same applies to new work in the
@@ -158,15 +160,19 @@ middle of a PR, to review findings, and to CI failures: a fix brief carries the 
 numbers, never "my reading" of the cause. A batch of review or bot findings counts as a problem: sort
 it per `loop.md` After code step 2, and give judgment-track findings to codex without my verdict.
 
-**This includes my numbers.** In the independent pass, name what to measure and hand over the exact
-commands or scripts that measure it, not what I measured: my evidence anchors codex as much as my
-design does, while rebuilding a measurement method from scratch is the expensive part. Point it at primary sources and say that any
-numbers already on the ticket or PR are claims to re-check. The numbers I gathered go in at the
-compare round.
+**Share observations, not interpretations.** Codex cannot reach prod, so prod facts go in the first
+brief as observations: the query, environment and time, scope, result and limits. Withholding them
+costs a round and buys no independence; independence protects the judgment about what follows from
+the facts, not the rediscovery of facts. What stays out is my reading: no design, no conclusion, and
+no fact titled with the claim under examination ("unused X"). Label call-site and file lists as
+discovery results with their exclusions, and ask codex to look for a counterexample outside them.
+Numbers already on the ticket or PR are claims to re-check. A number that measures a population I
+have not proved is a claim, not an observation.
 
-**Rounds are free; coming back to the human is not.** Loop as many times as the work needs and report
-once, at the end. What makes a round legitimate is that *the last answer changed the question* — new
-evidence, a real disagreement, a correction that opened something. What makes it waste is asking the
+**Rounds cost; coming back to the human costs more.** The target is one design round (`loop.md`,
+"Round trips are the cost" and Before code), with every check asked inside it. Report to the human
+once, at the end. What makes another round legitimate is that *the last answer changed the
+question* — new evidence, a real disagreement, a correction that opened something. What makes it waste is asking the
 same question in different words, fishing for confirmation, or starting a round because I did not
 know what to do next. If I cannot say in one line what this round closes that the last one did not,
 I do not have a round, I have a stall.
@@ -176,11 +182,14 @@ and cannot see a product decision. Stop, and bring the human the disagreement it
 its reason is Y, mine is Z, this needs your call" — not a fourth round. Half the hard blocks dissolve
 that way; none dissolve by arguing.
 
+Steps 2-4 below are asked in the same brief as the design or compare, not as separate turns.
+
 **2. Cut — always, before anything is written down.** By now the spec is bigger than the job, and
 every addition was individually right, which is how it got that way. Ask which parts it would cut for
 the smallest change that still moves the property. Name cut candidates without arguing for them —
 arguing tells it the answer. It once cut a ticket by two thirds this way, and withdrew one of its own
-requirements as overreach.
+requirements as overreach. In the ticket loop this is the cut question of `loop.md` Before code
+step 2, worded there.
 
 **3. Ready? — one explicit question, always asked.** "Is it a good idea" and "can someone open the
 branch tomorrow without stopping to ask" are different questions. I have skipped the second one.

@@ -14,6 +14,7 @@
 - **Brief directory:** use `LOCAL`, the worktree's ignored `igr/` folder (see `../SKILL.md`). It survives forks, compaction and temp cleanup; finish deletes it with the worktree. Record the contract and final result on Linear before cleanup.
 - **Codex reads Linear itself** (ticket description and comments). Point it at the ticket; paste only what it cannot see, such as prod numbers or other repos.
 - **Replies come to my pane by name.** End each brief with "write your answer to <file>, then run: `herdr agent prompt <my-pane-name> '<file> ready'`". Use one line, with no quotes, backticks or `$` in the argument. Then end my turn: the reply arrives as my next message.
+- **A mid-turn message is not a reply** (an evidence request or a route widening, `loop.md` Before code steps 1-2): codex is still working. For evidence, start the work, answer in `design-check.md`, then send codex one line naming the answered claim id; for a widening, write A. A prompt sent while it works is folded in.
 - **Ask for long answers as a file.** Codex's TUI scrollback is short.
 - **After codex `/compact`**, it forgets where the spec lives, so every later brief names the spec file or ticket comment explicitly.
 

@@ -119,7 +119,7 @@ Report in about five short lines, verdict first, using names rather than numbers
 - the worktree path, branch and base sha, the pane name and the tab label;
 - leftovers to close.
 
-Save the initial `LOCAL/resume.md` using [references/resume.md](references/resume.md#save-the-checkpoint), with phase `design` and the actual next action (including any blocker). Then, in the same turn, start `references/loop.md` "Before code" step 1 (my own investigation). Its first stop is the hidden-decisions poll. Stop after the report instead only when told "don't start yet", a blocked-by ticket is not Done, or a worktree conflict needs an answer.
+Save the initial `LOCAL/resume.md` using [references/resume.md](references/resume.md#save-the-checkpoint), with phase `design`, the intake time in `Design numbers:` (the route follows at step 1's end), and the actual next action (including any blocker). Then, in the same turn, start `references/loop.md` "Before code" step 1 (my own investigation). Its first stop is the hidden-decisions poll. Stop after the report instead only when told "don't start yet", a blocked-by ticket is not Done, or a worktree conflict needs an answer.
 
 ## `/igr:ticket resume [key]`: continue a ticket
 
@@ -167,7 +167,7 @@ If any check fails, stop, report what failed, and change nothing: no texts, no c
 Load the Linear tools if they are deferred. Re-read the description and comments right before editing them; other sessions edit them too.
 - **Acceptance criteria:** tick each one only where a test, the merged PR or the recorded decision proves it. For any criterion you cannot prove, leave it unticked and name it in the report.
 - **Living comment:** the "Suggested implementation" comment must describe what shipped (the merged code, or the decision) and end with the final Mental Model (B). If later commits or decisions changed anything, update the comment.
-- **Local models:** make `<LOCAL>/A-to-B.md` final: model A from the same folder against final B, with the reason for each change.
+- **Local models:** on the design-choice route, make `<LOCAL>/A-to-B.md` final: model A from the same folder against final B, with the reason for each change. The bounded route has no A, and a trivial change has B = A; neither needs this file.
 - **Duplicates:** if an older comment repeats the living one (for example an "Agreed plan"), list it in the report; deleting a comment needs approval.
 
 #### 3. Follow-ups
@@ -179,6 +179,7 @@ Collect what was deferred, decided for later, or left out of scope. Look at the 
 - **Project memory** (the file for the ticket's project, found through `MEMORY.md`): append one short paragraph covering what shipped (PR and merge sha, or the decision), new tickets, and facts learned that a later session needs. Update its description and index line if "next" changed.
 - **Feedback:** if I was corrected on how I work during the ticket (this conversation and `<LOCAL>/corrections.md`) and it is not saved yet, propose the exact edit in the report, naming where it belongs (`references/loop.md` or this file for the ticket loop, `references/driving-codex.md` for briefing codex) rather than a new file, and apply it only after Igor's OK. A fact for a project memory may be written directly.
 - **Agent-time estimates:** find this ticket's open rows in `~/.claude/agent-estimates.tsv`. For each implementing id in `state.json` → `tk.estimates`, use `<skill base directory>/scripts/tk --cwd <worktree> step <KEY> <line> <current status> --report --actual-minutes <minutes>`. Take minutes from when that run actually ended (the codex report or my last commit), not from now. For legacy ids or missing state, use `python3 <skill base directory>/../agent-estimate/estimate.py done <id> --actual <minutes>`; `tk` cannot report an id it does not hold. Put estimated against actual for each implementing row in the report. For Claude review timers, follow `references/loop.md`, After code step 1; list their actual minutes per PR.
+- **Design-phase numbers:** report T (design tokens), R (codex design rounds), C (contract repairs after approval) and X (late trims) with the ticket's route, as defined in `references/loop.md` "Design-phase numbers", which names where each comes from.
 - **Handoff** `<REPO>/.remember/remember.md` (skip with a note if the repo has none): rewrite this track's section with a timestamp. Cover the state (ticket Done, PR and sha or the decision), next (the recommended next ticket and why), leftovers, and carried-over open items. Keep other tracks' sections untouched.
 
 #### 5. Clean up
@@ -200,6 +201,7 @@ Only if steps 1-5 succeeded: set the ticket's status to Done, and only when ever
 
 Verdict first, in short lines, following `~/.claude/memory/talking-to-igor.md`:
 - what shipped: PR and sha, or the decision; ticket Done (and any criterion left unticked, with the reason);
+- design-phase numbers: route, T, R, C, X;
 - follow-ups created or proposed;
 - memory and handoff updated;
 - cleaned up: worktree, branch, codex pane (or why a pane stayed open);

@@ -31,6 +31,7 @@ Deviations: <implementation deviations from the contract, with their source, or 
 Unresolved: <findings/decision file and remaining items, or none>
 Follow-ups: <file or list of deferred items, or none>
 Corrections: <igr/corrections.md, or none>
+Design numbers: <route; R; intake and first-approval UTC times; C and X totals (events in igr/design-check.md), or pending>
 Next action: <the loop step by its heading, plus this ticket's data (PR, head, pending pass); identify any human decision it awaits>
 ```
 
@@ -86,7 +87,7 @@ Inside Herdr, restore my agent name before any brief to codex, because `/clear` 
 
 Read `loop.md` and the repo instructions/working memories needed for this phase, then continue from the checkpoint's exact loop position. `loop.md` decides how a step runs; the checkpoint only says where and with what data. If the checkpoint names a method, tool, skill or workflow that the loop step does not, follow `loop.md`, correct the checkpoint and add a line to `corrections.md`:
 
-- `design`: continue the pending investigation, compare round or approval from the existing artifacts. Preserve completed independent passes and immutable Model A.
+- `design`: continue the pending investigation, codex design turn, contract read, batched round or approval from the existing artifacts. Preserve the recorded route, completed independent work, `design-check.md` and, on the design-choice route, the immutable Model A.
 - `develop`: continue the plan's first unchecked step or the recorded active dispatch. Reuse the existing Codex pane; read a completed reply before sending anything. Dispatch only when no run is already doing that work and the contract authorizes it.
 - `review`: continue the recorded review/fix/check/merge-wait action. Keep ordinary fix rounds in the existing review context and preserve the loop's review/rerun rules.
 - `finish`: run the existing finish procedure, including its delivery and cleanup proofs.
