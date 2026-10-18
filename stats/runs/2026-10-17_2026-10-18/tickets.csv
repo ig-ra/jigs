@@ -1,0 +1,3 @@
+ticket,claude_main_new_input_tokens,claude_main_cache_read_tokens,claude_main_cache_write_tokens,claude_main_output_tokens,claude_subagents_new_input_tokens,claude_subagents_cache_read_tokens,claude_subagents_cache_write_tokens,claude_subagents_output_tokens,codex_new_input_tokens,codex_cache_read_tokens,codex_cache_write_tokens,codex_output_tokens,claude_main_minutes_raw,codex_minutes_raw,turn_overlap_min,calls,turns,coverage
+IGR-15,518,54457487,733843,220500,160,3516427,525925,6698,932999,27547392,0,253601,62.553067,104.859500,3.236650,572,98,partial
+IGR-16,464,40740254,755217,167326,36,589934,288924,1376,630470,14778880,0,68944,27.024650,31.890033,0.862183,409,76,partial
