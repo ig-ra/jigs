@@ -20,6 +20,23 @@ The command writes `stats/runs/START_END/`: tracked `stages.csv`, `tickets.csv`,
 
 Identical inputs produce identical bytes: all columns and rows have stable order, UTF-8 CSV uses LF, floating values have six decimal places, and no generated wall-clock timestamp is added. Event times remain provenance. Logs, estimates and current GitHub state can change between runs. The accepted pilot directory `2026-10-17_2026-10-18` retains its original step-1 schema and data; the dictionary below describes the complete command schema.
 
+## Developer checks
+
+```sh
+# Offline suite: three live tests skipped; no network or real-log access.
+python3 -B -m unittest discover -s tests/stats -p 'test_*.py'
+# Same suite, deliberately outside the sandbox; host keyring and real logs required.
+TICKET_FLOW_LIVE=1 python3 -B -m unittest discover -s tests/stats -p 'test_*.py'
+# Offline check of one written run, including its retained ignored audit.
+python3 -B -m stats.ticket_flow.check stats/runs/2026-10-05_2026-10-18
+```
+
+The checker reads only the four CSVs. It checks identity/population, raw token/minute conservation, overall activity `other <5%` (actor/repo shares are diagnostics), PR missingness/aggregation, and grouped native-review agreement. It prints the run's recorded unknown/ambiguous shares without recomputing them. Success ends `OUTPUT_CHECK_PASS checks=N`; missing evidence or failed assertions end `OUTPUT_CHECK_FAIL failures=N`, exit 1, with affected files/keys/metrics and numbers. The original pilot lacks required activity/PR/native evidence and fails explicitly. A checkout without ignored `calls.csv` cannot be certified. No baseline mode or fixed historical totals.
+
+Live opt-in authenticates via the exact host-keyring prefix above, checks jigs PR 3/IGR-15 against independently fetched review/comment lists and commits, forces actual multiple-page commit fetching, then runs 2026-10-17 through 2026-10-18 against real home logs and estimates in a temporary working directory and checks its outputs. All three tests skip unless `TICKET_FLOW_LIVE=1`; missing prerequisites after opt-in fail. Direct requests print actual gh command/GET-page counts and elapsed time; the separate command prints its elapsed time, with request count unmeasured. No retries. Real quota applies; the one-day command can take tens of minutes (3600-second cap). A developer can select just `test_live` with normal unittest selectors.
+
+Every behavioral fix carries its regression tests. A real run regenerates tracked outputs; it does not replace tests. The live test publishes only temporary outputs. Serialized consistency cannot independently prove native-source completeness, stage intent, semantic churn accuracy or the separate 50-call classification audit; one PR/day cannot cover every repo or log dialect. No Claude-child duration or standalone native-review usage is invented.
+
 ## Measurement and missingness
 
 Calls are selected by call timestamp. Full completed durations are selected by completion timestamp, even if they began before START. Earlier context stays available for attribution. Incomplete turns can supply calls; completion-only turns can supply time. Claude main time sums native `turn_duration` records. Codex time uses completed native start/complete pairs, including children. No Claude-child minutes or standalone native-review usage is invented. Unmatched Codex starts remain counted alongside recorded work.
