@@ -5,19 +5,16 @@ from pathlib import Path
 import subprocess
 import sys
 
-from . import csvio, github_fetch, local, sources, stages, tables
+from . import csvio, github_fetch, local, population, sources, stages, tables
 
 
 def measure(start, end):
     collected = local.collect(end)
-    tickets = {repo: set() for _, repo in sources.REPOS}
-    evidence = collected['rows'] + [vars(t) for t in collected['turns']] + [
-        vars(m) for m in collected['markers']]
-    for row in evidence:
-        if row.get('ticket') and row.get('repo') in tickets:
-            tickets[row['repo']].add(row['ticket'])
+    selected = population.selected_tickets(collected['turns'], collected['markers'],
+                                           collected['estimates'], start, end)
+    tickets = population.repo_tickets(collected, selected)
     remote, prs = github_fetch.collect(tickets)
-    markers = collected['markers'] + remote
+    markers = [m for m in collected['markers'] if m.ticket in selected] + remote
     stages.assign(collected['turns'], markers)
     return tables.assemble(collected['turns'], start, end, collected['counts'],
                            collected['unmatched'], prs, markers, collected['estimates'])

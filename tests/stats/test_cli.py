@@ -55,7 +55,7 @@ class CliTests(unittest.TestCase):
         completed = turn(ticket='SAW-100', repo='Sawmills/condition-curator', calls=[])
         marker = Marker('SAW-200', at(), 'design', 'marker:1', 'Sawmills/agent-platform')
         collected = dict(rows=[call(repo='ig-ra/jigs'), call(ticket=None, repo='ig-ra/jigs')],
-                         turns=[completed], markers=[marker], estimates=[], counts={}, unmatched={})
+                         turns=[completed, turn()], markers=[marker], estimates=[], counts={}, unmatched={})
         remote = Marker('SAW-100', at(), 'first_review', 'github:1')
         with patch.object(cli.local, 'collect', return_value=collected) as collect:
             with patch.object(cli.github_fetch, 'collect', return_value=([remote], [])) as fetch:
@@ -64,8 +64,8 @@ class CliTests(unittest.TestCase):
                     collect.assert_called_once_with(at(60))
                     fetch.assert_called_once_with({'ig-ra/jigs': {'IGR-15'},
                         'Sawmills/condition-curator': {'SAW-100'}, 'Sawmills/agent-platform': {'SAW-200'}})
-                    assign.assert_called_once_with([completed], [marker, remote])
-                    assemble.assert_called_once_with([completed], at(), at(60), {}, {}, [], [marker, remote], [])
+                    assign.assert_called_once_with(collected['turns'], [marker, remote])
+                    assemble.assert_called_once_with(collected['turns'], at(), at(60), {}, {}, [], [marker, remote], [])
 
     def test_import_has_no_collection_or_publication_side_effect(self):
         with patch.object(cli.local, 'collect') as collect, patch.object(cli.github_fetch, 'collect') as fetch:

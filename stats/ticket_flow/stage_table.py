@@ -46,6 +46,11 @@ def stage_rows(turns, calls, start, end, markers=()):
         if in_window(turn.end, start, end) or any(c['session'] == turn.session and
                 c['turn'] == turn.identity and c['provider'] == turn.provider for c in calls):
             groups[key]['context'].append(turn)
+    # Marker-only work is published even without a call or completed turn.
+    for ticket, line in timeline(markers).items():
+        for time, marker, stage, review, cycle, invocation in line:
+            if in_window(time, start, end):
+                groups[ticket, stage, review, cycle]
     events = invocation_counts(markers, start, end)
     for key in events:
         groups[key]

@@ -18,6 +18,9 @@
       {"cwd": "{home}/work/condition-curator/.worktrees/igor/igr-15", "type": "assistant", "timestamp": "2026-10-17T00:01:10Z", "message": {"id": "curator", "model": "claude-sonnet", "content": [], "usage": {"input_tokens": 10, "cache_read_input_tokens": 20, "cache_creation_input_tokens": 3, "output_tokens": 5}}},
       {"cwd": "{home}/work/condition-curator/.worktrees/igor/igr-15", "type": "system", "subtype": "turn_duration", "uuid": "duration-curator", "timestamp": "2026-10-17T00:01:30Z", "durationMs": 30000}
     ],
+    "inactive.jsonl": [
+      {"type": "user", "cwd": "{home}/my/dev-tools/jigs/.worktrees/igor/igr-88", "timestamp": "2026-10-16T00:00:00Z", "message": {"content": "/igr:ticket start IGR-88"}}
+    ],
     "platform.jsonl": [
       {"type": "user", "cwd": "{home}/work/agent-platform/.worktrees/igor/saw-100", "timestamp": "2026-10-16T23:59:30Z", "message": {"content": "/igr:ticket start SAW-100"}},
       {"type": "system", "cwd": "{home}/work/agent-platform/.worktrees/igor/saw-100", "subtype": "turn_duration", "uuid": "completion-only", "timestamp": "2026-10-17T00:00:30Z", "durationMs": 60000}
@@ -31,11 +34,11 @@
   },
   "estimates": "id\tstarted\tagent\tticket\ttask\trounds_low\trounds_high\test_min\tactual_min\ndispatch\t2026-10-17T00:00:55Z\tcodex\tIGR-15\timplement\t1\t2\t2-4\t\n",
   "api": {
-    "repos/ig-ra/jigs/pulls?state=all&per_page=100": [{"number": 7, "head": {"ref": "igor/igr-15", "sha": "initial"}, "created_at": "2026-10-17T00:00:45Z", "merged_at": null, "changed_files": 1, "additions": 12, "deletions": 2, "commits": 1}],
+    "repos/ig-ra/jigs/pulls?state=all&per_page=100": [{"number": 7, "head": {"ref": "igor/igr-15", "sha": "initial"}, "created_at": "2026-10-17T00:00:45Z", "merged_at": null, "changed_files": 1, "additions": 12, "deletions": 2, "commits": 1}, {"number": 88, "head": {"ref": "igor/igr-88", "sha": "inactive"}}],
     "repos/Sawmills/condition-curator/pulls?state=all&per_page=100": [],
     "repos/Sawmills/agent-platform/pulls?state=all&per_page=100": [],
     "repos/ig-ra/jigs/pulls/7": {"number": 7, "head": {"ref": "igor/igr-15", "sha": "initial"}, "created_at": "2026-10-17T00:00:45Z", "merged_at": null, "changed_files": 1, "additions": 12, "deletions": 2, "commits": 1},
-    "repos/ig-ra/jigs/pulls/7/reviews?per_page=100": [{"id": 1, "user": {"type": "Bot"}, "state": "COMMENTED", "submitted_at": "2026-10-17T00:00:50Z", "commit_id": "initial"}],
+    "repos/ig-ra/jigs/pulls/7/reviews?per_page=100": [{"id": 1, "user": {"type": "Bot", "login": "cubic-dev-ai[bot]"}, "state": "COMMENTED", "submitted_at": "2026-10-17T00:00:50Z", "commit_id": "initial"}],
     "repos/ig-ra/jigs/pulls/7/comments?per_page=100": [],
     "repos/ig-ra/jigs/issues/7/comments?per_page=100": [],
     "repos/ig-ra/jigs/pulls/7/commits?per_page=100": [{"sha": "initial"}],

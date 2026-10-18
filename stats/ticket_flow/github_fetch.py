@@ -43,9 +43,13 @@ def snapshot(repo, number, fetch):
 def collect(tickets, fetch=request, auth=authenticate):
     """One listing per repo, all pages; exact joins before expensive PR reads."""
     from .github import matches, interpret, markers_for
+    if not any(tickets.values()):
+        return [], []
     auth()
     markers, facts = [], []
     for repo, keys in sorted(tickets.items()):
+        if not keys:
+            continue
         pulls = fetch(f'repos/{repo}/pulls?state=all&per_page=100', '.', True)
         pulls = {p['number']: p for p in pulls}
         for number, pr in sorted(pulls.items()):

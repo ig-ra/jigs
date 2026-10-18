@@ -138,3 +138,9 @@ Read but not added, so nobody reads them again:
 - Stage comes from `tk step` commands, which only exist after `8421409` (2026-10-10 16:10). Before it, develop and review cost sits under design or unknown. Compare totals across that change, not stages.
 - Tickets can run for days: 90% finish within 1.4 days, the longest took 7. Tickets started in the last 2 days of data are treated as still running.
 - Before/after around a change is observation, not proof: ticket size, neighbouring changes and small samples all move it. Quality is not measured.
+
+## Published population and review bots
+
+Published tables include tickets with window calls, completed turns, local markers or selected estimate evidence, plus unassigned work. Earlier context and every recorded repo association for those tickets remain complete. GitHub enrichment cannot select the population; inactive tickets and tickets without a recorded known-repo association cause no guessed request. PR joins remain author-neutral, with no creation/merge date filter.
+
+Review bots are `sawmills-architect-review[bot]`, `cubic-dev-ai[bot]` and `chatgpt-codex-connector[bot]`. Only those logins count toward bot reviews, comments, threads, first-bot time and ticket-wide `review_after_bot`. Baz (`baz-reviewer[bot]`), CodeRabbit (`coderabbitai[bot]`) and all other bot accounts are excluded. These numbers differ from the earlier any-Bot rule. All comments remain thread-root inputs; every submitted review still participates in the unchanged first-review churn boundary.

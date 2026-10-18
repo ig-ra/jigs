@@ -1,9 +1,14 @@
 """Pure current-PR interpretation, plus the retained narrow pilot projection."""
+import json
 import re
 
 from .model import Marker, PILOT
 from .sources import stamp
 from .github_fetch import authenticate, request
+
+
+REVIEW_BOTS = frozenset(('sawmills-architect-review[bot]', 'cubic-dev-ai[bot]',
+                         'chatgpt-codex-connector[bot]'))
 
 
 def matches(ticket, head):
@@ -22,7 +27,9 @@ def pilot_markers(fetch=request, auth=authenticate):
         for endpoint in (prefix + '/reviews', prefix + '/comments',
                          f'repos/ig-ra/jigs/issues/{number}/comments'):
             times += fetch(endpoint + '?per_page=100',
-                           '[.[] | select(.user.type == "Bot") | (.submitted_at // .created_at)]', True)
+                           '[.[] | select(.user.login as $login | ' +
+                           json.dumps(sorted(REVIEW_BOTS)) +
+                           ' | index($login)) | (.submitted_at // .created_at)]', True)
         facts = {'ticket': ticket, 'repo': 'ig-ra/jigs', 'pr': number,
                  'head_ref': pr['head'], 'created': pr['created'],
                  'merged': pr['merged'], 'first_bot': min(times) if times else None}
@@ -45,7 +52,7 @@ def submitted(reviews):
 
 def bot_facts(reviews, comments, issues):
     reviews, comments, issues = submitted(reviews), unique(comments), unique(issues)
-    bots = lambda rows: [r for r in rows if (r.get('user') or {}).get('type') == 'Bot']
+    bots = lambda rows: [r for r in rows if (r.get('user') or {}).get('login') in REVIEW_BOTS]
     roots = {c['id']: c.get('in_reply_to_id') or c['id'] for c in comments}
     def root(identity):
         seen = set()

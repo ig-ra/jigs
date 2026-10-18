@@ -35,7 +35,7 @@ class GithubTests(unittest.TestCase):
 
     def test_bot_ids_surfaces_thread_roots_and_submitted_reviews(self):
         data=snapshot()
-        bot=dict(type='Bot')
+        bot=dict(type='Bot', login='cubic-dev-ai[bot]')
         review=dict(id=2,state='COMMENTED',submitted_at=at(25).isoformat(),user=bot)
         data['reviews'] += [review,review,dict(id=3,state='PENDING',user=bot)]
         data['comments']=[dict(id=10,user={'type':'User'},created_at=at(20).isoformat()),
@@ -49,6 +49,33 @@ class GithubTests(unittest.TestCase):
         self.assertEqual((result['bot_reviews'],result['bot_comments'],result['bot_threads']),(1,4,2))
         self.assertEqual(result['first_bot'],at(25).isoformat())
         self.assertEqual(result['first_review'],at(20).isoformat())
+
+
+    def test_named_bots_exclude_linear_and_human_keep_all_thread_roots_and_boundary(self):
+        data = snapshot()
+        def account(login, kind='Bot'):
+            return dict(login=login, type=kind)
+        linear, human = account('linear-code[bot]'), account('ig-ra', 'User')
+        data['reviews'] = [dict(id=1, user=linear, state='COMMENTED',
+            submitted_at=at(15).isoformat(), commit_id='initial'),
+            dict(id=2, user=human, state='APPROVED', submitted_at=at(20).isoformat())]
+        data['comments'] = [dict(id=10, user=linear, created_at=at(1).isoformat()),
+            dict(id=11, user=human, in_reply_to_id=10, created_at=at(2).isoformat())]
+        for i, login in enumerate(sorted(github.REVIEW_BOTS), 12):
+            data['comments'].append(dict(id=i, user=account(login), in_reply_to_id=11,
+                                        created_at=at(i + 20).isoformat()))
+        data['issues'] = [dict(id=20, user=linear, created_at=at(0).isoformat()),
+            dict(id=21, user=account('baz-reviewer[bot]'), created_at=at(2).isoformat()),
+            dict(id=22, user=account('coderabbitai[bot]'), created_at=at(3).isoformat())]
+        result = github.interpret('IGR-15', 'ig-ra/jigs', data)
+        self.assertEqual((result['bot_reviews'], result['bot_comments'], result['bot_threads']), (0, 3, 1))
+        self.assertEqual(result['first_bot'], at(32).isoformat())
+        self.assertEqual(result['first_review'], at(15).isoformat())
+        self.assertEqual(result['fix_commits'], 1)
+        from stats.ticket_flow import stages
+        from stats.ticket_flow.model import Marker
+        review = Marker('IGR-15', at(25), 'own_review', 'local:1')
+        self.assertEqual(stages.review_after_bot([review], [result], at(), at(60)), 0)
 
     def test_author_time_partition_boundary_and_ratio(self):
         data=snapshot()
@@ -102,6 +129,6 @@ class GithubTests(unittest.TestCase):
                     self.assertIsNone(result['fix_commits'])
 
     def test_missing_bot_time_is_blank_while_counts_remain_known(self):
-        result=github.bot_facts([], [dict(id=1,user={'type':'Bot'})], [])
+        result=github.bot_facts([], [dict(id=1,user={'type':'Bot', 'login':'cubic-dev-ai[bot]'})], [])
         self.assertEqual(result['bot_comments'],1)
         self.assertIsNone(result['first_bot'])
