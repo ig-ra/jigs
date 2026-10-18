@@ -40,7 +40,8 @@ def coverage(calls, turns, markers=()):
            not c.get('ticket') or not c.get('repo') or not c.get('activity') or
            any(c.get(k) is None for k in TOKENS) for c in calls):
         return 'partial'
-    if any(not t.ticket or not t.repo or t.parent or t.minutes is None or t.wait is None or t.stage == 'unknown' or
-           t.order == 'ambiguous' for t in turns):
+    if any(not t.ticket or not t.repo or t.minutes is None or t.wait is None or t.stage == 'unknown' or
+           t.order == 'ambiguous' or t.parent and any(getattr(t, 'child_' + field) is None
+               for field in ('type', 'description', 'family')) for t in turns):
         return 'partial'
     return 'partial' if any(m.kind == 'native_review' for m in markers) else 'complete'

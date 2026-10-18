@@ -21,3 +21,15 @@ class CommonTests(unittest.TestCase):
         self.assertEqual(table_common.coverage([audit],[turn(stage='design',minutes=None)]),'partial')
         self.assertEqual(table_common.coverage([],[turn(stage='design',wait=0,repo=None)]),'partial')
         self.assertEqual(table_common.coverage([audit],[one],[Marker('IGR-15',at(),'native_review','local:1')]),'partial')
+
+    def test_codex_parentage_is_not_a_gap_but_actual_child_gaps_are(self):
+        complete = dict(provider='codex', parent='parent', child_type='worker',
+                        child_description='review implementation', child_family='review',
+                        stage='design', wait=0, calls=[])
+        self.assertEqual(table_common.coverage([], [turn(**complete)]), 'complete')
+        for changes in ({'child_type': None}, {'child_description': None}, {'child_family': None},
+                        {'minutes': None}, {'wait': None}, {'ticket': None}, {'repo': None},
+                        {'stage': 'unknown'}, {'order': 'ambiguous'},
+                        {'provider': 'claude', 'minutes': None}):
+            with self.subTest(changes=changes):
+                self.assertEqual(table_common.coverage([], [turn(**dict(complete, **changes))]), 'partial')

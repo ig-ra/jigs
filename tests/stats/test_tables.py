@@ -91,6 +91,23 @@ class TableTests(unittest.TestCase):
         self.assertEqual(partial['tickets'][0]['coverage'],'partial')
         self.assertEqual(partial['tickets'][0]['claude_main_minutes_raw'],one.minutes)
 
+    def test_codex_child_with_and_without_calls_retains_complete_measured_coverage(self):
+        markers = [Marker('IGR-15', at(), 'design', 'start')]
+        for calls in ([], [call(provider='codex', repo='ig-ra/jigs', activity='reply')]):
+            with self.subTest(calls=bool(calls)):
+                child = turn(provider='codex', parent='parent', wait=0, calls=calls,
+                             child_type='worker', child_description='review implementation',
+                             child_family='review')
+                stages.assign([child], markers)
+                result = tables.assemble([child], at(), at(60), {}, {}, [], markers, [], {'IGR-15'})
+                self.assertEqual(result['tickets'][0]['coverage'], 'complete')
+                self.assertTrue(all(r['coverage'] == 'complete' for r in result['stages']))
+                self.assertEqual(result['tickets'][0]['codex_minutes_raw'], child.minutes)
+                child.child_family = None
+                partial = tables.assemble([child], at(), at(60), {}, {}, [], markers, [], {'IGR-15'})
+                self.assertEqual(partial['tickets'][0]['coverage'], 'partial')
+                self.assertEqual(partial['tickets'][0]['codex_minutes_raw'], child.minutes)
+
     def test_ticket_indicator_is_not_duplicated_across_repos(self):
         from github_support import fact
         markers=[Marker('IGR-15',at(20),'simplify','review')]
