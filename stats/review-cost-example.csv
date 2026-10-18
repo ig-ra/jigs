@@ -1,0 +1,13 @@
+ticket,stage,window_utc,claude_main_m,claude_subagents_m,codex_m,total_m,note
+IGR-15,design,13:23-14:14,12.2,0.0,3.9,16.1,hand-set windows from ticket events
+IGR-15,implement (codex),14:14-14:30,3.6,0.0,3.8,7.4,PR created 14:29; initial commits +930/-6 lines
+IGR-15,first reviews + new scope,14:30-15:15,7.4,1.9,2.9,12.2,reviews started 14:52; window also holds the review-tokens design
+IGR-15,findings 1: discuss + fix,15:15-15:40,8.5,0.0,7.2,15.8,fix commit +235/-56
+IGR-15,round 2: analysis + fix + bots,15:40-16:10,8.5,0.0,7.0,15.5,fix commits +265/-15
+IGR-15,final review pass + cut + merge,16:10-16:27,9.9,2.2,3.8,15.9,final cut +34/-157; merged 16:23
+IGR-16,design,13:42-15:15,17.0,0.0,6.4,23.3,hand-set windows from ticket events
+IGR-16,implement (codex),15:15-15:21,4.1,0.0,1.3,5.4,PR created 15:21; initial commits +127/-6 lines
+IGR-16,first reviews,15:21-15:40,5.6,0.6,3.4,9.7,one workflow killed by owner
+IGR-16,findings 1: discuss + fix,15:40-15:46,2.3,0.0,2.1,4.4,fix commit +28/-2
+IGR-16,rerun reviews + findings 2 + bots,15:46-15:57,4.4,0.3,2.3,6.9,merged 15:57
+IGR-16,finish,15:57-16:10,8.2,0.0,0.0,8.2,backup copy and finish

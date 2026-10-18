@@ -1,26 +1,130 @@
-# stats: ticket-flow token usage
+# stats: ticket-flow measurements
 
-## IGR-19 command (step 4)
+## Command and outputs
 
 ```sh
-python3 -B -m stats.ticket_flow 2026-10-17 2026-10-18
+python3 -B -m stats.ticket_flow 2026-10-05 2026-10-18
 ```
 
-Two positional `YYYY-MM-DD` dates, UTC, END exclusive; END must be later than START. The command now combines local activity/time/estimate collection and full GitHub enrichment for the fixed home-relative jigs, condition-curator and agent-platform roots. It retains earlier context for stage attribution, selects calls by call timestamp and full completed durations by completion timestamp. Run outside the sandbox for host-keyring GitHub access; authentication and read-only requests use the prefix documented below.
+Two positional `YYYY-MM-DD` dates, UTC, START inclusive and END exclusive; END must be later. Python stdlib only. Run from the jigs checkout outside the sandbox. Local discovery uses fixed home-relative roots: `~/my/dev-tools/jigs` (`ig-ra/jigs`), `~/work/condition-curator` (`Sawmills/condition-curator`), and `~/work/agent-platform` (`Sawmills/agent-platform`). Lexical cwd mapping includes deleted worktrees; recorded session/parent links resolve tickets without majority attribution. Canonical calls, JSON iteration and timestamp parsing come from `bin/usage` through one SourceFileLoader bridge; its behavior is unchanged.
 
-Outputs: `stats/runs/2026-10-17_2026-10-18/{stages,tickets,run}.csv` are tracked; `calls.csv` in that directory is generated and ignored. The command returns 0 only after all collection, assembly and publication succeeds; a local/API collection failure returns 2 and preserves any previous output set. The accepted numeric pilot gate below is historical evidence and is not rerun by this command. Hand reconciliation is a one-time documented check, not implied by command exit 0 alone. Identical sources give stable CSV formatting/order; no generated wall-clock time is written. Event timestamps remain evidence.
+GitHub access is read-only, using the host keyring. The collector authenticates first, then prefixes every paginated GET with:
 
-The command writes the enriched schemas described in the step-2/3 sections below. The tracked pilot CSVs have not been regenerated. Historical accepted step-1 columns:
+```sh
+env -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN gh auth status
+# Each API request uses this same environment prefix:
+env -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN gh api --method GET ENDPOINT
+```
 
-- `calls.csv`: canonical provider/call ID/timestamp and ticket basis; repo, actor, session/parent/turn; native or first-call start/basis; call source path/line; chosen marker timestamp/source/repo; stage, stage_order, review_pass, cycle; four raw token buckets; missing_reason. `repo` comes from lexical fixed-root cwd mapping; non-repo parent-directory cwd stays blank.
-- `stages.csv`: ticket/stage/review_pass/cycle keys; each actor's new_input_tokens/cache_read_tokens/cache_write_tokens/output_tokens; Claude-main and Codex minutes_raw; turn_overlap_min; calls/turns; coverage. `tickets.csv` sums these measures by ticket. Repo is not an aggregate key. Actor names are claude_main, claude_subagents and codex; no reasoning-token double count.
-- `run.csv`: long-form ticket/actor/metric/value/numerator/denominator/repo/pr/source records. Includes UTC window, pilot call/Claude-duration/Codex-pair/PR counts, reader diagnostics, unmatched starts, unknown/ambiguous shares, PR head-ref/created/merged/first-bot facts and marker inventory. Reader diagnostics include scanned pre-window context; per-ticket counts describe the measured population. Full GitHub head-SHA/count/churn enrichment is not collected in this slice.
+The command writes `stats/runs/START_END/`: tracked `stages.csv`, `tickets.csv`, `run.csv`, and generated, ignored `calls.csv` for call inspection and the externally owned 50-call audit. It returns 0 with `TICKET_FLOW_OUTPUT_WRITTEN PATH` after successful collection, assembly and publication; source/API failure returns 2. Collection/serialization failures preserve previous outputs. There is no partial successful collection or missing-repo zero. File replacement happens after serialization; this is not a transactional multi-file filesystem swap.
 
-Missing values stay blank, known-empty quantities zero, and a required missing component propagates through aggregates. All pilot summaries have `coverage=partial`: full enrichment is pending, standalone native-review usage is absent, and an unmatched Codex start does not supply duration. Observed raw work is still reported. No Claude-child minutes column is invented; its minute-share numerators/denominators are blank. Native-review commands are markers, not zero-token observations. Activity/family and foreground-wait columns are deferred to step 2. Same-session overlap is a diagnostic alongside raw minutes, never subtracted.
+Identical inputs produce identical bytes: all columns and rows have stable order, UTF-8 CSV uses LF, floating values have six decimal places, and no generated wall-clock timestamp is added. Event times remain provenance. Logs, estimates and current GitHub state can change between runs. The accepted pilot directory `2026-10-17_2026-10-18` retains its original step-1 schema and data; the dictionary below describes the complete command schema.
 
-**Coverage gate passed.** 981 canonical calls conserve; all 24 actor/token buckets and completed raw durations sum through stages to tickets. Claude minutes 62.553067 / 27.024650 round to **63/27**; Codex 104.859500 / 31.890033 round to **105/32**. Unknown token share is **0%** for each ticket/observed actor; unknown raw-minute share is **0%** for each ticket/provider. IGR-16 retains one unmatched start, IGR-15 zero. The first native session identity survives copied parent metadata in a child file.
+## Measurement and missingness
 
-Ambiguous order means only a different session of the same ticket overlaps the turn. It is common, not hidden: Claude-main ambiguous token shares are **78.245% / 47.145%**, child and Codex shares **100% / 100%**. Claude-main ambiguous raw-minute shares are **88.982% / 54.923%**, Codex **100% / 100%**. This labels ticket-flow position under concurrent work, not each turn's purpose. Stable timestamp/source ordering selects a marker; the whole turn keeps it, including calls after later markers. Earlier context and completion-only turns remain included.
+Calls are selected by call timestamp. Full completed durations are selected by completion timestamp, even if they began before START. Earlier context stays available for attribution. Incomplete turns can supply calls; completion-only turns can supply time. Claude main time sums native `turn_duration` records. Codex time uses completed native start/complete pairs, including children. No Claude-child minutes or standalone native-review usage is invented. Unmatched Codex starts remain counted alongside recorded work.
+
+Each ticket has one timestamp-ordered marker timeline: ticket start/finish, successful step receipts, estimate dispatches, simplify/native/own review invocations, PR creation/merge, earliest submitted review, authored fix commits and first bot activity. Native turn start is preferred, first attributable call otherwise, duration-derived start for completion-only evidence. Latest marker at/before that start is latched for the entire turn. Equal-time markers use stable source/identity order. `stage_order=ambiguous` means only that a different session of the same ticket overlaps the turn. Unknown stage and ambiguous order are separate diagnostics; neither discards tokens/time. No hand clock-window stage assignment.
+
+Blank means unavailable or not applicable; zero means an observed empty set/count. A required missing token/PR/estimate component propagates through the relevant sum. Source failures abort the run. `coverage` is one `complete|partial` field: attribution gaps, ambiguous ordering, missing child identity, unrecorded native-review usage, incomplete durations, malformed reader records, unavailable PR/estimate components or unmatched starts can make it partial. Recorded provider work remains present. A complete row does not establish that all unrecorded work was captured.
+
+Raw minutes include foreground sleeps/watches. `foreground_wait_min` is a floor from matched foreground tool invocation/result intervals; background/unmatched waits are not proved. `turn_overlap_min` is same-session overlap charged once to the later source-ordered turn. Both are reported alongside raw minutes, never subtracted. Cross-session work remains parallel actor work; summed agent minutes are not wall elapsed time. No Claude-child time denominator exists.
+
+## Column dictionary
+
+Definitions below expand every current schema field. `A` expands to each of `claude_main`, `claude_subagents`, `codex`; `T` expands to each of `new_input_tokens`, `cache_read_tokens`, `cache_write_tokens`, `output_tokens`. These denote twelve separate summary columns, in actor/token order. Tokens are raw counts, with no prices, weights, or extra reasoning-token addition. Missing canonical buckets stay blank; no calls for a known actor set yields zero in summaries.
+
+### calls.csv (generated audit)
+
+| Column(s) | Source, unit and missingness |
+|---|---|
+| `provider`, `id` | Canonical usage provider (`claude|codex`) and provider call ID; deduplicated identity pair. |
+| `timestamp` | Canonical call UTC event time; determines window inclusion. |
+| `ticket`, `ticket_basis` | Canonical/native ticket attribution and evidence basis, including recorded parent links; blank if unresolved. |
+| `repo` | Fixed-root lexical call cwd, falling back to the turn repo; blank for unmapped cwd. |
+| `actor` | Claude main/child or Codex; Codex includes children. |
+| `session`, `parent_session`, `turn` | Native session, recorded parent and native/composite turn ID; parent blank when absent. |
+| `turn_start`, `start_basis` | Attribution start, UTC; basis `native_start|first_call|duration_record`. Blank time if unavailable. |
+| `source` | Canonical source path and line for the call. |
+| `marker_time`, `marker_source`, `marker_repo` | Selected ticket marker's event time, source reference and repo; blank when absent/unmapped. |
+| `stage` | Latched `design|implement|first_review|fix|bots_ci|further_review|finish|unknown`. |
+| `stage_order` | `timestamp|ambiguous`, by cross-session turn overlap only. |
+| `review_pass`, `cycle` | Ticket timeline's cumulative review-pass/fix-cycle ordinal; blank before any. |
+| `activity` | First-match native tool-input classification; exact labels below. |
+| `activity_basis` | `native_tool_inputs|no_tools|missing_tool_input`; missing inputs force `other`. |
+| `activity_source` | Semicolon-separated native tool source path/lines; blank for no tools. |
+| `child_type`, `child_description`, `child_family` | Recorded sidecar/native metadata or linked launch; description retained in full. Family `simplify|review|explore` when evidenced; otherwise blank. Non-children blank. |
+| `child_basis` | Sidecar/native/linked launch or simplify invocation reference; blank without evidence. |
+| `new_input_tokens`, `cache_read_tokens`, `cache_write_tokens`, `output_tokens` | Four disjoint canonical raw buckets; integer tokens, unavailable bucket blank. |
+| `missing_reason` | Semicolon-separated `unassigned_ticket`, `no_preceding_marker`, `missing_tool_input`, `missing_child_type`, `missing_child_description`, `missing_child_family`; blank if none. |
+
+Activity labels, in rule precedence: `reply / communication (no tool)` for no tools; otherwise `human poll`, `subagent dispatch`, `agent communication`, native worktree setup/cleanup, Skill instruction reads, `linear`, `native codex review`, `codex management (herdr)`, `github / CI / bot threads`, `tk bookkeeping (step, estimate)`, `worktree setup / cleanup`, `tests / measurements`, `git`, `waiting`, `codex briefs and replies`, `design docs (models, plan, KISS)`, `review docs`, `checkpoint`, `skill / memory reads`, `source edits`, `code / doc reading`, wait-tool fallback `waiting`, then `other`. One call gets one label, including mixed-tool calls. The unclassified token share counts `other`; it differs from unknown-stage share. ToolSearch reads API definitions (`code / doc reading`); Skill loads skill instructions (`skill / memory reads`); EnterWorktree/ExitWorktree are worktree setup/cleanup. Monitor uses the command rules, falling back to waiting. `agent communication` covers native handbacks and agent messages: the no-tool reply label would be inaccurate for those tool calls. Direct `tools.NAME(...)` calls inside Codex exec are read statically, skipping quoted/commented examples; source text is never executed. Recognized nested operations use the same vocabulary. Bash script location or interpreter alone does not establish purpose; opaque scripts remain `other`. Tool names/input vocabulary is heuristic; the separate 50-call audit measures classification quality.
+
+### stages.csv
+
+One row per `ticket,stage,review_pass,cycle`; repo is not a grouping key. Unknown/unassigned work remains included.
+
+| Column(s) | Source, unit and missingness |
+|---|---|
+| `ticket`, `stage`, `review_pass`, `cycle` | Audit/turn latched keys as above, also groups for window markers without calls or completed turns. Ticket blank if unassigned. |
+| `A_T` (12 columns) | Sum corresponding actor's canonical call token bucket; any required missing bucket makes that sum blank. |
+| `claude_main_minutes_raw`, `codex_minutes_raw` | Sum selected full completed native durations, minutes; known-empty zero. |
+| `foreground_wait_min`, `turn_overlap_min` | Observed waits and same-session overlap in minutes, as described above; waits propagate missing components. |
+| `simplify_passes`, `native_review_passes`, `own_review_passes` | Count window-selected invocation groups by kind, not individual simplify lenses; known-empty zero. |
+| `fix_rounds` | Explicit fixing/dispatch invocation count; running/fixing receipt plus first dispatch is one invocation. |
+| `fix_cycles` | One for each stage key in `fix` with an observed cycle; independent of round/commit counts. |
+| `calls`, `turns` | Audit call count and window-completed native turn count; known-empty zero. Incomplete turns do not supply duration. |
+| `coverage` | `complete|partial` for the row's source/attribution evidence. |
+
+### tickets.csv
+
+One row per ticket, including a blank-ticket group when unassigned work exists. Contains `ticket`, every `A_T`, both `*_minutes_raw`, `foreground_wait_min`, `turn_overlap_min`, all three `*_passes`, `fix_rounds`, `fix_cycles`, `calls`, `turns`, and `coverage` with the stage definitions above. Each measure sums stage rows with required-component propagation. Additional columns:
+
+| Column(s) | Source, unit and missingness |
+|---|---|
+| `dispatches` | Deduplicated estimate TSV dispatch IDs started within the window; count, blank if not collected. |
+| `estimated_rounds_low`, `estimated_rounds_high` | Sum selected TSV lower/upper rounds bounds; missing bound propagates. |
+| `estimated_minutes_low`, `estimated_minutes_high` | Sum TSV `est_min` bounds, minutes; missing bound propagates. |
+| `completed_dispatch_minutes` | Sum selected TSV `actual_min`, minutes; unfinished/missing values propagate. Not the native-duration total. |
+| `prs` | Distinct `(repo,number)` head-ref matches; zero if lookup succeeded with none, blank if unavailable. |
+| `pr_files`, `pr_additions`, `pr_deletions`, `pr_commits` | Sum current PR snapshot changed-file/added-line/deleted-line/commit counts; any missing contribution propagates. Files can repeat across PRs. |
+| `initial_commits`, `fix_commits` | Current PR commits partitioned before versus at/after earliest submitted review using author dates; missing boundary/date makes affected values blank. |
+| `initial_additions`, `initial_deletions`, `fix_additions`, `fix_deletions` | Sum current commit stats per partition, lines; missing stats/ancestry or multi-parent ancestry makes affected sums blank. |
+| `churn_ratio` | Combined fix added+deleted divided by combined initial added+deleted; unitless. Blank if any required PR contribution unavailable or initial denominator zero. Never an average of PR ratios. |
+| `fix_split_status` | Worst PR status: `author_time_estimate|suspect|unavailable`; no matched PR means unavailable. |
+| `bot_reviews` | Count submitted reviews by the three named review-bot logins below, deduplicated by review ID; draft reviews excluded. |
+| `bot_comments` | Bot inline plus issue comments, IDs deduplicated within each API surface. |
+| `bot_threads` | Distinct inline thread roots containing bot comments, including replies to human roots. |
+| `review_after_bot` | Ticket-wide 1 if observed agent review strictly follows first bot activity, 0 for known applicable absence; blank if unavailable/not applicable or unresolved tied cross-source order. No causality claim. |
+
+PR joins use the whole case-insensitive separator-bounded ticket key in the head ref, zero to many PRs across repos. Listings and reviews/comments/commits are paginated; all current commits must be returned. PR facts are current snapshots, not window-limited historical size. Author-time churn is an estimate: interleaved partitions, contradiction with a reviewed SHA present in the current list, or author/committer dates straddling the cutoff mark an available estimate suspect. Rebase/amend/squash history can defeat the split without a visible inconsistency. No historical Git objects are recovered. Bot counts are snapshot totals, not distinct reviewed-head rounds.
+
+### run.csv (long-form provenance)
+
+| Column | Meaning |
+|---|---|
+| `ticket`, `actor` | Applicable ticket/actor context, blank for global facts or unresolved ticket. |
+| `metric`, `value` | Metric name and scalar/string value; blank value for unavailable facts. |
+| `numerator`, `denominator` | Raw tokens or minutes underlying percentage rows; blank if population/component unavailable. Percent value is 100 × numerator / denominator; zero denominator gives blank percent. |
+| `repo`, `pr` | Applicable marker/PR repo and PR number; blank for local/global metrics. No repo aggregate rows. |
+| `source` | Native path/line, estimate TSV row or `github:REPO#NUMBER` reference; blank for derived totals. |
+
+Metric families (every emitted name):
+
+- Window: `window_start`, `window_end_exclusive` (UTC event boundaries).
+- Global measured population: `source_files`, `sessions`, `unassigned_calls`, `unknown_calls`, `ambiguous_turns`, `multi_repo_tickets`, `no_pr_tickets`, `pr_heads` (counts; unavailable PR data stays blank).
+- Reader counters: `reader_malformed`, `reader_duplicate`, `reader_synthetic`, `reader_unassigned` from the canonical reader. Collection includes pre-window context, so these are not window call totals; extra counter keys, if supplied by that reader, retain the `reader_` prefix.
+- Per ticket: `calls`, `unmatched_starts`, `claude_duration_records`, `codex_completed_pairs`, `prs_found`, `native_review_usage_missing` (counts). Unmatched starts reflect retained local context, not just START-selected calls. Native-review missing count is observed window invocations, not missing token quantity.
+- Per ticket/actor: `unknown_tokens_pct`, `ambiguous_tokens_pct` (four-bucket token counts); `unknown_minutes_pct`, `ambiguous_minutes_pct` (completed raw minutes). Unobserved actors/Claude-child time have blank denominators, not synthetic zeros.
+- Per PR: `pr_head_ref`, `pr_head_sha`, `pr_created`, `pr_merged`, `pr_first_review`, `pr_first_bot`; `pr_pr_files`, `pr_pr_additions`, `pr_pr_deletions`, `pr_pr_commits`; `pr_initial_commits`, `pr_fix_commits`, `pr_initial_additions`, `pr_initial_deletions`, `pr_fix_additions`, `pr_fix_deletions`, `pr_churn_ratio`, `pr_fix_split_status`, `pr_bot_reviews`, `pr_bot_comments`, `pr_bot_threads`. These preserve the snapshot/partition definitions above; event values are UTC timestamps and absent events stay blank.
+- `marker_KIND`: full context marker inventory with UTC event value and source. Kinds `design`, `implement`, `first_review`, `fix`, `bots_ci`, `further_review`, `finish`, `review`, `simplify`, `native_review`, `own_review`, `commit` as available; context can predate START.
+- `estimate_identity`, `estimate_rounds_low`, `estimate_rounds_high`, `estimate_minutes_low`, `estimate_minutes_high`, `estimate_actual_minutes`: each selected dispatch's ID/bounds/actual with TSV row source and agent in `actor`; unfinished values blank.
+
+## Accepted coverage gate (historical pilot)
+
+Step 1's `2026-10-17_2026-10-18` pilot contains 981 canonical calls. All 24 actor/token buckets and recorded completed durations conserve from calls/turns through stages to tickets. Claude minutes **62.553067 / 27.024650** round to **63/27**; Codex **104.859500 / 31.890033** to **105/32**, for IGR-15/16. Unknown tokens and raw minutes are **0%** in every observed ticket/actor/provider group. Unmatched starts: IGR-15 zero, IGR-16 one. Missing native-review usage/Claude-child time remains unavailable, never a fabricated denominator.
+
+Ambiguous token shares: Claude main **78.245% / 47.145%**, children and Codex **100% / 100%**; ambiguous raw-minute shares Claude main **88.982% / 54.923%**, Codex **100% / 100%**. This is concurrent ticket-flow ordering, not inferred turn purpose. High ambiguity did not prevent the documented hand reconciliation. The pilot is accepted historical evidence, not regenerated by the full command. Its original first-bot markers used the earlier any-Bot rule; the named-bot definition below applies to new command output. Full evidence: local `igr/gate-1.md`.
 
 ### One-time hand reconciliation
 
@@ -41,103 +145,52 @@ Both >5-point gaps are explained. The hand implement boundary is 15:15 UTC; the 
 
 That diagnostic accounts for 6.907 points of displacement, leaving design/implement comparison residuals about -0.017 / +1.005 points. It does not reassign or split any turn. All other bins differ by <5 points; high ambiguity does not prevent this evidence-based explanation. Numeric and hand check output: `NUMERIC_GATE PASS failures=0; hand reconciliation requires report`, `TOKEN_BUCKET_CONSERVATION PASS checks=24`, `HAND_RECONCILIATION PASS: all >5pp gaps explained; stage assignments unchanged`. Full local gate evidence: `igr/gate-1.md`.
 
-Not yet exercised: full three-repo/window output, complete activity/family/wait/estimate enrichment, full GitHub review/fix/bot/size and churn, combined pipeline fixture, 57% simplify claim, Claude's 50-call audit/IGR-14 note. Existing dashboard notes below describe the separate unchanged dashboard; prototype cleanup and the full column dictionary are scheduled for later approved steps.
+## Required three-repo run
 
-### Local measurements (step 2)
+The outside-sandbox run `timeout 3600 python3 -B -m stats.ticket_flow 2026-10-05 2026-10-18` completed on 2026-10-18 from committed activity code **92f6d9c**, exit 0, in approximately **1373 seconds (22m53s)**. It printed `TICKET_FLOW_OUTPUT_WRITTEN stats/runs/2026-10-05_2026-10-18`. All three repos completed: **4 jigs, 12 agent-platform and 152 condition-curator PRs** (168 total, 167 repo/head-SHA pairs). PR joins remain author-neutral, with complete earlier context and no PR creation/merge date filter.
 
-`local.collect(end)` now collects the local slice for the fixed home-relative jigs, condition-curator and agent-platform roots. It reuses canonical `bin/usage.collect` records, retaining earlier context and unassigned calls. Repo mapping is lexical and does not require surviving worktree directories. Step 4 integrates this fixture-tested slice into the command above. The accepted pilot CSVs have not been regenerated.
+The generated set has **65,752 calls, 1,494 stage rows, 136 ticket rows (including unassigned work), 9,855 run rows**. Token, completed-duration, count and publication-population reconciliation passed **3135 assertions**. Raw recorded minutes: Claude main **8908.474082**, Codex **6912.360654**. These are agent sums, not elapsed time.
 
-Local audit additions: `activity`, `activity_basis`, `activity_source`, `child_type`, full `child_description`, `child_family`, and `child_basis`. Activity uses native tool inputs with the prototype's first-match vocabulary, extended to Codex tool names/source. Missing inputs remain `other` with a missing-input reason. Child identity comes from sidecars/native metadata and linked launch inputs. A recorded simplify launch can supply its lenses' family. Missing identity remains blank; parent-session links can supply a ticket from prior evidence, never a future/majority ticket. Audit missing reasons name absent child fields and attribution evidence.
+**The overall activity target passes:** `other` is **466,781,611 / 12,526,312,980 tokens = 3.726408655%**, below **5%**, across 2333 calls. The prior run measured 5.657796689% / 3918 calls. Comparing the two audits shows identical 65,752 call identities and every field except `activity`: **2362 activity labels changed**, 1585 calls moved out of other, none moved into it. Token denominator, stage assignments and timing fields are identical. Stage/ticket summary bytes are identical; run.csv differs only in historical-context `reader_duplicate` (100007 to 100121), reflecting changed source context. No source snapshot or real-data determinism rerun is implied.
 
-Local stage/ticket additions: `foreground_wait_min`, `simplify_passes`, `native_review_passes`, `own_review_passes`, and `fix_rounds`. Waits are the union of matched foreground invocation/result intervals, clipped to completed raw turn intervals: an observed floor, never subtracted from raw work. Explicit background waits and unmatched results supply no interval. `turn_overlap_min` charges same-session overlap to later source-ordered turns; cross-session work remains parallel. Both minute diagnostics sum through stages to tickets. Missing wait collection is blank; observed no-wait is zero. Review counts use distinct invocation groups, including reruns; simplify lenses share their launch group. Fix dispatches/transitions count rounds, while commits remain cycle evidence rather than rounds.
+| Actor | Other tokens | All raw tokens | Other % |
+|---|---:|---:|---:|
+| claude_main | 273,659,199 | 8,155,963,903 | 3.355326 |
+| claude_subagents | 15,435,651 | 1,299,221,622 | 1.188069 |
+| codex | 177,686,761 | 3,071,127,455 | 5.785718 |
 
-Ticket estimate additions: `dispatches`, `estimated_rounds_low/high`, `estimated_minutes_low/high`, and `completed_dispatch_minutes`, from deduplicated estimate TSV dispatch IDs whose start is in the requested window. Each dispatch's raw identity, bounds, actual minutes and TSV row source are also run provenance. Blank required bounds/actuals propagate through sums; a known empty dispatch set is zero. Raw provider minutes remain independent of dispatch elapsed-minute estimates.
+| Repo | Other tokens | All raw tokens | Other % |
+|---|---:|---:|---:|
+| unmapped repo | 44,593,088 | 715,605,164 | 6.231521 |
+| Sawmills/agent-platform | 41,721,153 | 648,244,057 | 6.436026 |
+| Sawmills/condition-curator | 366,354,317 | 10,860,089,759 | 3.373400 |
+| ig-ra/jigs | 14,113,053 | 302,374,000 | 4.667416 |
 
-Native hydration now prefers recorded starts, retains completion-only/incomplete turns, deduplicates provider identities and durations, and includes recorded Codex children. Full completed duration is selected by completion timestamp; incomplete turns supply calls but no duration. No Claude-child duration is manufactured. Successful step receipts and native/estimate invocation markers feed the existing ticket-wide, whole-turn stage latch; only another session of the same ticket overlapping the turn marks stage order ambiguous.
+The acceptance criterion applies to the overall token share. Codex, agent-platform and unmapped-repo subgroups remain above 5% and are shown explicitly. The 50-call activity hand audit remains Igor's separate check; passing the percentage does not establish a misclassification rate. Opaque scripts and unsupported tool kinds remain other.
 
-Not exercised in step 2: real three-repo/full-window collection, pilot regeneration, full GitHub enrichment, combined pipeline fixture, existing usage suite, full suite or CI, the 57% simplify measurement, and the externally owned 50-call audit/IGR-14 note. Their planned gates and ownership remain unchanged.
+Observed source gaps: **5180 unassigned calls**, **3717 unknown-stage calls**, **9019 ambiguous selected turns**, **145 unmatched starts** (including earlier context), **149 window native-review invocations with missing usage**, and **3871 Claude-child calls without a classified family**. Ticket coverage: 117 partial, 19 complete. Selected population: 1276 source files, 1275 sessions; reader counters include historical context (100121 duplicates, 46 synthetic, 62778 unassigned, 0 malformed). Missing native-review token quantities and Claude-child durations remain unavailable. Unknown stage is separate from activity other.
 
-### GitHub enrichment and tables (step 3)
+Shared core quota snapshots: remaining 3833, then 3069, finally 1969 of 5000, with unchanged reset epoch 1792353756. No rate-limit or repo-access error occurred. These shared counters are not isolated collector request counts. CPU-bound local assembly was observed after the API phase; individual phase costs were not profiled. Evidence and quoted gates: local `igr/report-5b.md`. The earlier runtime and overall activity failures are resolved; their earlier reports remain historical evidence.
 
-`github_fetch.collect({repo: ticket_keys})` now supplies the full read-only PR snapshot and timestamp markers for table assembly. It checks host-keyring authentication first and uses the same `env -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN gh` prefix for every request. Call it outside the sandbox. PR listings, submitted reviews, inline/issue comments and current commits use paginated GET requests. Exact case-insensitive separator-bounded ticket keys join head refs, including zero or multiple PRs. A failed request or incomplete current commit list aborts collection; it cannot become an empty successful result. Step 4 integrates this collector into the command above; accepted pilot CSVs remain unchanged.
+## Preservation and the separate dashboard
 
-Ticket snapshot columns: `prs`, `pr_files`, `pr_additions`, `pr_deletions`, `pr_commits`, `initial_commits`, `fix_commits`, `initial_additions/deletions`, `fix_additions/deletions`, `churn_ratio`, `fix_split_status`, `bot_reviews`, `bot_comments`, `bot_threads`, and `review_after_bot`. `pr_files` sums each PR's changed-file count; it is not a count of unique files across PRs. Bot identity uses API user type. Review/comment IDs deduplicate within their API surface; inline replies roll up to thread roots, including a bot reply to a human root. Draft reviews do not supply submitted-review boundaries or bot review counts.
+The obsolete untracked copies `stats/activity.py`, `stats/build.py`, `stats/daily.csv`, `stats/weekly.csv`, `stats/tickets.csv`, `stats/activity-daily.csv`, `stats/activity-tickets.csv`, `stats/subagents.csv` are excluded from this change. Originals remain in the canonical checkout; no files are deleted. The extractor supersedes their measurement job.
 
-Author dates split current PR commits before versus at/after the earliest submitted PR review. Churn is fix added+deleted divided by initial added+deleted. `fix_split_status` is one of `author_time_estimate`, `suspect`, `unavailable`. Interleaved author partitions, disagreement with a reviewed SHA present in the fetched list, or author/committer dates straddling the cutoff mark an available estimate suspect. Missing boundary/stats/ancestry or a zero initial denominator leaves affected results blank, preserving known counts. Multi-parent commit line sums are unavailable to avoid counting ancestry twice. No old Git objects are recovered. Rebase/amend/squash history can still defeat this estimate without a detectable inconsistency. Ticket ratios require every PR contribution and use combined line totals, never a mean of PR ratios; the worst split status propagates.
+The following supplied artifacts are tracked unchanged: `build_flow.py`, `milestones.json`, `site/`, `active-time-example.csv`, `review-cost-example.csv`, `retro-igr-15-16.md`. Before/after SHA-256 inventories and canonical byte comparisons establish preservation; same-named `site/{daily,weekly,tickets}.csv` remain included. No dashboard regeneration/deployment is part of this work.
 
-`review_after_bot` is one ticket-wide value: 1 for an observed agent review invocation strictly after the ticket's first bot activity, 0 for none when applicable timing and review evidence are available, blank for unavailable/not-applicable evidence or an unresolved cross-source equality. It does not assert that the bot caused the review. Review invocations are selected in the requested UTC window; prior bot context remains available. Stage/ticket `fix_cycles` counts observed fix cycles independently of fix rounds and commit counts. A PR's submitted review boundary can establish a first-review stage without inventing an agent pass.
+The separate dashboard's goal is same quality with fewer tokens per ticket; its flow history starts 2026-10-05. `milestones.json` records critical workflow changes (`hash`, `label`, `effect`, `why`); effects are readings of commit messages, not measured savings. `build_flow.py` reads usage exports and milestones to write `site/data.json`. The preserved site was deployed as `ticket-stats`; that historical deployment is not refreshed/verified here.
 
-Shared schemas and required-component sums live in `table_common.py`; stage, ticket and run assembly each have a small module. `coverage=complete|partial` describes source/attribution gaps. Unmatched starts, unrecorded native-review usage, missing child identity, unavailable PR/estimate components and unknown/ambiguous attribution remain visible without discarding recorded work. Known-empty sets are zero; uncollected sources and required missing components remain blank. Duplicate canonical calls are rejected before publication.
+For the dashboard, weighted usage is the uncalibrated IGR-14 Claude proxy, with no Codex weighted estimate. Only ticket-tagged calls count. Stage receipts began with `8421409` (2026-10-10 16:10); compare totals rather than stages across that change. Recent tickets can still be running. Before/after observations are affected by ticket size, nearby changes and small samples; findings quality is not measured. This dashboard interpretation is separate from the raw extractor schema above.
 
-Run provenance includes each PR's repo, number, current head ref/SHA, snapshot sizes, split counts/status and bot counts, plus existing event/source references. Run diagnostics count measured source files/sessions, PR heads, unassigned calls, unknown calls, ambiguous turns, unmatched starts, multi-repo tickets, no-PR tickets and native-review usage gaps. Completion-only turns contribute source/repo coverage; unavailable token buckets cannot fabricate a coverage-share denominator. No per-repo aggregate rows or warning matrix is added. CSV formatting/publication is shared; source/serialization failure before publication preserves the previous four output files.
+The supplied milestone review covered `plugins/igr` through `093019d`; see preserved `milestones.json` and retro for historical context. No dashboard refresh is needed to rerun the extractor.
 
-Step 3 validation is offline fixtures plus build/import. Live checks were limited to host-keyring authentication and one jigs repository metadata GET. Full PR/API and Sawmills access, live churn, full-window output, the combined pipeline fixture and later acceptance gates remain unexercised.
+## Validation and remaining ownership
 
-### Combined command validation (step 4)
+Accepted fixture evidence: deterministic combined command, all three fixed roots, blank/zero propagation, token/completed-duration conservation, completion-only work, END exclusion and failed-source preservation. Step 4 (`da90362`) passed 19 focused tests and 21 usage bridge compatibility tests; steps 1–3 supply module tests. Reused gates require unchanged code/dependency/config inputs. Step 4b (`51b5683`) passed 48 focused tests and the build/import gate; step 5a (`92f6d9c`) passed 13 focused activity/pipeline tests plus build/import; step 5 passed compilation/import, real-data conservation and the overall activity target; no packaging build exists. No full suite or hosted CI polling is required.
 
-An offline combined native-source/API fixture exercises the actual command, canonical usage bridge, local hydration/enrichment, GitHub interpretation and CSV publication. It checks all three repo roots, a ticket spanning repos, Claude main/child and Codex token buckets, recorded-duration conservation through stages/tickets, completion-only work, pre-window context, END exclusion, sorted rows, blanks versus zero, empty-window headers and byte-identical repeated output. Failed late API collection and missing local sources preserve previous outputs and return nonzero. Imports perform no collection/publication. Existing usage tests are the bridge compatibility check.
+The 50-call activity audit and IGR-14 note remain Claude's work for Igor to review. Neither is completed by this data run. The audit surface is the generated `stats/runs/2026-10-05_2026-10-18/calls.csv`; native paths/line references contain local provenance and are intentionally not tracked. The 57% simplify claim, findings quality and standalone native-review usage remain unproved here.
 
-Full live three-repo/window collection, cleanup/preservation and the complete column dictionary remain step 5. The 50-call classification audit and IGR-14 note remain Claude's work, for Igor to review.
-
-Goal: same quality, fewer tokens per ticket. The flow started on 2026-10-05.
-
-- `milestones.json`: **the critical changes to the ticket flow and how we work.** One entry per change: `hash`, `label`, `effect` (`down` saves tokens, `up` adds work, `mixed` adds work now and may save later, `base` baseline), `why`. `effect` is a reading of the commit message, not a measurement. Edit it when you know better.
-- `build_flow.py`: reads `bin/usage export` and the milestones, writes `site/data.json`.
-- `build.py`: the older CSV export (daily, weekly, tickets). Not used by the site.
-- `site/`: the dashboard, deployed to brisk as `ticket-stats`.
-
-## Refresh
-
-```sh
-python3 stats/build_flow.py 2026-10-05 2026-10-19 --usage .worktrees/igor/igr-18/bin/usage   # END is exclusive
-BRISK_SERVER=http://localhost:8787 brisk deploy stats/site
-```
-
-`bin/usage` is not on local `main` yet; use the copy in the worktree (or `origin/main`) until it is. Set `BRISK_SERVER` explicitly: the active brisk profile is the remote instance.
-
-## What counts as a critical change
-
-A commit under `plugins/igr` that changes what a session or codex does per ticket:
-
-- adds, removes or reorders a step, pass, review or check;
-- changes how codex is driven (clearing, effort, briefs, passes);
-- moves work to a script (`tk`) or to CI;
-- changes context handling (resume, `/clear`, handoffs);
-- changes test or tool-output policy.
-
-Not critical: wording, the progress band, release bumps (`chore(release)`), agent-estimate internals, bug fixes to a mechanism that already exists, file locations.
-
-## Reviewed through
-
-Every `plugins/igr` commit up to `093019d` (2026-10-17 18:57, `origin/main`) has been read. To update, list only newer ones:
-
-```sh
-git log origin/main --reverse --format='%h %aI %s' --stat 093019d..origin/main -- plugins/igr
-```
-
-Read but not added, so nobody reads them again:
-
-| commit | why not |
-| --- | --- |
-| 141bb05 | tk CLI added but not used by the loop; `8421409` is when the loop runs on it |
-| efd9e52, 9481f6e, be8c666 | extend the cut / earn-its-place check; `9686720` and `78d9ad0` are the step |
-| 8309afd, 8611d2a, caa7849, 14269be | approval report and brief wording |
-| 504f09c | moves references into the plugin, same content |
-| 57c4c75 | small test-run bound, next to `cd086fb` |
-| 3957047, 49bed03, a753b76, 21928c3 | fixes to resume (`1a24aa2`) |
-| 7cf5161 | Linear connection fix |
-| 5d536c7, 5d27223 | where tk keeps its files |
-| 7fb61f5 | parks herdr handoff tools, not used by the loop |
-| 98e7a6b, 5b7958f, 4c60880, fb668bd | agent-estimate internals |
-| 265dee8, c6f6722, 6be2234 | band UI, release |
-
-## How to read the numbers
-
-- **Weighted** is the IGR-14 proxy from `bin/usage` (cache read 0.1x, cache write 1.25-2x, output 5x, model multiplier). Claude only, uncalibrated. Codex has raw tokens only.
-- Only calls tagged with a ticket count.
-- Stage comes from `tk step` commands, which only exist after `8421409` (2026-10-10 16:10). Before it, develop and review cost sits under design or unknown. Compare totals across that change, not stages.
-- Tickets can run for days: 90% finish within 1.4 days, the longest took 7. Tickets started in the last 2 days of data are treated as still running.
-- Before/after around a change is observation, not proof: ticket size, neighbouring changes and small samples all move it. Quality is not measured.
+Approved follow-ups filed: [IGR-28](https://linear.app/ig-ra/issue/IGR-28) Codex analysis-versus-change split; [IGR-29](https://linear.app/ig-ra/issue/IGR-29) bot rounds by reviewed head; [IGR-30](https://linear.app/ig-ra/issue/IGR-30) make `bin/usage` an importable package. Outside-contract findings belong in follow-ups, without changing the settled classifier or adding sources.
 
 ## Published population and review bots
 

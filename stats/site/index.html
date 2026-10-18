@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ticket flow tokens</title>
+  <script src="/brisk.js"></script>
+  <style>
+    :root {
+      --bg: #fafaf9; --fg: #1c1917; --muted: #78716c; --card: #fff; --line: #e7e5e4;
+      --good: #15803d; --bad: #b91c1c; --sel: #fef3c7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1c1917; --fg: #f5f5f4; --muted: #a8a29e; --card: #292524; --line: #44403c; --good: #4ade80; --bad: #f87171; --sel: #422006; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+    main { max-width: 76rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+    h2 { font-size: 1.1rem; margin: 2.25rem 0 .25rem; }
+    .sub { color: var(--muted); font-size: .85rem; margin: 0 0 .75rem; }
+    .bar { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; position: sticky; top: 0; z-index: 5;
+           background: var(--bg); padding: .6rem 0; border-bottom: 1px solid var(--line); margin-bottom: 1rem; }
+    .bar label { font-size: .8rem; color: var(--muted); display: flex; gap: .4rem; align-items: center; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .seg button { font: inherit; font-size: .85rem; border: 0; background: var(--card); color: var(--fg); padding: .3rem .7rem; cursor: pointer; }
+    .seg button.on { background: var(--fg); color: var(--bg); }
+    .seg button:disabled { opacity: .35; cursor: default; }
+    select { font: inherit; font-size: .85rem; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: .25rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(30rem, 1fr)); }
+    .grid .card h3 { font-size: .9rem; margin: 0 0 .25rem; }
+    svg { width: 100%; height: auto; display: block; overflow: visible; }
+    svg text { fill: var(--muted); font-size: 10px; }
+    svg text.fl { fill: #fff; font-size: 10px; font-weight: 700; }
+    .legend { display: flex; gap: .25rem .9rem; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin: .5rem 0 .75rem; align-items: center; }
+    .legend span { cursor: pointer; user-select: none; }
+    .legend span.off { opacity: .35; text-decoration: line-through; }
+    .legend i { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; margin-right: .3rem; vertical-align: -1px; }
+    .note { color: var(--muted); font-size: .8rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th, td { padding: .4rem .5rem; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; vertical-align: middle; }
+    th { color: var(--muted); font-weight: 600; }
+    td.l, th.l { text-align: left; white-space: normal; }
+    tr.c { cursor: pointer; }
+    tr.c:hover { background: var(--line); }
+    tr.sel { background: var(--sel); }
+    tr.dim td { color: var(--muted); }
+    .good { color: var(--good); } .bad { color: var(--bad); }
+    .flag { display: inline-block; min-width: 1.2rem; text-align: center; font-size: .7rem; font-weight: 700; color: #fff; border-radius: 99px; padding: 0 .3rem; margin-right: .25rem; }
+    .mix { display: inline-flex; width: 180px; height: 10px; border-radius: 2px; overflow: hidden; background: var(--line); vertical-align: middle; }
+    .mix i { display: block; height: 100%; }
+    .chip { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; margin-right: .3rem; vertical-align: -1px; }
+    #tip { position: fixed; pointer-events: none; background: var(--fg); color: var(--bg); font-size: .75rem; padding: .35rem .55rem;
+           border-radius: 6px; display: none; white-space: pre-wrap; z-index: 9; max-width: 26rem; }
+    details { margin: .5rem 0 1rem; font-size: .85rem; color: var(--muted); }
+    details p { margin: .4rem 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Ticket flow tokens</h1>
+  <p class="sub" id="meta">Loading…</p>
+  <details>
+    <summary>How to read this</summary>
+    <p><b>Weighted</b> is the IGR-14 cost proxy (cache read 0.1×, cache write 1.25–2×, output 5×, model multiplier), Claude only, uncalibrated. <b>Raw</b> adds new input, cache read, cache write and output as plain tokens (about 90% is cheap cache read) and is the only way to see Codex.</p>
+    <p>A call's whole cost goes to the tool it used (or <i>text</i> when it used none, <i>mixed</i> when it used several), including re-reading the context. Stage <i>unknown</i> means the ticket's stage markers had not been seen yet. Develop and review are read from <code>tk step</code> commands, which only exist after change #3 (10-10): before it that cost sits under design or unknown, so compare totals across #3, not stages.</p>
+    <p>Only calls tagged with a ticket count. Tickets are grouped by the day their first call happened. Tickets started in the last 2 days of data may still be running (90% of tickets finish within 1.4 days), so they are faded in the charts and left out of the before/after comparison. The numbered flags are hand-picked commits from <code>stats/milestones.json</code>; the expected effect is my reading of each commit message. Before/after compares tickets started in a window around the commit. That is observation, not proof: ticket size, neighbouring changes and small samples all move it, and quality is not measured here.</p>
+  </details>
+
+  <div class="bar">
+    <span class="seg" id="metric"><button data-v="weighted">Weighted</button><button data-v="raw">Raw tokens</button></span>
+    <span class="seg" id="provider"><button data-v="claude">Claude</button><button data-v="codex">Codex</button><button data-v="all">Both</button></span>
+    <span class="seg" id="split"><button data-v="phase">by stage</button><button data-v="kind">by tool</button></span>
+    <label>before/after window <select id="win"><option>1</option><option>2</option><option selected>3</option><option>5</option><option>7</option></select> days</label>
+    <label><input type="checkbox" id="markers" checked /> flags</label>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <h2>Timeline</h2>
+  <p class="sub" id="timelineSub"></p>
+  <div class="card" id="timeline"></div>
+  <div class="legend" id="effects"></div>
+
+  <h2>Changes to the loop</h2>
+  <p class="sub" id="msSub"></p>
+  <div class="card"><table id="ms"></table></div>
+  <div class="card" id="detail" style="margin-top:1rem" hidden></div>
+
+  <h2>Day by day</h2>
+  <p class="sub" id="daySub"></p>
+  <div class="card"><table id="daily"></table></div>
+
+  <h2>Each one on its own</h2>
+  <p class="sub">Mean per ticket for each <span id="splitName">stage</span>, own scale.</p>
+  <div class="grid" id="small"></div>
+
+  <h2>All usage per day</h2>
+  <p class="sub">Everything tagged with a ticket, including tickets that span several days.</p>
+  <div class="card" id="perDay"></div>
+</main>
+<div id="tip"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const PHASES = ['design', 'develop', 'review', 'finish', 'unknown'];
+const EFFECT = {
+  down: { c: '#16a34a', sym: '▼', text: 'expected to save tokens' },
+  up: { c: '#dc2626', sym: '▲', text: 'adds work' },
+  mixed: { c: '#d97706', sym: '◆', text: 'adds work now, may save later' },
+  base: { c: '#78716c', sym: '●', text: 'baseline' },
+};
+const FIXED = { text: '#a8a29e', mixed: '#78716c', other: '#d6d3d1', unknown: '#a8a29e' };
+const PHASE_COLOR = { design: '#2563eb', develop: '#16a34a', review: '#d97706', finish: '#9333ea', unknown: '#a8a29e' };
+const s = { metric: 'weighted', provider: 'claude', split: 'phase', win: 3, markers: true, hidden: new Set(), sel: null };
+const SETTLE_DAYS = 2; // a ticket started later than this before the last call may still be running
+let D, days, tickets, ms, color, keys, cut;
+
+const unitName = () => (s.metric === 'weighted' ? 'weighted units' : 'tokens');
+const fmt = (v) => {
+  const m = v / 1e6;
+  return Math.abs(m) >= 100 ? Math.round(m).toLocaleString() + 'M' : Math.abs(m) >= 10 ? m.toFixed(0) + 'M' : m.toFixed(1) + 'M';
+};
+const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const wall = (ts) => Date.parse(ts.slice(0, 19) + 'Z');
+const dayOf = (ts) => ts.slice(0, 10);
+const when = (ts) => ts.slice(5, 16).replace('T', ' ');
+const median = (xs) => { if (!xs.length) return 0; const a = [...xs].sort((x, y) => x - y), m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+const pct = (a, b) => (a ? ((b - a) / a) * 100 : null);
+const deltaHtml = (p) => (p == null ? '' : `<span class="${p < -3 ? 'good' : p > 3 ? 'bad' : ''}">${p > 0 ? '+' : ''}${p.toFixed(0)}%</span>`);
+
+// ---- data shaping ------------------------------------------------------------
+function valueOf(row) {
+  const [prov, phase, kind, , rawv, wv] = row;
+  if (s.provider !== 'all' && prov !== s.provider) return null;
+  return [s.split === 'phase' ? phase : kind, s.metric === 'weighted' ? wv : rawv];
+}
+function fold(rows) {
+  const m = new Map();
+  for (const r of rows) { const v = valueOf(r); if (v) m.set(v[0], (m.get(v[0]) || 0) + v[1]); }
+  return m;
+}
+const total = (m) => { let t = 0; for (const [k, v] of m) if (!s.hidden.has(k)) t += v; return t; };
+
+function prepare() {
+  days = D.days.map((d) => ({ day: d.day, by: fold(d.rows) }));
+  tickets = D.tickets.map((t) => { const by = fold(t.rows); return { id: t.id, start: t.start, by, total: total(by), open: wall(t.start) > cut }; });
+  const sums = new Map();
+  for (const t of tickets) for (const [k, v] of t.by) sums.set(k, (sums.get(k) || 0) + v);
+  keys = s.split === 'phase' ? PHASES.filter((p) => sums.has(p)) : [...sums.keys()].sort((a, b) => sums.get(b) - sums.get(a));
+  color = {};
+  const free = keys.filter((k) => !(s.split === 'phase' ? PHASE_COLOR[k] : FIXED[k]));
+  keys.forEach((k) => {
+    color[k] = s.split === 'phase' ? PHASE_COLOR[k] : FIXED[k] || `hsl(${Math.round((free.indexOf(k) * 360) / free.length + 20)} 62% 52%)`;
+  });
+}
+function cohorts() {
+  const m = new Map(D.days.map((d) => [d.day, []]));
+  for (const t of tickets) m.get(dayOf(t.start))?.push(t);
+  return [...m].map(([day, ts]) => ({
+    day, ts, n: ts.length, open: ts.some((t) => t.open), median: median(ts.map((t) => t.total)), mean: mean(ts.map((t) => t.total)),
+    by: new Map(keys.map((k) => [k, mean(ts.map((t) => t.by.get(k) || 0))])),
+  }));
+}
+
+// ---- flags -------------------------------------------------------------------
+const flagX = (m, x0, band) => x0 + ((wall(m.ts) - wall(D.days[0].day + 'T00:00:00')) / 864e5) * band;
+function flagSvg(x0, band, n, T, H, full) {
+  if (!s.markers) return '';
+  const rowsX = [-99, -99, -99];
+  return ms.map((m, i) => {
+    const x = flagX(m, x0, band), c = EFFECT[m.effect].c, on = s.sel === m.hash;
+    if (x < x0 || x > x0 + band * n) return '';
+    if (!full) return `<line x1="${x}" x2="${x}" y1="${T}" y2="${T + H}" stroke="${c}" stroke-width="${on ? 2.5 : 1}" opacity="${on ? 1 : .35}" stroke-dasharray="${on ? '' : '3 2'}"/>`;
+    let row = rowsX.findIndex((lx) => x - lx >= 19);
+    if (row < 0) row = 0;
+    rowsX[row] = x;
+    const cy = 11 + row * 18;
+    const tip = `#${i + 1} · ${when(m.ts)} · ${m.label}\n${EFFECT[m.effect].sym} ${EFFECT[m.effect].text}\n${m.why}`;
+    return `<g data-hash="${m.hash}" data-tip="${esc(tip)}" style="cursor:pointer">
+      <line x1="${x}" x2="${x}" y1="${cy}" y2="${T + H}" stroke="${c}" stroke-width="${on ? 2.5 : 1}" opacity="${on ? 1 : .6}" stroke-dasharray="${on ? '' : '3 2'}"/>
+      <circle cx="${x}" cy="${cy}" r="8.5" fill="${c}" stroke="${on ? 'var(--fg)' : 'var(--card)'}" stroke-width="${on ? 2 : 1.5}"/>
+      <text class="fl" x="${x}" y="${cy + 3.5}" text-anchor="middle">${i + 1}</text>
+      <rect x="${x - 4}" y="${cy + 8}" width="8" height="${T + H - cy - 8}" fill="transparent"/></g>`;
+  }).join('');
+}
+
+// ---- charts ------------------------------------------------------------------
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = 10 ** Math.floor(Math.log10(v)), f = v / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+}
+// cats: [{label, by: Map, line?: number, n?: number, note?: string}]
+function stackChart(cats, { h = 230, cols = keys, small = false, flags = true } = {}) {
+  const W = small ? 520 : 1000, L = small ? 40 : 46, R = 8, T = small ? 10 : flags && s.markers ? 56 : 12, B = 30, H = h - T - B;
+  const vis = cols.filter((k) => !s.hidden.has(k));
+  const tot = (c) => vis.reduce((a, k) => a + (c.by.get(k) || 0), 0);
+  const max = niceMax(Math.max(...cats.map((c) => Math.max(tot(c), c.line || 0)), 1) * 1.05);
+  const band = (W - L - R) / cats.length, y = (v) => T + H - (v / max) * H;
+  let g = '';
+  for (let i = 0; i <= 4; i++) g += `<line x1="${L}" x2="${W - R}" y1="${y((max * i) / 4)}" y2="${y((max * i) / 4)}" stroke="var(--line)"/><text x="${L - 4}" y="${y((max * i) / 4) + 3}" text-anchor="end">${fmt((max * i) / 4)}</text>`;
+  let bars = '', hits = '', labels = '';
+  cats.forEach((c, i) => {
+    let acc = 0;
+    const x = L + i * band + band * .14, w = band * .72;
+    for (const k of vis) { const v = c.by.get(k) || 0; if (!v) continue; bars += `<rect x="${x}" y="${y(acc + v)}" width="${w}" height="${Math.max(0, y(acc) - y(acc + v))}" fill="${color[k]}" opacity="${c.open ? .4 : 1}"/>`; acc += v; }
+    const tip = `${c.label}${c.note ? ' · ' + c.note : ''}\n` + vis.map((k) => [k, c.by.get(k) || 0]).filter(([, v]) => v).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${fmt(v)}`).join('\n') + `\ntotal: ${fmt(acc)}`;
+    hits += `<rect data-tip="${esc(tip)}" x="${L + i * band}" y="${T}" width="${band}" height="${H}" fill="transparent"/>`;
+    if (c.line) bars += `<circle cx="${x + w / 2}" cy="${y(c.line)}" r="3.5" fill="var(--fg)" stroke="var(--card)" stroke-width="1.5"/>`;
+    if (!small || i % 2 === 0) labels += `<text x="${x + w / 2}" y="${H + T + 13}" text-anchor="middle">${c.label.slice(5)}</text>`;
+    if (c.n != null && !small) labels += `<text x="${x + w / 2}" y="${H + T + 25}" text-anchor="middle" style="font-size:9px">n=${c.n}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${h}">${g}${bars}${labels}${hits}${flags ? flagSvg(L, band, cats.length, T, H, !small) : ''}</svg>`;
+}
+function legends() {
+  $('legend').innerHTML = keys.map((k) => `<span data-k="${k}" class="${s.hidden.has(k) ? 'off' : ''}"><i style="background:${color[k]}"></i>${k}</span>`).join('');
+  $('effects').innerHTML = s.markers ? Object.values(EFFECT).map((e) => `<span style="cursor:default"><i class="flag" style="background:${e.c};min-width:.8rem;padding:0">&nbsp;</i>${e.sym} ${e.text}</span>`).join('') : '';
+}
+
+// ---- milestones --------------------------------------------------------------
+function compare(m) {
+  const t0 = wall(m.ts), w = s.win * 864e5;
+  const settled = tickets.filter((t) => !t.open);
+  const before = settled.filter((t) => wall(t.start) >= t0 - w && wall(t.start) < t0);
+  const after = settled.filter((t) => wall(t.start) >= t0 && wall(t.start) < t0 + w);
+  return { before, after, ok: before.length >= 3 && after.length >= 3 };
+}
+function verdict(effect, p) {
+  if (p == null || effect === 'mixed' || effect === 'base') return '';
+  const as = effect === 'down' ? p <= -3 : p >= 3, against = effect === 'down' ? p >= 3 : p <= -3;
+  return as ? '<span class="good" title="moved the way the commit said it would">✓</span>' : against ? '<span class="bad" title="moved the opposite way">✗</span>' : '<span title="no clear change">≈</span>';
+}
+function msTable() {
+  $('msSub').textContent = `Median ${unitName()} per ticket for tickets started in the ${s.win} days before vs the ${s.win} days after each change (3+ tickets each side; tickets started in the last ${SETTLE_DAYS} days are left out because they may still be running). ✓ moved as the commit said, ✗ the opposite, ≈ within ±3%. Click a row for the breakdown.`;
+  const rows = ms.map((m, i) => {
+    const c = compare(m), b = median(c.before.map((t) => t.total)), a = median(c.after.map((t) => t.total)), p = c.ok ? pct(b, a) : null;
+    return `<tr class="c ${s.sel === m.hash ? 'sel' : ''}" data-hash="${m.hash}">
+      <td class="l"><span class="flag" style="background:${EFFECT[m.effect].c}">${i + 1}</span></td><td class="l">${when(m.ts)}</td>
+      <td class="l"><b>${esc(m.label)}</b><br><span class="note">${esc(m.why)}</span></td>
+      <td class="l" style="color:${EFFECT[m.effect].c}">${EFFECT[m.effect].sym} ${EFFECT[m.effect].text}</td>
+      <td>${c.before.length} → ${c.after.length}</td><td>${c.ok ? fmt(b) + ' → ' + fmt(a) : '—'}</td><td>${deltaHtml(p)} ${verdict(m.effect, p)}</td></tr>`;
+  });
+  $('ms').innerHTML = `<thead><tr><th class="l">#</th><th class="l">when</th><th class="l">change</th><th class="l">expected</th><th>tickets</th><th>median / ticket</th><th>observed</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
+function detail() {
+  const i = ms.findIndex((x) => x.hash === s.sel), el = $('detail');
+  el.hidden = i < 0;
+  if (i < 0) return;
+  const m = ms[i], c = compare(m);
+  const rows = keys.filter((k) => !s.hidden.has(k)).map((k) => {
+    const b = mean(c.before.map((t) => t.by.get(k) || 0)), a = mean(c.after.map((t) => t.by.get(k) || 0));
+    return `<tr><td class="l"><i class="chip" style="background:${color[k]}"></i>${k}</td><td>${fmt(b)}</td><td>${fmt(a)}</td><td>${fmt(a - b)}</td><td>${deltaHtml(pct(b, a))}</td></tr>`;
+  }).join('');
+  const mb = mean(c.before.map((t) => t.total)), ma = mean(c.after.map((t) => t.total));
+  el.innerHTML = `<span class="flag" style="background:${EFFECT[m.effect].c}">${i + 1}</span><b>${esc(m.label)}</b> · <code>${m.hash}</code> · ${when(m.ts)}
+    <p class="note">${c.before.length} tickets started in the ${s.win} days before, ${c.after.length} in the ${s.win} days after. Mean ${unitName()} per ticket by ${s.split === 'phase' ? 'stage' : 'tool'}:</p>
+    <table><thead><tr><th class="l"></th><th>before</th><th>after</th><th>change</th><th></th></tr></thead><tbody>${rows}
+    <tr><td class="l"><b>total (shown)</b></td><td><b>${fmt(mb)}</b></td><td><b>${fmt(ma)}</b></td><td><b>${fmt(ma - mb)}</b></td><td>${deltaHtml(pct(mb, ma))}</td></tr></tbody></table>`;
+}
+
+// ---- day table ---------------------------------------------------------------
+function dayTable(co) {
+  $('daySub').textContent = `Tickets grouped by the day they started. Mix bar = mean ${unitName()} per ticket by ${s.split === 'phase' ? 'stage' : 'tool'} (same scale on every row). Δ compares the median with the previous day. Greyed days have fewer than 3 tickets or tickets that may still be running.`;
+  const maxMean = Math.max(...co.map((c) => [...c.by].reduce((a, [k, v]) => a + (s.hidden.has(k) ? 0 : v), 0)), 1);
+  const useDay = new Map(days.map((d) => [d.day, total(d.by)]));
+  const rows = co.map((c, i) => {
+    const prev = co[i - 1], p = prev && prev.n && c.n && !prev.open && !c.open ? pct(prev.median, c.median) : null;
+    const mix = keys.filter((k) => !s.hidden.has(k)).map((k) => `<i style="width:${((c.by.get(k) || 0) / maxMean) * 100}%;background:${color[k]}" title="${k}: ${fmt(c.by.get(k) || 0)}"></i>`).join('');
+    const flags = ms.map((m, j) => [m, j]).filter(([m]) => dayOf(m.ts) === c.day)
+      .map(([m, j]) => `<span class="flag" style="background:${EFFECT[m.effect].c}">${j + 1}</span>${esc(m.label)}`).join('<br>');
+    return `<tr class="${c.n < 3 || c.open ? 'dim' : ''}"><td class="l"><b>${c.day.slice(5)}</b>${c.open ? '<br><span class="note">still running</span>' : ''}</td><td>${c.n}</td>
+      <td>${c.n ? fmt(c.median) : '—'}</td><td>${deltaHtml(p)}</td><td>${c.n ? fmt(c.mean) : '—'}</td>
+      <td class="l"><span class="mix">${mix}</span></td><td>${fmt(useDay.get(c.day) || 0)}</td><td class="l">${flags}</td></tr>`;
+  });
+  $('daily').innerHTML = `<thead><tr><th class="l">day</th><th>tickets started</th><th>median / ticket</th><th>Δ vs prev day</th><th>mean / ticket</th><th class="l">mix per ticket</th><th>all usage that day</th><th class="l">changes that day</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
+
+function render() {
+  prepare();
+  legends();
+  const co = cohorts();
+  $('timelineSub').textContent = `Mean ${unitName()} per ticket by the day the ticket started (bars), median (dot), with the numbered changes to the loop. Hover a flag for what changed.`;
+  $('timeline').innerHTML = stackChart(co.map((c) => ({ label: c.day, n: c.n, by: c.by, open: c.open, line: c.n ? c.median : 0, note: `${c.n} tickets, dot = median${c.open ? ', some still running' : ''}` })), { h: 380 });
+  msTable();
+  detail();
+  dayTable(co);
+  $('splitName').textContent = s.split === 'phase' ? 'stage' : 'tool';
+  $('small').innerHTML = keys.filter((k) => !s.hidden.has(k)).map((k) => {
+    const one = co.map((c) => ({ label: c.day, by: new Map([[k, c.by.get(k) || 0]]), open: c.open, note: `${c.n} tickets${c.open ? ', some still running' : ''}` }));
+    return `<div class="card"><h3><i class="chip" style="background:${color[k]}"></i>${k}</h3>${stackChart(one, { h: 220, cols: [k], small: true, flags: s.markers })}</div>`;
+  }).join('');
+  $('perDay').innerHTML = stackChart(days.map((d) => ({ label: d.day, by: d.by })), { h: 300, flags: false });
+  $('meta').textContent = `${D.days[0].day} → ${D.days[D.days.length - 1].day} · ${tickets.length} tickets · ${unitName()} · built ${D.generated.slice(0, 16).replace('T', ' ')}`;
+}
+
+// ---- wiring ------------------------------------------------------------------
+function syncControls() {
+  for (const id of ['metric', 'provider', 'split'])
+    $(id).querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.v === s[id]);
+      b.disabled = id === 'provider' && s.metric === 'weighted' && b.dataset.v !== 'claude';
+    });
+}
+for (const id of ['metric', 'provider', 'split'])
+  $(id).addEventListener('click', (e) => {
+    const v = e.target.dataset.v;
+    if (!v) return;
+    s[id] = v;
+    if (id === 'metric' && v === 'weighted') s.provider = 'claude';
+    if (id !== 'metric') s.hidden.clear();
+    syncControls(); render();
+  });
+$('win').addEventListener('change', (e) => { s.win = +e.target.value; render(); });
+$('markers').addEventListener('change', (e) => { s.markers = e.target.checked; render(); });
+$('legend').addEventListener('click', (e) => {
+  const k = e.target.closest('span[data-k]')?.dataset.k;
+  if (!k) return;
+  s.hidden.has(k) ? s.hidden.delete(k) : s.hidden.add(k);
+  render();
+});
+document.addEventListener('click', (e) => {
+  const h = e.target.closest('[data-hash]')?.dataset.hash;
+  if (!h) return;
+  s.sel = s.sel === h ? null : h;
+  render();
+});
+const tip = $('tip');
+document.addEventListener('mousemove', (e) => {
+  const t = e.target.closest?.('[data-tip]')?.dataset.tip;
+  tip.style.display = t ? 'block' : 'none';
+  if (t) { tip.textContent = t; tip.style.left = Math.min(e.clientX + 12, innerWidth - 300) + 'px'; tip.style.top = e.clientY + 14 + 'px'; }
+});
+
+(async () => {
+  try {
+    D = await (await fetch('data.json')).json();
+    ms = D.milestones;
+    cut = wall(D.data_end) - SETTLE_DAYS * 864e5;
+    syncControls();
+    render();
+  } catch (e) {
+    $('meta').textContent = `Failed to load data.json: ${e.message}`;
+  }
+})();
+</script>
+</body>
+</html>
