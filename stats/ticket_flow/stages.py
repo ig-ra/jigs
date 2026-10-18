@@ -3,6 +3,7 @@ from bisect import bisect_right
 from collections import defaultdict
 
 from .timing import overlaps
+from .sources import stamp
 
 
 def invocation_group(marker, family, seen, active):
@@ -38,7 +39,7 @@ def timeline(markers):
                 active.pop('fix_round', None)
                 stage = 'first_review' if review == 1 else 'further_review'
             elif kind in ('fix', 'commit'):
-                if kind == 'fix' or review or stage == 'fix':
+                if kind == 'fix' or review or stage in ('first_review', 'further_review', 'fix'):
                     cycle += int(stage != 'fix')
                     stage = 'fix'
                     if kind == 'fix':
@@ -69,3 +70,25 @@ def assign(turns, markers):
             (other.provider, other.session) != (turn.provider, turn.session) and
             overlaps(turn, other) for other in turns) else 'timestamp'
     return turns
+
+
+def review_after_bot(markers, prs, start, end):
+    """Ticket-wide observation; a tied independent source cannot prove ordering."""
+    if markers is None or not prs or any(p.get('bot_reviews') is None or
+            p.get('bot_comments') is None or p.get('bot_threads') is None for p in prs):
+        return None
+    if any((p['bot_reviews'] or p['bot_comments']) and not p.get('first_bot') for p in prs):
+        return None
+    bots = [p for p in prs if p.get('first_bot') and stamp(p['first_bot']) < end]
+    if not bots:
+        return None
+    first = min(bots, key=lambda p: (stamp(p['first_bot']), p['repo'], p['pr']))
+    time = stamp(first['first_bot'])
+    source = f'github:{first["repo"]}#{first["pr"]}:first_bot'
+    reviews = [row for row in timeline(markers).get(first['ticket'], [])
+               if row[-1] in ('own_review', 'simplify', 'native_review') and start <= row[0] < end]
+    if any(row[0] > time for row in reviews):
+        return 1
+    if any(row[0] == time and row[1].source != source for row in reviews):
+        return None
+    return 0

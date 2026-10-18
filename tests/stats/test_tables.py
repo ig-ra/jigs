@@ -45,7 +45,7 @@ class TableTests(unittest.TestCase):
 
     def test_wait_overlap_invocation_counts_and_fix_rounds_conserve(self):
         turns = [turn('a',start=10,end=30,source='session.jsonl:9'),
-                 turn('b',start=15,end=25,source='session.jsonl:10')]
+                 turn('b',start=15,end=25,source='session.jsonl:10',calls=[call('m2',time=16)])]
         markers = [Marker('IGR-15',at(0),'simplify','m0',group='launch'),
                    Marker('IGR-15',at(1),'simplify','m1',group='launch'),
                    Marker('IGR-15',at(12),'fix','m2',group='one'),
@@ -58,6 +58,7 @@ class TableTests(unittest.TestCase):
         ticket, = result['tickets']
         self.assertEqual(ticket['simplify_passes'], 1)
         self.assertEqual(ticket['fix_rounds'], 2)
+        self.assertEqual(ticket['fix_cycles'], 1)
         self.assertAlmostEqual(ticket['foreground_wait_min'],4/60)
         self.assertAlmostEqual(ticket['turn_overlap_min'],10/60)
         for metric in ('foreground_wait_min','turn_overlap_min','claude_main_minutes_raw'):
@@ -79,3 +80,54 @@ class TableTests(unittest.TestCase):
         self.assertEqual(ticket['estimated_rounds_high'],2)
         self.assertIsNone(ticket['estimated_minutes_low'])
         self.assertTrue(any(r['source'] == 'estimates:2' for r in result['run'] if 'source' in r))
+
+    def test_available_empty_sources_can_be_complete_and_unmatched_keeps_work(self):
+        markers=[Marker('IGR-15',at(),'design','start')]
+        one=stages.assign([turn(wait=0,calls=[call(activity='reply',repo='ig-ra/jigs')])],markers)[0]
+        result=tables.assemble([one],at(),at(60),Counter(),{},[],markers,[])
+        self.assertEqual(result['tickets'][0]['coverage'],'complete')
+        self.assertEqual(result['tickets'][0]['prs'],0)
+        partial=tables.assemble([one],at(),at(60),Counter(),{'IGR-15':1},[],markers,[])
+        self.assertEqual(partial['tickets'][0]['coverage'],'partial')
+        self.assertEqual(partial['tickets'][0]['claude_main_minutes_raw'],one.minutes)
+
+    def test_ticket_indicator_is_not_duplicated_across_repos(self):
+        from github_support import fact
+        markers=[Marker('IGR-15',at(20),'simplify','review')]
+        prs=[fact(first_bot=at(10).isoformat()),fact(2,'Sawmills/agent-platform')]
+        result=tables.assemble([turn()],at(),at(60),Counter(),{},prs,markers)
+        self.assertEqual(len(result['tickets']),1)
+        self.assertEqual(result['tickets'][0]['review_after_bot'],1)
+        self.assertEqual(result['tickets'][0]['prs'],2)
+        self.assertEqual(sum(s['claude_main_new_input_tokens'] for s in result['stages']),10)
+
+    def test_duplicate_canonical_call_cannot_publish_double_counted_work(self):
+        with self.assertRaisesRegex(ValueError,'duplicate canonical call'):
+            self.assemble([turn(),turn('second')])
+
+    def test_every_raw_bucket_and_duration_conserves_including_unknown_and_missing(self):
+        from stats.ticket_flow.model import ACTORS, TOKENS
+        values=dict(new_input_tokens=2,cache_read_tokens=3,cache_write_tokens=5,output_tokens=7,activity='reply')
+        turns=[turn(wait=0,calls=[call(repo='ig-ra/jigs',**values)]),
+               turn('child',ticket='IGR-16',session='child',parent='session',start=30,end=40,minutes=None,
+                    calls=[call('child',ticket='IGR-16',session_id='child',time=35,**dict(values,cache_write_tokens=None))]),
+               turn('codex',provider='codex',session='codex-child',parent='session',start=40,end=50,wait=0,
+                    calls=[call('codex',provider='codex',session_id='codex-child',time=45,**values)])]
+        markers=[Marker('IGR-15',at(),'design','start')]
+        stages.assign(turns,markers)
+        result=tables.assemble(turns,at(),at(60),Counter(),{},[],markers)
+        for ticket in result['tickets']:
+            group=[t for t in turns if t.ticket==ticket['ticket']]
+            rows=[r for r in result['stages'] if r['ticket']==ticket['ticket']]
+            for actor in ACTORS:
+                for token in TOKENS:
+                    metric=f'{actor}_{token}'
+                    expected=tables.sum_required(c[token] for t in group if t.actor==actor for c in t.calls)
+                    self.assertEqual(ticket[metric],expected)
+                    self.assertEqual(tables.sum_required(r[metric] for r in rows),expected)
+            for actor in ('claude_main','codex'):
+                metric=actor+'_minutes_raw'
+                expected=sum(t.minutes for t in group if t.actor==actor and t.minutes is not None)
+                self.assertAlmostEqual(ticket[metric],expected)
+                self.assertAlmostEqual(sum(r[metric] for r in rows),expected)
+        self.assertTrue(any(row['stage']=='unknown' for row in result['stages']))

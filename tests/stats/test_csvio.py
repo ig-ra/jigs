@@ -25,3 +25,18 @@ class CsvTests(unittest.TestCase):
             with self.assertRaises(KeyError):
                 csvio.publish(directory,{'calls':[]})
             self.assertEqual(before,{p.name:p.read_bytes() for p in directory.iterdir()})
+
+    def test_late_source_failure_preserves_every_previous_output(self):
+        def failing_rows():
+            yield {'metric':'partial source'}
+            raise OSError('source collection failed')
+        with tempfile.TemporaryDirectory() as name:
+            directory=Path(name)/'run'
+            tables={key:[] for key in csvio.SCHEMAS}
+            csvio.publish(directory,tables)
+            before={p.name:p.read_bytes() for p in directory.iterdir()}
+            tables['run']=failing_rows()
+            with self.assertRaisesRegex(OSError,'source collection failed'):
+                csvio.publish(directory,tables)
+            self.assertEqual(before,{p.name:p.read_bytes() for p in directory.iterdir()})
+            self.assertEqual(sorted(p.name for p in directory.parent.iterdir()),['run'])

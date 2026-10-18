@@ -3,6 +3,7 @@ import unittest
 from stats.ticket_flow.model import Marker
 from stats.ticket_flow import stages
 from support import at, turn
+from github_support import fact
 
 
 class StageTests(unittest.TestCase):
@@ -66,3 +67,25 @@ class StageTests(unittest.TestCase):
             events = stages.timeline(markers)['IGR-15']
             self.assertEqual(sum(row[-1] == 'fix_round' for row in events), 2)
             self.assertEqual(events[-1][4], 1)
+
+    def test_remote_review_boundary_keeps_fix_cycle_without_agent_pass(self):
+        markers=[Marker('IGR-15',at(1),'first_review','github:review'),
+                 Marker('IGR-15',at(2),'commit','github:commit',identity='sha')]
+        result=stages.assign([turn()],markers)[0]
+        self.assertEqual((result.stage,result.cycle,result.review_pass),('fix',1,None))
+
+    def test_review_after_bot_is_ticket_wide_and_requires_later_observed_invocation(self):
+        prs=[fact(first_bot=at(10).isoformat()),fact(2,'Sawmills/condition-curator',first_bot=at(30).isoformat())]
+        markers=[Marker('IGR-15',at(20),'simplify','local:1')]
+        self.assertEqual(stages.review_after_bot(markers,prs,at(),at(60)),1)
+        self.assertEqual(stages.review_after_bot([],prs,at(),at(60)),0)
+        tied=[Marker('IGR-15',at(10),'native_review','other:1')]
+        self.assertIsNone(stages.review_after_bot(tied,prs,at(),at(60)))
+        self.assertEqual(stages.review_after_bot(tied+markers,prs,at(),at(60)),1)
+        self.assertIsNone(stages.review_after_bot(markers,[fact()],at(),at(60)))
+        self.assertIsNone(stages.review_after_bot(None,prs,at(),at(60)))
+        self.assertIsNone(stages.review_after_bot(markers,[fact(bot_threads=None)],at(),at(60)))
+        self.assertIsNone(stages.review_after_bot([],prs+[fact(3,bot_comments=1)],at(),at(60)))
+        unrelated=[Marker('IGR-16',at(40),'simplify','other-ticket')]
+        self.assertEqual(stages.review_after_bot(unrelated,prs,at(),at(60)),0)
+        self.assertEqual(stages.review_after_bot(markers,prs,at(30),at(60)),0)
