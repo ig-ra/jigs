@@ -24,7 +24,7 @@ Identical inputs produce identical bytes: all columns and rows have stable order
 
 Calls are selected by call timestamp. Full completed durations are selected by completion timestamp, even if they began before START. Earlier context stays available for attribution. Incomplete turns can supply calls; completion-only turns can supply time. Claude main time sums native `turn_duration` records. Codex time uses completed native start/complete pairs, including children. No Claude-child minutes or standalone native-review usage is invented. Unmatched Codex starts remain counted alongside recorded work.
 
-Each ticket has one timestamp-ordered marker timeline: ticket start/finish, successful step receipts, estimate dispatches, simplify/native/own review invocations, PR creation/merge, earliest submitted review, authored fix commits and first bot activity. Native turn start is preferred, first attributable call otherwise, duration-derived start for completion-only evidence. Latest marker at/before that start is latched for the entire turn. Equal-time markers use stable source/identity order. `stage_order=ambiguous` means only that a different session of the same ticket overlaps the turn. Unknown stage and ambiguous order are separate diagnostics; neither discards tokens/time. No hand clock-window stage assignment. Native-review markers require an executable reviewer command, directly or in a recorded literal shell wrapper; documentation writes, searches, waits, delegated messages and help-only queries are excluded. A recorded receiver invocation counts, as does each genuine rerun. Opaque dynamically constructed wrapper commands cannot establish an invocation.
+Each ticket has one timestamp-ordered marker timeline: ticket start/finish, successful step receipts, estimate dispatches, simplify/native/own review invocations, PR creation/merge, earliest submitted review, authored fix commits and first bot activity. Native turn start is preferred, first attributable call otherwise, duration-derived start for completion-only evidence. Latest marker at/before that start is latched for the entire turn. Equal-time markers use stable source/identity order. `stage_order=ambiguous` means only that a different session of the same ticket overlaps the turn. Unknown stage and ambiguous order are separate diagnostics; neither discards tokens/time. No hand clock-window stage assignment. Native-review markers require an executable reviewer command, directly or in a recorded literal shell wrapper; documentation writes, searches, waits, delegated messages and help-only queries are excluded. A recorded receiver invocation counts, as does each genuine rerun. Opaque dynamically constructed wrapper commands cannot establish an invocation. `first_review` means the first agent review pass and can follow a fix stage when a bot or human reviewed the PR first; remote reviews never count as agent passes.
 
 Blank means unavailable or not applicable; zero means an observed empty set/count. A required missing token/PR/estimate component propagates through the relevant sum. PR lookup is available only after successful queries for all recorded known-repo associations of that ticket; no recorded association leaves PR measures blank and coverage partial. Successful empty lookups retain zero. The exact global `no_pr_tickets` total is blank if any named ticket lacks lookup evidence. Source failures abort the run. `coverage` is one `complete|partial` field: attribution gaps, ambiguous ordering, missing child identity, unrecorded native-review usage, incomplete durations, malformed reader records, unavailable PR/estimate components or unmatched starts can make it partial. Recorded provider work remains present. Codex parentage alone is not a coverage gap: measured child durations count; missing child type, description, family or other required evidence still makes coverage partial, including completion-only children. Claude-child duration remains unavailable. A complete row does not establish that all unrecorded work was captured.
 
@@ -38,22 +38,22 @@ Definitions below expand every current schema field. `A` expands to each of `cla
 
 | Column(s) | Source, unit and missingness |
 |---|---|
-| `provider`, `id` | Canonical usage provider (`claude|codex`) and provider call ID; deduplicated identity pair. |
+| `provider`, `id` | Canonical usage provider (`claude\|codex`) and provider call ID; deduplicated identity pair. |
 | `timestamp` | Canonical call UTC event time; determines window inclusion. |
 | `ticket`, `ticket_basis` | Canonical/native ticket attribution and evidence basis, including recorded parent links; blank if unresolved. |
 | `repo` | Fixed-root lexical call cwd, falling back to the turn repo; blank for unmapped cwd. |
 | `actor` | Claude main/child or Codex; Codex includes children. |
 | `session`, `parent_session`, `turn` | Native session, recorded parent and native/composite turn ID; parent blank when absent. |
-| `turn_start`, `start_basis` | Attribution start, UTC; basis `native_start|first_call|duration_record`. Blank time if unavailable. |
+| `turn_start`, `start_basis` | Attribution start, UTC; basis `native_start\|first_call\|duration_record`. Blank time if unavailable. |
 | `source` | Canonical source path and line for the call. |
 | `marker_time`, `marker_source`, `marker_repo` | Selected ticket marker's event time, source reference and repo; blank when absent/unmapped. |
-| `stage` | Latched `design|implement|first_review|fix|bots_ci|further_review|finish|unknown`. |
-| `stage_order` | `timestamp|ambiguous`, by cross-session turn overlap only. |
+| `stage` | Latched `design\|implement\|first_review\|fix\|bots_ci\|further_review\|finish\|unknown`. |
+| `stage_order` | `timestamp\|ambiguous`, by cross-session turn overlap only. |
 | `review_pass`, `cycle` | Ticket timeline's cumulative review-pass/fix-cycle ordinal; blank before any. |
 | `activity` | First-match native tool-input classification; exact labels below. |
-| `activity_basis` | `native_tool_inputs|no_tools|missing_tool_input`; missing inputs force `other`. |
+| `activity_basis` | `native_tool_inputs\|no_tools\|missing_tool_input`; missing inputs force `other`. |
 | `activity_source` | Semicolon-separated native tool source path/lines; blank for no tools. |
-| `child_type`, `child_description`, `child_family` | Recorded sidecar/native metadata or linked launch; description retained in full. Family `simplify|review|explore` when evidenced; otherwise blank. Non-children blank. |
+| `child_type`, `child_description`, `child_family` | Recorded sidecar/native metadata or linked launch; description retained in full. Family `simplify\|review\|explore` when evidenced; otherwise blank. Non-children blank. |
 | `child_basis` | Sidecar/native/linked launch or simplify invocation reference; blank without evidence. |
 | `new_input_tokens`, `cache_read_tokens`, `cache_write_tokens`, `output_tokens` | Four disjoint canonical raw buckets; integer tokens, unavailable bucket blank. |
 | `missing_reason` | Semicolon-separated `unassigned_ticket`, `no_preceding_marker`, `missing_tool_input`, `missing_child_type`, `missing_child_description`, `missing_child_family`; blank if none. |
@@ -74,7 +74,7 @@ One row per `ticket,stage,review_pass,cycle`; repo is not a grouping key. Unknow
 | `fix_rounds` | Explicit fixing/dispatch invocation count; running/fixing receipt plus first dispatch is one invocation. |
 | `fix_cycles` | One for each stage key in `fix` with an observed cycle; independent of round/commit counts. |
 | `calls`, `turns` | Audit call count and window-completed native turn count; known-empty zero. Incomplete turns do not supply duration. |
-| `coverage` | `complete|partial` for the row's source/attribution evidence. |
+| `coverage` | `complete\|partial` for the row's source/attribution evidence. |
 
 ### tickets.csv
 
@@ -91,7 +91,7 @@ One row per ticket, including a blank-ticket group when unassigned work exists. 
 | `initial_commits`, `fix_commits` | Current PR commits partitioned before versus at/after earliest submitted review using author dates; missing boundary/date makes affected values blank. |
 | `initial_additions`, `initial_deletions`, `fix_additions`, `fix_deletions` | Sum current commit stats per partition, lines; missing stats/ancestry or multi-parent ancestry makes affected sums blank. |
 | `churn_ratio` | Combined fix added+deleted divided by combined initial added+deleted; unitless. Blank if any required PR contribution unavailable or initial denominator zero. Never an average of PR ratios. |
-| `fix_split_status` | Worst PR status: `author_time_estimate|suspect|unavailable`; no matched PR means unavailable. |
+| `fix_split_status` | Worst PR status: `author_time_estimate\|suspect\|unavailable`; no matched PR means unavailable. |
 | `bot_reviews` | Count submitted reviews by the three named review-bot logins below, deduplicated by review ID; draft reviews excluded. |
 | `bot_comments` | Bot inline plus issue comments, IDs deduplicated within each API surface. |
 | `bot_threads` | Distinct inline thread roots containing bot comments, including replies to human roots. |
