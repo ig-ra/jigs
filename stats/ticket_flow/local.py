@@ -5,7 +5,8 @@ import subprocess
 
 from .model import Marker
 from . import estimates
-from .activity import actions, tool_text
+from .activity import actions
+from .invocations import native_review
 from .sources import raw_records, reader, reference, repo_for, stamp
 from .native import ticket_at, ticket_index
 
@@ -39,13 +40,12 @@ def estimate_markers(path):
 
 def invocation_kind(name, arguments):
     skill = str(arguments.get('skill', '')).lower()
-    command = tool_text(arguments)
     if skill.rsplit(':', 1)[-1] == 'simplify':
         return 'simplify'
     if name.rsplit('.', 1)[-1] in ('Agent', 'Task') and re.search(
             r'\bsimplify\b', arguments.get('description', ''), re.I):
         return 'simplify'
-    if re.search(r'\bcodex-companion(?:\.mjs)?\s+review\b', command):
+    if native_review(name, arguments):
         return 'native_review'
     return None
 
