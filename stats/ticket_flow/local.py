@@ -126,10 +126,9 @@ def collect(end, home=None):
     home = Path(home or Path.home())
     rows, paths, counts = sources.collect_local(end, home)
     activity.enrich(rows, paths)
-    turns, unmatched = native.hydrate(paths, rows)
+    turns, unmatched = native.hydrate(paths, rows, end=end)
     dispatches = estimates.collect(home / '.claude/agent-estimates.tsv')
     markers = event_markers(rows) + estimates.markers(dispatches) + native_markers(paths, rows, Path.cwd())
-    turns = [t for t in turns if t.start is None or t.start < end]
     timing.attribute_overlap(turns)
     timing.attribute_waits(turns, timing.wait_intervals(paths))
     return dict(rows=rows, turns=turns, markers=markers, estimates=dispatches,

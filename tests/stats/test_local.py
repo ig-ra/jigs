@@ -86,3 +86,37 @@ class LocalTests(unittest.TestCase):
             self.assertEqual(one.wait, 0)
             self.assertEqual(len(result['estimates']), 1)
             self.assertTrue(any(m.kind == 'design' for m in result['markers']))
+
+    def test_end_retained_unmatched_starts_control_historical_coverage(self):
+        from stats.ticket_flow import stages, tables
+        from stats.ticket_flow.model import Marker
+        with tempfile.TemporaryDirectory() as name:
+            home = Path(name)
+            (home / '.claude/projects').mkdir(parents=True)
+            (home / '.claude/agent-estimates.tsv').write_text('id\tstarted\tagent\tticket\ttask\n')
+            meta = dict(type='session_meta', payload={'id': 'session',
+                'cwd': str(home / 'my/dev-tools/jigs/.worktrees/igr-15')})
+            def event(kind, identity, second):
+                return dict(type='event_msg', timestamp=at(second).isoformat(),
+                            payload={'type': kind, 'turn_id': identity})
+            done = [meta, event('task_started', 'done', 5), event('task_complete', 'done', 20)]
+            for extra, expected in (([], 0),
+                    ([event('task_started', 'future', 70)], 0),
+                    ([event('task_started', 'exactly-end', 60)], 0),
+                    ([event('task_started', 'pre-start', 0)], 1),
+                    ([event('task_started', 'in-window', 30)], 1)):
+                with self.subTest(extra=extra):
+                    dump(home / '.codex/sessions/session.jsonl', done + extra)
+                    with patch.object(Path, 'home', return_value=home):
+                        collected = local.collect(at(60), home)
+                    self.assertEqual(sum(collected['unmatched'].values()), expected)
+                    self.assertTrue(all(t.start < at(60) for t in collected['turns']))
+                    markers = [Marker('IGR-15', at(), 'design', 'start')]
+                    stages.assign(collected['turns'], markers)
+                    result = tables.assemble(collected['turns'], at(10), at(60), {},
+                        collected['unmatched'], [], markers, [], {'IGR-15'})
+                    row, = result['tickets']
+                    self.assertEqual(row['coverage'], 'partial' if expected else 'complete')
+                    self.assertAlmostEqual(row['codex_minutes_raw'], 15 / 60)
+                    self.assertEqual(next(r['value'] for r in result['run']
+                                          if r['metric'] == 'unmatched_starts'), expected)

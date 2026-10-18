@@ -120,7 +120,7 @@ def codex_turns(path, rows, calls):
     return result, len(starts.keys() - complete.keys())
 
 
-def hydrate(paths, rows, tickets=None):
+def hydrate(paths, rows, tickets=None, end=None):
     calls = {(r['provider'], r['id']): r for r in rows if r['type'] == 'call'}
     rows = ticket_index(rows)
     turns, unmatched = {}, defaultdict(int)
@@ -144,6 +144,8 @@ def hydrate(paths, rows, tickets=None):
     enrich(list(turns.values()), paths, rows)
     if tickets is not None:
         turns = {key: t for key, t in turns.items() if t.ticket in tickets}
+    if end is not None:
+        turns = {key: t for key, t in turns.items() if t.start is None or t.start < end}
     # Each canonical call belongs to one native turn, including copied durations.
     used = set()
     for turn in sorted(turns.values(), key=lambda t: (t.source.rsplit(':', 1)[0], int(t.source.rsplit(':', 1)[1]))):
