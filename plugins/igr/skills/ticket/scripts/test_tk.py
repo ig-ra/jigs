@@ -226,6 +226,15 @@ class PRTests(unittest.TestCase):
         self.assertIn("  bot: latest question", tk.thread_lines([thread], 1))
         self.assertIn("  … 1 intervening comments", tk.thread_lines([thread], 1))
 
+    def test_watch_stops_on_merge_conflict(self):
+        p = parsed(2)
+        p["mergeStateStatus"] = "DIRTY"
+        p["checks"] = [{"isRequired": True, "state": "PENDING", "context": "CI"}]
+        a = args(pr="2", until="checks", timeout=10, interval=1)
+        with patch.object(tk, "pr_data", return_value=p), patch("sys.stdout", new_callable=io.StringIO) as out:
+            self.assertEqual(tk.watch(tk.Context(HERE), a), 1)
+        self.assertIn("merge=DIRTY", out.getvalue())
+
     def test_watch_quiet_timeout_and_queue_ejection(self):
         p = parsed(2)
         p["checks"] = [{"isRequired": True, "state": "PENDING", "context": "CI"}]

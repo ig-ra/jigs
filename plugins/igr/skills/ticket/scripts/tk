@@ -262,7 +262,8 @@ def state_line(s: JSON) -> str:
 def verdict(s: JSON, target: str = "checks", was_queued: bool = False) -> int:
     if s["state"] == "MERGED":
         return 8 if target == "threads" and s["unresolved"] else 0
-    if s["state"] == "CLOSED" or s["required_failures"]:
+    # DIRTY is a real conflict; UNKNOWN and BLOCKED are transient or missing checks/reviews.
+    if s["state"] == "CLOSED" or s["required_failures"] or s["merge"] == "DIRTY":
         return 1
     if (s["queue"] or {}).get("state") == "UNMERGEABLE":
         return 1
