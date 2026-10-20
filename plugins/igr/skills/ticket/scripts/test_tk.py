@@ -66,9 +66,11 @@ def clock():
 def close_setup(path):
     info = {"worktree": str(path), "branch": "owner/team-7", "default_branch": "main", "key": "TEAM-7"}
     ctx = tk.Context(path, "example/repo")
-    prs = [{"number": 7, "state": "MERGED", "headRefOid": "head", "mergeCommit": {"oid": "merge"}, "baseRefName": "main"},
-           {"number": 8, "state": "CLOSED"},
-           {"number": 9, "state": "MERGED", "headRefOid": "old", "mergeCommit": {"oid": "old-merge"}, "baseRefName": "old-base"}]
+    prs = [{"number": 7, "state": "MERGED", "headRefOid": "head", "headRefName": "owner/team-7",
+            "mergeCommit": {"oid": "merge"}, "baseRefName": "main"},
+           {"number": 8, "state": "CLOSED", "headRefName": "owner/team-7"},
+           {"number": 9, "state": "MERGED", "headRefOid": "old", "headRefName": "owner/team-7",
+            "mergeCommit": {"oid": "old-merge"}, "baseRefName": "old-base"}]
     def git(*cmd, **kwargs):
         return {"status": "", "rev-parse": "head" if cmd[1] == "HEAD" else "origin",
                 "ls-remote": "origin\trefs/heads/main", "merge-base": ""}[cmd[0]]
@@ -514,8 +516,8 @@ class LifecycleTests(unittest.TestCase):
             self.assertEqual(proof["merge_commit"], "merge")
             git_api.assert_any_call("merge-base", "--is-ancestor", "merge", "origin")
             panes.assert_called_once_with(["pane", "list"])
-            self.assertIn("--head", api.call_args.args[0])
-            self.assertNotIn("--search", api.call_args.args[0])
+            lookups = [call.args[0] for call in api.call_args_list]
+            self.assertEqual([("--head" in c, "--search" in c) for c in lookups], [(True, False), (False, True)])
             with patch.object(ctx, "git", return_value="dirty"), self.assertRaisesRegex(tk.TkError, "dirty"):
                 tk.close_proof(ctx, info)
             with patch.object(tk, "gh", return_value=[{**prs[0], "headRefOid": "different"}]), \
@@ -524,6 +526,40 @@ class LifecycleTests(unittest.TestCase):
             with patch.object(ctx, "git", side_effect=lambda *cmd, **kw: "stale" if cmd[0] == "ls-remote" else git(*cmd, **kw)), \
                     self.assertRaisesRegex(tk.TkError, "stale"):
                 tk.close_proof(ctx, info)
+
+    def test_close_proof_matches_ticket_prs_on_suffixed_branches(self):
+        with tempfile.TemporaryDirectory() as folder, close_setup(Path(folder)) as setup:
+            ctx, info, prs, _, _, api, _ = setup
+            reopened = {**prs[0], "number": 10, "headRefName": "owner/team-7-1"}
+            other = {**prs[0], "number": 11, "headRefName": "owner/team-70", "state": "OPEN"}
+            closed = {**prs[0], "number": 7, "state": "CLOSED", "headRefOid": "head"}
+            api.side_effect = lambda argv, cwd: [closed] if "--head" in argv else [closed, reopened, other]
+            self.assertEqual(tk.close_proof(ctx, info)["head"], "head")
+            api.side_effect = lambda argv, cwd: [] if "--head" in argv else [{**reopened, "state": "OPEN"}]
+            with self.assertRaisesRegex(tk.TkError, "open PRs"):
+                tk.close_proof(ctx, info)
+            api.side_effect = lambda argv, cwd: [closed] * (100 if "--search" in argv else 1)
+            with self.assertRaisesRegex(tk.TkError, "truncated"):
+                tk.close_proof(ctx, info)
+
+    def test_close_allows_callers_own_pane_but_not_as_codex(self):
+        with tempfile.TemporaryDirectory() as folder, close_setup(Path(folder).resolve()) as setup:
+            ctx, info, _, _, _, _, panes = setup
+            own = {"agent": "claude", "agent_status": "working", "cwd": folder, "pane_id": "w1:p1"}
+            other = {"cwd": folder, "pane_id": "w1:p3"}
+            with patch.dict(os.environ, {"HERDR_PANE_ID": "w1:p1"}):
+                panes.return_value = {"panes": [own]}
+                self.assertIsNone(tk.close_proof(ctx, info)["pane"])
+                panes.return_value = {"panes": [own, other]}
+                with self.assertRaisesRegex(tk.TkError, "other panes"):
+                    tk.close_proof(ctx, info)
+                panes.return_value = {"panes": [{**own, "agent": "codex", "agent_status": "idle"}]}
+                proof = tk.close_proof(ctx, info)
+                self.assertEqual(proof["pane"], "w1:p1")
+                with patch.object(tk, "prep", return_value=info), patch.object(tk, "close_proof", return_value=proof), \
+                        self.assertRaisesRegex(tk.TkError, "own pane"):
+                    tk.close(ctx, args(key="TEAM-7", owner=None, mode="apply"))
+                panes.assert_called()
 
     def test_close_sees_root_and_descendant_agents_and_shells(self):
         with tempfile.TemporaryDirectory() as folder, close_setup(Path(folder).resolve()) as setup:
@@ -628,12 +664,21 @@ class LifecycleTests(unittest.TestCase):
                 self.assertEqual(tk.close(ctx, args(key="TEAM-7", owner=owner, mode="apply")), 0)
             self.assertFalse(tree.exists())
 
-    def test_close_apply_never_removes_caller_worktree(self):
-        info = {"worktree": str(HERE), "key": "TEAM-7"}
-        with patch.object(tk, "prep", return_value=info), patch.object(tk, "close_proof", return_value={"pane": None}), \
-                patch.object(tk.Context, "git") as git, self.assertRaisesRegex(tk.TkError, "own worktree"):
-            tk.close(tk.Context(HERE), args(mode="apply"))
-        git.assert_not_called()
+    def test_close_apply_from_inside_the_ticket_worktree(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            before = os.getcwd()
+            os.chdir(tree / "")
+            try:
+                def proof(ctx, selected):
+                    self.assertEqual(ctx.cwd, tree)
+                    return {"pane": None, "branch": selected["branch"], "worktree": selected["worktree"], "head": "h"}
+                with patch.object(tk, "close_proof", side_effect=proof):
+                    self.assertEqual(tk.main(["close", "TEAM-7", "apply"]), 0)
+            finally:
+                os.chdir(before)
+            self.assertFalse(tree.exists())
+            self.assertNotIn("team-7", tk.Context(root).git("branch", "--list"))
 
     def test_nondefault_keys_and_remote_formats(self):
         self.assertEqual(tk.ticket_key("Abc2-123"), "ABC2-123")

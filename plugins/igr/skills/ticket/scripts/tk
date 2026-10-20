@@ -583,11 +583,18 @@ def close_proof(ctx: Context, info: JSON) -> JSON:
     if ctx.git("status", "--porcelain", cwd=path):
         raise TkError("worktree is dirty (including untracked files)", 1)
     head = ctx.git("rev-parse", "HEAD", cwd=path)
-    fields = "number,state,headRefOid,mergeCommit,baseRefName"
-    prs = gh(["pr", "list", "--repo", ctx.slug(), "--head", branch, "--state", "all",
-                     "--limit", "100", "--json", fields], ctx.cwd)
-    if len(prs) >= 100 or any(p["state"] == "OPEN" for p in prs):
-        raise TkError("branch has open PRs or a truncated PR list", 1)
+    fields = "number,state,headRefOid,headRefName,mergeCommit,baseRefName"
+    prs = {}
+    # The ticket may ship from a suffixed branch (owner/key-1); exact --head covers search lag.
+    for lookup in (["--head", branch], ["--search", f'"{info["key"]}"']):
+        found = gh(["pr", "list", "--repo", ctx.slug(), *lookup, "--state", "all",
+                    "--limit", "100", "--json", fields], ctx.cwd)
+        if len(found) >= 100:
+            raise TkError("truncated PR list", 1)
+        prs.update((p["number"], p) for p in found if p["headRefName"] == branch or prs_for_key(info["key"], [p]))
+    prs = list(prs.values())
+    if any(p["state"] == "OPEN" for p in prs):
+        raise TkError("ticket has open PRs", 1)
     merged = next((p for p in prs if p["state"] == "MERGED" and p["headRefOid"] == head), None)
     if merged is None:
         raise TkError("local HEAD differs from merged PR head; unpushed work", 1)
@@ -608,6 +615,8 @@ def close_proof(ctx: Context, info: JSON) -> JSON:
         raise TkError("merge commit not reachable on origin default branch", 1) from e
     inside = ([p for p in herdr(["pane", "list"])["panes"] if in_tree(p, path)]
               if os.environ.get("HERDR_ENV") == "1" else [])
+    # The ticket's own session may close it; apply refuses if that pane is codex.
+    inside = [p for p in inside if p.get("agent") == "codex" or p.get("pane_id") != os.environ.get("HERDR_PANE_ID")]
     panes = [p for p in inside if p.get("agent") == "codex"]
     if len(panes) > 1 or any(p["agent_status"] not in {"idle", "done"} for p in panes):
         raise TkError("Codex pane is ambiguous or not idle/done", 1)
@@ -621,9 +630,6 @@ def close(ctx: Context, a: argparse.Namespace) -> int:
     info = prep(ctx, a)
     proof = close_proof(ctx, info)
     if a.mode == "apply":
-        path = Path(info["worktree"]).resolve()
-        if Path.cwd().resolve().is_relative_to(path) or ctx.cwd.is_relative_to(path):
-            raise TkError("refusing caller's own worktree; run from canonical checkout", 1)
         if proof["pane"] and proof["pane"] == os.environ.get("HERDR_PANE_ID"):
             raise TkError("refusing caller's own pane", 1)
         if proof["pane"]:
