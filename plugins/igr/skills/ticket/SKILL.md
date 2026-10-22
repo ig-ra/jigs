@@ -158,7 +158,7 @@ If any check fails, stop, report what failed, and change nothing: no texts, no c
 
 **Decide ticket:**
 - The ticket's Answer section records the decision, with the date.
-- The living "Suggested implementation" comment ends with the final Mental Model.
+- The "Final plan" comment records the approved decision.
 - The tickets that build the decision exist and say so.
 - The worktree has no commits of its own (`git -C <worktree> rev-list --count <BASE>..HEAD` is 0) and `status --porcelain` is empty. If it has commits, stop and ask: a decide ticket that produced code needs a PR first.
 
@@ -166,9 +166,9 @@ If any check fails, stop, report what failed, and change nothing: no texts, no c
 
 Load the Linear tools if they are deferred. Re-read the description and comments right before editing them; other sessions edit them too.
 - **Acceptance criteria:** tick each one only where a test, the merged PR or the recorded decision proves it. For any criterion you cannot prove, leave it unticked and name it in the report.
-- **Living comment:** the "Suggested implementation" comment must describe what shipped (the merged code, or the decision) and end with the final Mental Model (B). If later commits or decisions changed anything, update the comment.
+- **Final plan:** the "Final plan" comment is immutable; never edit it. Compare what shipped (the merged code, or the decision) with `<LOCAL>/final-plan.md`. Only if they differ, post one new "Shipped vs plan" comment: one plain line per difference, with its reason.
 - **Local models:** on the design-choice route, make `<LOCAL>/A-to-B.md` final: model A from the same folder against final B, with the reason for each change. The bounded route has no A, and a trivial change has B = A; neither needs this file.
-- **Duplicates:** if an older comment repeats the living one (for example an "Agreed plan"), list it in the report; deleting a comment needs approval.
+- **Duplicates:** if an older comment repeats the final plan (for example an "Agreed plan"), list it in the report; deleting a comment needs approval.
 
 #### 3. Follow-ups
 

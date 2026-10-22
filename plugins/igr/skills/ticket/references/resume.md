@@ -17,7 +17,7 @@ Worktree: <existing ticket worktree>
 Branch: <branch>
 Phase: <design | develop | review | finish>
 Loop position: <section, step and current round/plan step>
-Contract: <model-B.md and living comment URL; approval evidence or pending>
+Contract: <igr/final-plan.md with its "go" time(s) and "Final plan" comment URL, plus igr/model-B.md; or pending>
 Plan: <plan file and first unchecked step, or none>
 Scope exclusions: <short scope fence or its artifact path>
 PR: <number and URL, or none>
@@ -72,7 +72,7 @@ Before changing anything:
 
 - Verify the recorded repository/worktree against Git's registered worktrees and common Git directory. Verify the actual branch and ticket identity. A different branch or worktree is a conflict, not a reason to rewrite the checkpoint to match it.
 - Read `git status --short`, actual HEAD, and the recorded base ref's current SHA. Preserve uncommitted work; it may belong to an active Codex run.
-- Read the ticket, its living contract comment and the comments created or edited after the checkpoint's `Updated:` time (`list_comments` ordered by update time). Read the referenced contract/plan, unresolved findings and `igr/state.json`. A `develop` or `review` checkpoint needs recorded approval, not merely a Model B file. A missing approval or a conflicting contract needs reconciliation before implementation continues; a pending decision remains pending.
+- Read the ticket, its "Final plan" comment, `igr/final-plan.md` and the comments created or edited after the checkpoint's `Updated:` time (`list_comments` ordered by update time). Read the referenced contract/plan, unresolved findings and `igr/state.json`. A `develop` or `review` checkpoint needs recorded approval, not merely a Model B file. A missing approval or a conflicting contract needs reconciliation before implementation continues; a pending decision remains pending.
 - If there is a PR, use `tk pr state <PR>` and read the PR's head/base refs to confirm it belongs to the recorded branch. Follow the session's GitHub auth/sandbox rules. Compare its current head and base with the checkpoint and local Git evidence; local and remote heads may legitimately differ while Codex is working.
 - Treat recorded review/check passes as evidence for their recorded inputs only. When HEAD, base, dependencies or relevant configuration changed, inspect those changes before deciding which evidence still applies. Follow the loop/repo's reuse rules; a checkpoint is not permission to skip a required check or repeat an unchanged gate.
 - When a Codex pane or watcher is recorded, read `herdr-codex.md` and the available Herdr skill. Inspect the live pane inventory, worktree, current activity and reply artifact. Agent names can disappear on restart; use recorded pane/session ids to identify the existing run. A saved task id does not prove a watcher is still running.
