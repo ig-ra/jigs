@@ -1,0 +1,2744 @@
+ticket,phase,activity,calls,tokens_m,ctx_mean_k
+,unknown,code / doc reading,1329,474.49,357
+,unknown,codex briefs and replies,1,0.2,196
+,unknown,codex management (herdr),242,53.48,220
+,unknown,git,314,74.28,236
+,unknown,github / CI / bot threads,456,101.55,222
+,unknown,human poll,12,2.15,178
+,unknown,linear,213,56.98,267
+,unknown,other,578,157.4,272
+,unknown,reply / communication (no tool),1299,529.62,407
+,unknown,skill / memory reads,42,16.39,389
+,unknown,source edits,62,21.53,346
+,unknown,subagent dispatch,18,4.11,226
+,unknown,tests / measurements,6,0.95,158
+,unknown,"tk bookkeeping (step, estimate)",7,3.02,431
+,unknown,waiting,89,30.93,347
+,unknown,worktree setup / cleanup,118,28.19,239
+IGR-10,design,checkpoint,1,0.13,129
+IGR-10,design,code / doc reading,1,0.12,119
+IGR-10,design,codex management (herdr),3,0.28,93
+IGR-10,design,git,1,0.11,113
+IGR-10,design,github / CI / bot threads,1,0.09,92
+IGR-10,design,human poll,1,0.13,130
+IGR-10,design,linear,3,0.28,93
+IGR-10,design,other,1,0.07,68
+IGR-10,design,skill / memory reads,2,0.21,104
+IGR-10,design,worktree setup / cleanup,1,0.08,80
+IGR-13,develop,code / doc reading,1,0.12,119
+IGR-13,develop,codex management (herdr),10,1.18,118
+IGR-13,develop,git,1,0.12,123
+IGR-13,develop,github / CI / bot threads,1,0.12,125
+IGR-13,develop,linear,1,0.12,121
+IGR-13,develop,reply / communication (no tool),4,0.49,121
+IGR-13,develop,"tk bookkeeping (step, estimate)",1,0.13,125
+IGR-13,review,code / doc reading,2,0.19,95
+IGR-13,review,github / CI / bot threads,2,0.2,99
+IGR-13,review,reply / communication (no tool),3,0.29,98
+IGR-13,review,tests / measurements,1,0.09,93
+IGR-13,review,"tk bookkeeping (step, estimate)",1,0.09,93
+IGR-13,unknown,code / doc reading,9,0.66,73
+IGR-13,unknown,codex briefs and replies,1,0.11,111
+IGR-13,unknown,codex management (herdr),10,0.99,98
+IGR-13,unknown,git,2,0.17,87
+IGR-13,unknown,github / CI / bot threads,1,0.07,74
+IGR-13,unknown,linear,5,0.47,93
+IGR-13,unknown,reply / communication (no tool),1,0.1,97
+IGR-13,unknown,subagent dispatch,1,0.09,91
+IGR-13,unknown,tests / measurements,1,0.09,88
+IGR-13,unknown,"tk bookkeeping (step, estimate)",3,0.29,95
+IGR-13,unknown,worktree setup / cleanup,2,0.16,79
+IGR-15,design,checkpoint,3,0.69,229
+IGR-15,design,code / doc reading,14,2.47,175
+IGR-15,design,codex briefs and replies,3,0.61,203
+IGR-15,design,codex management (herdr),11,1.87,168
+IGR-15,design,"design docs (models, plan, KISS)",3,0.59,194
+IGR-15,design,git,3,0.48,159
+IGR-15,design,human poll,2,0.3,147
+IGR-15,design,linear,4,0.51,127
+IGR-15,design,other,10,1.52,151
+IGR-15,design,reply / communication (no tool),13,2.71,208
+IGR-15,design,skill / memory reads,2,0.25,123
+IGR-15,design,tests / measurements,1,0.22,219
+IGR-15,design,"tk bookkeeping (step, estimate)",2,0.44,218
+IGR-15,develop,codex management (herdr),9,1.18,131
+IGR-15,develop,git,3,0.39,130
+IGR-15,develop,github / CI / bot threads,1,0.14,135
+IGR-15,develop,linear,1,0.14,144
+IGR-15,develop,other,1,0.14,139
+IGR-15,develop,reply / communication (no tool),5,0.68,135
+IGR-15,review,code / doc reading,13,3.65,280
+IGR-15,review,codex briefs and replies,2,0.37,179
+IGR-15,review,codex management (herdr),28,7.52,268
+IGR-15,review,git,8,1.94,242
+IGR-15,review,github / CI / bot threads,24,6.77,281
+IGR-15,review,linear,7,2.24,318
+IGR-15,review,native codex review,1,0.39,392
+IGR-15,review,other,1,0.15,144
+IGR-15,review,reply / communication (no tool),33,8.49,257
+IGR-15,review,review docs,2,0.47,232
+IGR-15,review,skill / memory reads,3,0.94,314
+IGR-15,review,subagent dispatch,2,0.42,208
+IGR-15,review,tests / measurements,17,3.5,204
+IGR-15,review,"tk bookkeeping (step, estimate)",6,1.23,203
+IGR-15,review,worktree setup / cleanup,1,0.18,179
+IGR-15,unknown,code / doc reading,2,0.14,71
+IGR-15,unknown,codex briefs and replies,1,0.12,119
+IGR-15,unknown,codex management (herdr),6,0.62,102
+IGR-15,unknown,git,3,0.24,81
+IGR-15,unknown,linear,2,0.19,95
+IGR-15,unknown,other,1,0.1,96
+IGR-15,unknown,skill / memory reads,2,0.13,66
+IGR-15,unknown,"tk bookkeeping (step, estimate)",2,0.23,113
+IGR-15,unknown,worktree setup / cleanup,1,0.07,70
+IGR-16,design,checkpoint,5,1.08,214
+IGR-16,design,code / doc reading,17,3.01,176
+IGR-16,design,codex briefs and replies,5,1.19,236
+IGR-16,design,codex management (herdr),18,3.64,201
+IGR-16,design,"design docs (models, plan, KISS)",5,1.28,253
+IGR-16,design,git,7,1.35,192
+IGR-16,design,human poll,4,0.94,234
+IGR-16,design,linear,9,1.72,190
+IGR-16,design,other,5,0.73,145
+IGR-16,design,reply / communication (no tool),9,2.1,233
+IGR-16,design,skill / memory reads,4,0.59,146
+IGR-16,design,"tk bookkeeping (step, estimate)",3,0.77,255
+IGR-16,design,worktree setup / cleanup,2,0.34,167
+IGR-16,develop,checkpoint,1,0.12,121
+IGR-16,develop,codex management (herdr),8,0.93,116
+IGR-16,develop,git,1,0.12,116
+IGR-16,develop,github / CI / bot threads,1,0.12,118
+IGR-16,develop,other,2,0.25,123
+IGR-16,develop,reply / communication (no tool),4,0.47,117
+IGR-16,develop,"tk bookkeeping (step, estimate)",2,0.24,120
+IGR-16,review,checkpoint,5,0.91,181
+IGR-16,review,code / doc reading,13,2.49,191
+IGR-16,review,codex briefs and replies,5,0.87,172
+IGR-16,review,codex management (herdr),11,2.02,183
+IGR-16,review,git,5,1.12,223
+IGR-16,review,github / CI / bot threads,8,1.65,206
+IGR-16,review,human poll,2,0.38,188
+IGR-16,review,linear,4,0.88,219
+IGR-16,review,other,9,1.56,173
+IGR-16,review,reply / communication (no tool),19,3.58,188
+IGR-16,review,review docs,1,0.13,124
+IGR-16,review,skill / memory reads,2,0.39,195
+IGR-16,review,source edits,2,0.38,187
+IGR-16,review,subagent dispatch,2,0.3,147
+IGR-16,review,tests / measurements,1,0.18,181
+IGR-16,review,"tk bookkeeping (step, estimate)",3,0.52,174
+IGR-16,review,worktree setup / cleanup,6,1.38,229
+IGR-16,unknown,checkpoint,3,0.24,80
+IGR-16,unknown,codex briefs and replies,1,0.11,106
+IGR-16,unknown,codex management (herdr),9,0.83,92
+IGR-16,unknown,git,1,0.09,87
+IGR-16,unknown,linear,2,0.21,105
+IGR-16,unknown,other,1,0.04,41
+IGR-16,unknown,reply / communication (no tool),2,0.15,75
+IGR-16,unknown,"tk bookkeeping (step, estimate)",2,0.22,110
+IGR-16,unknown,worktree setup / cleanup,1,0.09,85
+IGR-6,unknown,code / doc reading,4,0.68,170
+IGR-6,unknown,codex management (herdr),28,5.53,197
+IGR-6,unknown,git,14,2.61,186
+IGR-6,unknown,github / CI / bot threads,1,0.17,168
+IGR-6,unknown,linear,8,1.87,232
+IGR-6,unknown,other,2,0.5,249
+IGR-6,unknown,reply / communication (no tool),22,4.25,192
+IGR-6,unknown,skill / memory reads,4,0.45,111
+IGR-6,unknown,tests / measurements,2,0.25,126
+IGR-8,develop,checkpoint,3,0.37,123
+IGR-8,develop,codex management (herdr),5,0.6,120
+IGR-8,develop,github / CI / bot threads,1,0.12,120
+IGR-8,develop,linear,2,0.24,118
+IGR-8,develop,other,2,0.24,119
+IGR-8,develop,reply / communication (no tool),3,0.36,120
+IGR-8,review,code / doc reading,2,0.19,96
+IGR-8,review,codex briefs and replies,1,0.11,114
+IGR-8,review,codex management (herdr),8,0.91,114
+IGR-8,review,git,1,0.12,118
+IGR-8,review,github / CI / bot threads,7,0.79,112
+IGR-8,review,linear,1,0.09,92
+IGR-8,review,other,2,0.19,93
+IGR-8,review,reply / communication (no tool),6,0.66,109
+IGR-8,review,review docs,1,0.09,93
+IGR-8,review,skill / memory reads,1,0.1,103
+IGR-8,review,tests / measurements,1,0.09,93
+IGR-8,review,"tk bookkeeping (step, estimate)",3,0.34,113
+IGR-8,unknown,code / doc reading,10,0.77,77
+IGR-8,unknown,codex briefs and replies,1,0.11,111
+IGR-8,unknown,codex management (herdr),10,0.99,99
+IGR-8,unknown,github / CI / bot threads,1,0.07,72
+IGR-8,unknown,linear,4,0.36,90
+IGR-8,unknown,other,3,0.27,90
+IGR-8,unknown,reply / communication (no tool),2,0.19,95
+IGR-8,unknown,subagent dispatch,1,0.09,90
+IGR-8,unknown,"tk bookkeeping (step, estimate)",3,0.26,85
+IGR-8,unknown,worktree setup / cleanup,2,0.14,72
+PR-3189,unknown,code / doc reading,7,2.69,383
+PR-3189,unknown,git,11,4.41,401
+PR-3189,unknown,github / CI / bot threads,41,18.27,445
+PR-3189,unknown,other,11,4.4,399
+PR-3189,unknown,reply / communication (no tool),24,10.36,431
+PR-3189,unknown,skill / memory reads,1,0.45,450
+PR-3189,unknown,source edits,4,1.82,456
+PR-3212,unknown,code / doc reading,32,18.3,572
+PR-3212,unknown,codex briefs and replies,4,2.4,599
+PR-3212,unknown,codex management (herdr),8,4.9,612
+PR-3212,unknown,git,16,9.08,567
+PR-3212,unknown,github / CI / bot threads,26,15.1,580
+PR-3212,unknown,human poll,1,0.52,522
+PR-3212,unknown,other,15,8.86,590
+PR-3212,unknown,reply / communication (no tool),48,28.75,598
+PR-3212,unknown,skill / memory reads,1,0.54,537
+PR-3212,unknown,source edits,7,4.31,615
+PR-3212,unknown,subagent dispatch,1,0.61,607
+SAW-11376,unknown,github / CI / bot threads,1,0.12,124
+SAW-11376,unknown,other,1,0.13,125
+SAW-11376,unknown,reply / communication (no tool),2,0.25,127
+SAW-1172,design,code / doc reading,101,39.3,389
+SAW-1172,design,codex briefs and replies,1,0.09,86
+SAW-1172,design,codex management (herdr),29,11.76,404
+SAW-1172,design,"design docs (models, plan, KISS)",2,1.01,501
+SAW-1172,design,git,69,22.09,320
+SAW-1172,design,github / CI / bot threads,76,29.42,387
+SAW-1172,design,human poll,3,0.52,171
+SAW-1172,design,native codex review,1,0.57,569
+SAW-1172,design,other,26,9.57,368
+SAW-1172,design,reply / communication (no tool),90,37.23,413
+SAW-1172,design,review docs,1,0.29,286
+SAW-1172,design,skill / memory reads,1,0.96,955
+SAW-1172,design,source edits,3,1.55,515
+SAW-1172,design,subagent dispatch,3,1.23,409
+SAW-1172,design,"tk bookkeeping (step, estimate)",8,3.6,450
+SAW-1172,design,waiting,12,6.46,538
+SAW-1172,design,worktree setup / cleanup,3,1.38,458
+SAW-11727,develop,code / doc reading,61,36.52,598
+SAW-11727,develop,codex briefs and replies,2,0.75,374
+SAW-11727,develop,codex management (herdr),77,43.55,565
+SAW-11727,develop,"design docs (models, plan, KISS)",2,1.07,534
+SAW-11727,develop,git,39,19.7,505
+SAW-11727,develop,github / CI / bot threads,74,48.71,658
+SAW-11727,develop,human poll,2,0.66,329
+SAW-11727,develop,native codex review,2,1.25,622
+SAW-11727,develop,other,15,9.22,614
+SAW-11727,develop,reply / communication (no tool),116,64.97,560
+SAW-11727,develop,skill / memory reads,5,3.03,605
+SAW-11727,develop,source edits,5,3.1,620
+SAW-11727,develop,subagent dispatch,4,2.03,506
+SAW-11727,develop,"tk bookkeeping (step, estimate)",10,4.95,495
+SAW-11727,develop,waiting,2,0.85,423
+SAW-11727,develop,worktree setup / cleanup,7,4.12,588
+SAW-11727,review,code / doc reading,35,27.35,781
+SAW-11727,review,codex briefs and replies,1,0.71,704
+SAW-11727,review,codex management (herdr),38,29.95,787
+SAW-11727,review,git,7,5.23,746
+SAW-11727,review,github / CI / bot threads,58,47.76,823
+SAW-11727,review,other,3,1.98,659
+SAW-11727,review,reply / communication (no tool),52,42.33,814
+SAW-11727,review,review docs,1,0.69,689
+SAW-11727,review,skill / memory reads,1,0.73,730
+SAW-11727,review,source edits,4,3.1,775
+SAW-11727,review,subagent dispatch,1,0.84,836
+SAW-11727,review,"tk bookkeeping (step, estimate)",4,3.32,828
+SAW-11727,review,waiting,2,1.45,724
+SAW-11727,review,worktree setup / cleanup,5,3.58,716
+SAW-11727,unknown,code / doc reading,40,7.28,181
+SAW-11727,unknown,codex briefs and replies,2,0.55,277
+SAW-11727,unknown,codex management (herdr),11,2.92,264
+SAW-11727,unknown,"design docs (models, plan, KISS)",3,0.93,308
+SAW-11727,unknown,git,1,0.15,149
+SAW-11727,unknown,github / CI / bot threads,8,1.32,164
+SAW-11727,unknown,human poll,4,0.93,232
+SAW-11727,unknown,other,6,1.68,280
+SAW-11727,unknown,reply / communication (no tool),31,6.86,220
+SAW-11727,unknown,skill / memory reads,2,0.32,159
+SAW-11727,unknown,source edits,2,0.47,235
+SAW-11727,unknown,subagent dispatch,1,0.11,108
+SAW-11727,unknown,"tk bookkeeping (step, estimate)",1,0.32,321
+SAW-11727,unknown,waiting,2,0.37,187
+SAW-11839,design,code / doc reading,44,8.63,196
+SAW-11839,design,codex briefs and replies,2,0.53,266
+SAW-11839,design,codex management (herdr),10,2.38,238
+SAW-11839,design,git,26,4.71,181
+SAW-11839,design,github / CI / bot threads,8,1.3,162
+SAW-11839,design,human poll,1,0.18,179
+SAW-11839,design,linear,20,3.7,184
+SAW-11839,design,other,24,5.37,223
+SAW-11839,design,reply / communication (no tool),53,12.46,234
+SAW-11839,design,skill / memory reads,2,0.33,166
+SAW-11839,design,source edits,11,2.57,233
+SAW-11839,design,subagent dispatch,4,0.76,190
+SAW-11839,design,waiting,1,0.27,267
+SAW-11839,design,worktree setup / cleanup,5,0.58,116
+SAW-11847,finish,code / doc reading,3,1.54,513
+SAW-11847,finish,codex management (herdr),2,1.04,518
+SAW-11847,finish,git,1,0.49,494
+SAW-11847,finish,github / CI / bot threads,1,0.49,494
+SAW-11847,finish,linear,3,1.5,499
+SAW-11847,finish,skill / memory reads,3,1.54,514
+SAW-11847,finish,source edits,1,0.52,516
+SAW-11847,unknown,code / doc reading,74,22.53,304
+SAW-11847,unknown,codex management (herdr),22,6.43,292
+SAW-11847,unknown,git,20,6.9,345
+SAW-11847,unknown,github / CI / bot threads,26,8.76,337
+SAW-11847,unknown,human poll,3,0.78,258
+SAW-11847,unknown,linear,2,0.56,276
+SAW-11847,unknown,other,7,2.0,285
+SAW-11847,unknown,reply / communication (no tool),54,18.73,346
+SAW-11847,unknown,skill / memory reads,6,2.05,341
+SAW-11847,unknown,source edits,22,7.65,346
+SAW-11847,unknown,subagent dispatch,2,0.46,231
+SAW-11847,unknown,"tk bookkeeping (step, estimate)",2,0.55,273
+SAW-11847,unknown,waiting,6,1.9,317
+SAW-11847,unknown,worktree setup / cleanup,2,0.58,290
+SAW-11849,unknown,code / doc reading,40,17.09,427
+SAW-11849,unknown,codex management (herdr),28,14.22,507
+SAW-11849,unknown,git,42,19.69,469
+SAW-11849,unknown,github / CI / bot threads,31,17.09,551
+SAW-11849,unknown,linear,8,4.85,606
+SAW-11849,unknown,other,30,11.86,395
+SAW-11849,unknown,reply / communication (no tool),54,23.15,428
+SAW-11849,unknown,skill / memory reads,3,1.56,520
+SAW-11849,unknown,source edits,12,5.02,417
+SAW-11849,unknown,subagent dispatch,2,0.99,491
+SAW-11849,unknown,"tk bookkeeping (step, estimate)",1,0.47,471
+SAW-11849,unknown,waiting,3,1.37,455
+SAW-11851,unknown,code / doc reading,49,13.53,276
+SAW-11851,unknown,codex management (herdr),28,7.94,283
+SAW-11851,unknown,git,37,10.65,288
+SAW-11851,unknown,github / CI / bot threads,27,9.96,368
+SAW-11851,unknown,human poll,1,0.2,198
+SAW-11851,unknown,other,24,7.37,306
+SAW-11851,unknown,reply / communication (no tool),28,8.34,298
+SAW-11851,unknown,skill / memory reads,3,0.33,109
+SAW-11851,unknown,source edits,18,5.51,305
+SAW-11851,unknown,subagent dispatch,2,0.42,208
+SAW-11851,unknown,"tk bookkeeping (step, estimate)",3,0.91,304
+SAW-11851,unknown,waiting,1,0.45,447
+SAW-11852,design,code / doc reading,29,5.53,190
+SAW-11852,design,codex management (herdr),3,0.6,200
+SAW-11852,design,git,10,1.96,196
+SAW-11852,design,github / CI / bot threads,9,2.48,275
+SAW-11852,design,human poll,1,0.18,173
+SAW-11852,design,other,42,13.2,314
+SAW-11852,design,reply / communication (no tool),42,11.94,284
+SAW-11852,design,skill / memory reads,1,0.09,92
+SAW-11852,design,subagent dispatch,2,0.45,224
+SAW-11852,design,worktree setup / cleanup,2,0.15,74
+SAW-11924,finish,code / doc reading,4,3.32,831
+SAW-11924,finish,codex management (herdr),1,0.84,843
+SAW-11924,finish,git,2,1.63,812
+SAW-11924,finish,github / CI / bot threads,1,0.81,809
+SAW-11924,finish,native codex review,1,0.84,842
+SAW-11924,finish,other,4,3.3,824
+SAW-11924,finish,source edits,1,0.83,831
+SAW-11924,finish,"tk bookkeeping (step, estimate)",1,0.84,836
+SAW-11924,finish,worktree setup / cleanup,1,0.81,809
+SAW-11924,unknown,code / doc reading,6,4.74,790
+SAW-11924,unknown,git,3,2.39,796
+SAW-11924,unknown,github / CI / bot threads,2,1.6,798
+SAW-11924,unknown,native codex review,2,1.58,791
+SAW-11924,unknown,other,4,3.13,781
+SAW-11924,unknown,reply / communication (no tool),5,3.98,795
+SAW-11924,unknown,skill / memory reads,3,2.39,795
+SAW-11926,design,code / doc reading,8,1.16,144
+SAW-11926,design,codex management (herdr),2,0.16,82
+SAW-11926,design,git,1,0.14,143
+SAW-11926,design,human poll,1,0.16,159
+SAW-11926,design,linear,6,0.62,102
+SAW-11926,design,other,2,0.23,115
+SAW-11926,design,reply / communication (no tool),2,0.3,150
+SAW-11926,design,skill / memory reads,1,0.09,92
+SAW-11926,design,subagent dispatch,1,0.13,132
+SAW-11928,unknown,code / doc reading,39,8.16,209
+SAW-11928,unknown,codex management (herdr),33,7.06,213
+SAW-11928,unknown,git,31,7.68,248
+SAW-11928,unknown,github / CI / bot threads,56,10.92,195
+SAW-11928,unknown,other,14,3.29,234
+SAW-11928,unknown,reply / communication (no tool),49,13.5,275
+SAW-11928,unknown,skill / memory reads,1,0.27,269
+SAW-11928,unknown,source edits,11,3.54,321
+SAW-11928,unknown,waiting,3,1.16,388
+SAW-11928,unknown,worktree setup / cleanup,2,0.27,136
+SAW-11929,unknown,code / doc reading,52,16.16,310
+SAW-11929,unknown,codex management (herdr),41,9.96,242
+SAW-11929,unknown,github / CI / bot threads,73,29.73,407
+SAW-11929,unknown,human poll,2,0.33,165
+SAW-11929,unknown,linear,15,4.27,283
+SAW-11929,unknown,other,10,3.12,311
+SAW-11929,unknown,reply / communication (no tool),59,18.83,319
+SAW-11929,unknown,skill / memory reads,2,1.07,537
+SAW-11929,unknown,source edits,12,4.06,337
+SAW-11929,unknown,subagent dispatch,2,0.4,199
+SAW-11929,unknown,"tk bookkeeping (step, estimate)",2,0.4,202
+SAW-11929,unknown,waiting,5,0.97,195
+SAW-11929,unknown,worktree setup / cleanup,10,4.21,420
+SAW-11930,unknown,code / doc reading,33,4.97,150
+SAW-11930,unknown,codex management (herdr),12,2.23,185
+SAW-11930,unknown,git,4,0.79,197
+SAW-11930,unknown,github / CI / bot threads,17,3.74,220
+SAW-11930,unknown,human poll,1,0.13,129
+SAW-11930,unknown,linear,3,0.72,238
+SAW-11930,unknown,other,2,0.35,175
+SAW-11930,unknown,reply / communication (no tool),23,4.45,193
+SAW-11930,unknown,skill / memory reads,1,0.07,74
+SAW-11930,unknown,source edits,8,1.6,199
+SAW-11930,unknown,subagent dispatch,1,0.2,195
+SAW-11930,unknown,"tk bookkeeping (step, estimate)",1,0.17,164
+SAW-11930,unknown,waiting,3,0.51,169
+SAW-11930,unknown,worktree setup / cleanup,1,0.21,206
+SAW-11988,design,code / doc reading,23,4.23,183
+SAW-11988,design,codex management (herdr),5,1.79,357
+SAW-11988,design,git,3,0.51,170
+SAW-11988,design,github / CI / bot threads,5,1.05,209
+SAW-11988,design,human poll,2,0.3,148
+SAW-11988,design,other,11,2.47,224
+SAW-11988,design,reply / communication (no tool),4,1.31,326
+SAW-11988,design,subagent dispatch,1,0.13,127
+SAW-11988,design,worktree setup / cleanup,4,0.74,185
+SAW-12196,unknown,code / doc reading,24,8.16,340
+SAW-12196,unknown,codex management (herdr),12,4.3,358
+SAW-12196,unknown,git,6,2.19,365
+SAW-12196,unknown,github / CI / bot threads,6,2.31,385
+SAW-12196,unknown,human poll,1,0.33,325
+SAW-12196,unknown,other,10,3.52,352
+SAW-12196,unknown,reply / communication (no tool),17,6.17,363
+SAW-12196,unknown,source edits,6,2.09,348
+SAW-12196,unknown,subagent dispatch,1,0.36,359
+SAW-12196,unknown,"tk bookkeeping (step, estimate)",2,0.71,354
+SAW-12196,unknown,waiting,2,0.7,350
+SAW-12263,unknown,code / doc reading,39,7.64,196
+SAW-12263,unknown,codex management (herdr),24,4.95,206
+SAW-12263,unknown,git,17,4.0,235
+SAW-12263,unknown,github / CI / bot threads,23,5.17,224
+SAW-12263,unknown,human poll,1,0.16,162
+SAW-12263,unknown,other,10,2.46,246
+SAW-12263,unknown,reply / communication (no tool),24,5.48,228
+SAW-12263,unknown,skill / memory reads,7,1.72,245
+SAW-12263,unknown,source edits,3,0.53,175
+SAW-12263,unknown,subagent dispatch,1,0.23,227
+SAW-12263,unknown,"tk bookkeeping (step, estimate)",4,0.88,219
+SAW-12263,unknown,waiting,2,0.38,189
+SAW-12263,unknown,worktree setup / cleanup,1,0.1,104
+SAW-12264,unknown,code / doc reading,67,18.19,271
+SAW-12264,unknown,codex management (herdr),30,9.24,308
+SAW-12264,unknown,git,9,3.58,397
+SAW-12264,unknown,github / CI / bot threads,38,16.11,424
+SAW-12264,unknown,human poll,1,0.17,167
+SAW-12264,unknown,linear,6,2.57,427
+SAW-12264,unknown,native codex review,1,0.42,421
+SAW-12264,unknown,other,6,1.9,316
+SAW-12264,unknown,reply / communication (no tool),35,12.32,352
+SAW-12264,unknown,skill / memory reads,6,2.13,354
+SAW-12264,unknown,source edits,18,5.12,283
+SAW-12264,unknown,subagent dispatch,1,0.38,379
+SAW-12264,unknown,"tk bookkeeping (step, estimate)",1,0.2,200
+SAW-12264,unknown,waiting,1,0.47,466
+SAW-12264,unknown,worktree setup / cleanup,1,0.22,215
+SAW-12265,unknown,code / doc reading,37,6.68,180
+SAW-12265,unknown,codex management (herdr),27,5.1,189
+SAW-12265,unknown,git,13,2.73,210
+SAW-12265,unknown,github / CI / bot threads,25,6.2,247
+SAW-12265,unknown,human poll,2,0.42,208
+SAW-12265,unknown,linear,6,1.59,264
+SAW-12265,unknown,other,6,1.13,187
+SAW-12265,unknown,reply / communication (no tool),25,5.81,232
+SAW-12265,unknown,skill / memory reads,4,1.18,293
+SAW-12265,unknown,source edits,7,1.14,162
+SAW-12265,unknown,subagent dispatch,1,0.21,208
+SAW-12265,unknown,"tk bookkeeping (step, estimate)",1,0.18,177
+SAW-12265,unknown,waiting,6,1.4,233
+SAW-12265,unknown,worktree setup / cleanup,1,0.1,102
+SAW-12299,unknown,code / doc reading,151,40.99,271
+SAW-12299,unknown,codex management (herdr),60,16.46,274
+SAW-12299,unknown,git,51,15.23,298
+SAW-12299,unknown,github / CI / bot threads,123,42.03,341
+SAW-12299,unknown,human poll,4,1.38,344
+SAW-12299,unknown,native codex review,1,0.52,520
+SAW-12299,unknown,other,46,12.66,275
+SAW-12299,unknown,reply / communication (no tool),119,43.71,367
+SAW-12299,unknown,skill / memory reads,3,1.24,411
+SAW-12299,unknown,source edits,41,12.59,306
+SAW-12299,unknown,subagent dispatch,4,0.67,166
+SAW-12299,unknown,"tk bookkeeping (step, estimate)",3,0.37,122
+SAW-12299,unknown,waiting,10,4.45,445
+SAW-12299,unknown,worktree setup / cleanup,3,1.28,428
+SAW-12333,unknown,github / CI / bot threads,4,0.35,86
+SAW-12333,unknown,reply / communication (no tool),5,0.43,86
+SAW-12334,design,code / doc reading,29,5.39,186
+SAW-12334,design,codex management (herdr),10,1.59,159
+SAW-12334,design,git,9,1.25,139
+SAW-12334,design,github / CI / bot threads,11,2.04,185
+SAW-12334,design,native codex review,1,0.19,192
+SAW-12334,design,other,5,0.94,187
+SAW-12334,design,reply / communication (no tool),9,1.87,207
+SAW-12334,design,source edits,4,0.83,206
+SAW-12334,design,"tk bookkeeping (step, estimate)",2,0.37,183
+SAW-12334,design,waiting,2,0.36,181
+SAW-12334,design,worktree setup / cleanup,4,0.29,73
+SAW-12334,finish,code / doc reading,3,0.83,276
+SAW-12334,finish,codex management (herdr),2,0.56,280
+SAW-12334,finish,git,4,1.06,266
+SAW-12334,finish,github / CI / bot threads,1,0.26,255
+SAW-12334,finish,other,5,1.36,271
+SAW-12334,finish,reply / communication (no tool),1,0.29,285
+SAW-12334,finish,skill / memory reads,1,0.28,277
+SAW-12334,finish,source edits,1,0.28,279
+SAW-12334,finish,worktree setup / cleanup,1,0.28,282
+SAW-12336,finish,code / doc reading,3,0.89,295
+SAW-12336,finish,codex management (herdr),2,0.6,299
+SAW-12336,finish,github / CI / bot threads,1,0.29,286
+SAW-12336,finish,other,2,0.58,288
+SAW-12336,finish,skill / memory reads,1,0.3,295
+SAW-12336,unknown,code / doc reading,32,5.19,162
+SAW-12336,unknown,codex management (herdr),31,5.79,186
+SAW-12336,unknown,git,8,1.91,238
+SAW-12336,unknown,github / CI / bot threads,20,4.5,225
+SAW-12336,unknown,human poll,1,0.13,134
+SAW-12336,unknown,other,7,1.43,204
+SAW-12336,unknown,reply / communication (no tool),22,4.7,213
+SAW-12336,unknown,skill / memory reads,6,1.22,203
+SAW-12336,unknown,source edits,3,0.48,160
+SAW-12336,unknown,subagent dispatch,1,0.21,213
+SAW-12336,unknown,"tk bookkeeping (step, estimate)",2,0.39,196
+SAW-12336,unknown,waiting,5,1.1,221
+SAW-12336,unknown,worktree setup / cleanup,1,0.1,96
+SAW-12339,unknown,code / doc reading,97,21.6,222
+SAW-12339,unknown,codex management (herdr),47,14.14,300
+SAW-12339,unknown,git,26,7.31,281
+SAW-12339,unknown,github / CI / bot threads,58,20.88,360
+SAW-12339,unknown,human poll,4,0.96,238
+SAW-12339,unknown,native codex review,1,0.34,341
+SAW-12339,unknown,other,41,10.47,255
+SAW-12339,unknown,reply / communication (no tool),71,24.92,351
+SAW-12339,unknown,skill / memory reads,6,0.92,152
+SAW-12339,unknown,source edits,39,10.96,280
+SAW-12339,unknown,subagent dispatch,2,0.8,397
+SAW-12339,unknown,"tk bookkeeping (step, estimate)",2,0.55,275
+SAW-12339,unknown,waiting,11,3.42,311
+SAW-12345,unknown,code / doc reading,27,5.21,192
+SAW-12345,unknown,codex management (herdr),22,4.27,194
+SAW-12345,unknown,git,6,1.37,227
+SAW-12345,unknown,github / CI / bot threads,18,4.25,236
+SAW-12345,unknown,human poll,1,0.26,259
+SAW-12345,unknown,other,9,2.29,254
+SAW-12345,unknown,reply / communication (no tool),20,4.4,219
+SAW-12345,unknown,skill / memory reads,3,0.69,229
+SAW-12345,unknown,source edits,14,2.9,206
+SAW-12345,unknown,subagent dispatch,1,0.2,196
+SAW-12345,unknown,"tk bookkeeping (step, estimate)",1,0.18,175
+SAW-12345,unknown,waiting,2,0.37,187
+SAW-12345,unknown,worktree setup / cleanup,1,0.11,114
+SAW-12347,unknown,code / doc reading,1,0.06,64
+SAW-12347,unknown,git,1,0.06,64
+SAW-12347,unknown,github / CI / bot threads,5,0.36,72
+SAW-12347,unknown,other,2,0.14,70
+SAW-12347,unknown,reply / communication (no tool),9,0.66,73
+SAW-12384,design,code / doc reading,43,9.64,224
+SAW-12384,design,codex management (herdr),51,11.47,225
+SAW-12384,design,git,7,1.71,244
+SAW-12384,design,github / CI / bot threads,34,9.04,266
+SAW-12384,design,human poll,2,0.39,193
+SAW-12384,design,linear,7,1.67,237
+SAW-12384,design,other,6,1.69,281
+SAW-12384,design,reply / communication (no tool),44,11.88,270
+SAW-12384,design,source edits,18,4.86,269
+SAW-12384,design,subagent dispatch,3,0.84,280
+SAW-12384,design,"tk bookkeeping (step, estimate)",2,0.33,162
+SAW-12384,design,waiting,2,0.3,152
+SAW-12384,design,worktree setup / cleanup,5,1.63,325
+SAW-12384,finish,code / doc reading,32,19.33,604
+SAW-12384,finish,codex management (herdr),14,8.1,578
+SAW-12384,finish,git,10,4.96,495
+SAW-12384,finish,github / CI / bot threads,101,68.6,679
+SAW-12384,finish,linear,12,7.86,654
+SAW-12384,finish,other,12,6.85,570
+SAW-12384,finish,reply / communication (no tool),71,46.78,658
+SAW-12384,finish,skill / memory reads,2,1.71,855
+SAW-12384,finish,source edits,7,3.28,467
+SAW-12384,finish,"tk bookkeeping (step, estimate)",1,0.53,531
+SAW-12384,finish,waiting,7,5.85,835
+SAW-12384,finish,worktree setup / cleanup,2,0.93,464
+SAW-12387,design,code / doc reading,3,0.37,122
+SAW-12387,design,codex management (herdr),2,0.16,78
+SAW-12387,design,git,2,0.24,118
+SAW-12387,design,github / CI / bot threads,6,0.7,117
+SAW-12387,design,human poll,1,0.13,129
+SAW-12387,design,linear,5,0.51,101
+SAW-12387,design,other,6,0.69,115
+SAW-12387,design,reply / communication (no tool),1,0.14,138
+SAW-12387,design,skill / memory reads,3,0.33,109
+SAW-12387,design,source edits,3,0.38,126
+SAW-12387,design,worktree setup / cleanup,3,0.34,113
+SAW-12412,unknown,git,2,0.13,66
+SAW-12412,unknown,reply / communication (no tool),3,0.2,67
+SAW-12418,design,code / doc reading,19,3.5,184
+SAW-12418,design,codex management (herdr),7,1.04,148
+SAW-12418,design,git,13,2.4,184
+SAW-12418,design,github / CI / bot threads,66,12.6,190
+SAW-12418,design,linear,10,1.77,176
+SAW-12418,design,other,8,1.58,197
+SAW-12418,design,reply / communication (no tool),31,6.04,194
+SAW-12418,design,source edits,2,0.36,179
+SAW-12418,design,"tk bookkeeping (step, estimate)",2,0.43,214
+SAW-12418,design,waiting,5,0.73,145
+SAW-12418,design,worktree setup / cleanup,6,1.12,186
+SAW-12418,unknown,code / doc reading,8,4.83,604
+SAW-12418,unknown,codex management (herdr),8,4.67,583
+SAW-12418,unknown,git,4,2.49,622
+SAW-12418,unknown,github / CI / bot threads,13,8.65,665
+SAW-12418,unknown,human poll,1,0.5,498
+SAW-12418,unknown,linear,7,4.3,614
+SAW-12418,unknown,other,3,1.83,610
+SAW-12418,unknown,reply / communication (no tool),14,8.84,631
+SAW-12418,unknown,source edits,2,1.15,571
+SAW-12418,unknown,subagent dispatch,2,1.19,593
+SAW-12418,unknown,waiting,1,0.56,559
+SAW-12419,design,code / doc reading,13,2.35,181
+SAW-12419,design,codex briefs and replies,2,0.32,158
+SAW-12419,design,codex management (herdr),8,1.14,142
+SAW-12419,design,"design docs (models, plan, KISS)",1,0.24,236
+SAW-12419,design,git,6,1.29,214
+SAW-12419,design,github / CI / bot threads,6,1.01,168
+SAW-12419,design,human poll,1,0.19,186
+SAW-12419,design,native codex review,1,0.25,254
+SAW-12419,design,other,12,2.23,186
+SAW-12419,design,reply / communication (no tool),9,1.8,199
+SAW-12419,design,skill / memory reads,1,0.1,98
+SAW-12419,design,source edits,12,2.48,205
+SAW-12419,design,waiting,1,0.17,171
+SAW-12419,design,worktree setup / cleanup,6,0.92,153
+SAW-12419,develop,code / doc reading,6,1.65,275
+SAW-12419,develop,codex briefs and replies,2,0.58,290
+SAW-12419,develop,codex management (herdr),1,0.29,289
+SAW-12419,develop,git,5,1.46,292
+SAW-12419,develop,github / CI / bot threads,6,1.74,289
+SAW-12419,develop,other,1,0.27,271
+SAW-12419,develop,reply / communication (no tool),7,1.98,282
+SAW-12419,develop,review docs,1,0.27,264
+SAW-12419,develop,source edits,4,1.14,283
+SAW-12419,develop,subagent dispatch,1,0.26,259
+SAW-12419,develop,"tk bookkeeping (step, estimate)",1,0.3,302
+SAW-12419,develop,worktree setup / cleanup,1,0.26,260
+SAW-12419,review,code / doc reading,33,13.93,422
+SAW-12419,review,codex management (herdr),2,0.82,411
+SAW-12419,review,"design docs (models, plan, KISS)",1,0.4,400
+SAW-12419,review,git,6,2.33,388
+SAW-12419,review,github / CI / bot threads,27,10.11,374
+SAW-12419,review,other,27,11.09,410
+SAW-12419,review,reply / communication (no tool),32,12.48,390
+SAW-12419,review,review docs,1,0.36,363
+SAW-12419,review,skill / memory reads,4,1.64,409
+SAW-12419,review,source edits,16,6.13,382
+SAW-12419,review,subagent dispatch,2,0.77,386
+SAW-12419,review,"tk bookkeeping (step, estimate)",2,0.73,365
+SAW-12419,review,waiting,3,1.21,401
+SAW-12419,review,worktree setup / cleanup,9,3.9,432
+SAW-12488,design,code / doc reading,12,1.33,111
+SAW-12488,design,codex management (herdr),3,0.31,104
+SAW-12488,design,git,6,0.68,113
+SAW-12488,design,github / CI / bot threads,23,2.67,116
+SAW-12488,design,human poll,1,0.1,97
+SAW-12488,design,other,3,0.35,117
+SAW-12488,design,reply / communication (no tool),13,1.64,125
+SAW-12488,design,skill / memory reads,2,0.23,112
+SAW-12488,design,source edits,2,0.23,116
+SAW-12488,design,worktree setup / cleanup,2,0.22,110
+SAW-12489,design,code / doc reading,28,3.5,125
+SAW-12489,design,codex management (herdr),1,0.08,77
+SAW-12489,design,git,13,1.8,138
+SAW-12489,design,github / CI / bot threads,17,2.36,139
+SAW-12489,design,human poll,2,0.24,120
+SAW-12489,design,other,21,2.92,139
+SAW-12489,design,reply / communication (no tool),13,2.2,169
+SAW-12489,design,skill / memory reads,1,0.22,218
+SAW-12489,design,source edits,6,0.8,133
+SAW-12489,design,waiting,3,0.37,124
+SAW-12489,design,worktree setup / cleanup,4,0.59,147
+SAW-12491,unknown,code / doc reading,16,2.02,126
+SAW-12491,unknown,git,6,0.76,127
+SAW-12491,unknown,github / CI / bot threads,29,4.51,155
+SAW-12491,unknown,human poll,2,0.24,116
+SAW-12491,unknown,other,15,2.25,149
+SAW-12491,unknown,reply / communication (no tool),16,2.43,152
+SAW-12491,unknown,skill / memory reads,1,0.2,196
+SAW-12491,unknown,source edits,11,1.68,152
+SAW-12491,unknown,subagent dispatch,1,0.13,133
+SAW-12491,unknown,waiting,2,0.31,152
+SAW-12493,unknown,code / doc reading,16,1.96,122
+SAW-12493,unknown,codex management (herdr),1,0.13,128
+SAW-12493,unknown,git,8,1.04,130
+SAW-12493,unknown,github / CI / bot threads,22,3.24,146
+SAW-12493,unknown,human poll,1,0.14,142
+SAW-12493,unknown,other,19,3.07,161
+SAW-12493,unknown,reply / communication (no tool),16,2.9,180
+SAW-12493,unknown,skill / memory reads,3,0.37,123
+SAW-12493,unknown,source edits,1,0.21,205
+SAW-12493,unknown,worktree setup / cleanup,2,0.2,100
+SAW-12496,unknown,code / doc reading,9,1.61,179
+SAW-12496,unknown,git,5,0.85,169
+SAW-12496,unknown,github / CI / bot threads,13,2.26,174
+SAW-12496,unknown,human poll,1,0.17,172
+SAW-12496,unknown,other,10,1.89,189
+SAW-12496,unknown,reply / communication (no tool),5,0.88,176
+SAW-12496,unknown,skill / memory reads,1,0.22,216
+SAW-12496,unknown,source edits,6,1.02,170
+SAW-12496,unknown,waiting,2,0.35,175
+SAW-12499,design,code / doc reading,127,27.54,216
+SAW-12499,design,codex management (herdr),112,20.94,186
+SAW-12499,design,git,49,11.66,238
+SAW-12499,design,github / CI / bot threads,17,2.88,169
+SAW-12499,design,human poll,2,0.29,143
+SAW-12499,design,linear,3,0.53,176
+SAW-12499,design,native codex review,1,0.22,219
+SAW-12499,design,other,31,7.17,231
+SAW-12499,design,reply / communication (no tool),139,31.87,229
+SAW-12499,design,skill / memory reads,12,2.81,234
+SAW-12499,design,source edits,33,7.67,231
+SAW-12499,design,subagent dispatch,9,2.17,240
+SAW-12499,design,tests / measurements,10,2.23,223
+SAW-12499,design,"tk bookkeeping (step, estimate)",13,4.84,372
+SAW-12499,design,waiting,12,2.47,205
+SAW-12499,design,worktree setup / cleanup,18,2.77,153
+SAW-12500,design,code / doc reading,30,5.03,167
+SAW-12500,design,codex management (herdr),17,2.49,146
+SAW-12500,design,git,7,1.2,171
+SAW-12500,design,github / CI / bot threads,21,3.67,174
+SAW-12500,design,human poll,1,0.12,120
+SAW-12500,design,other,13,2.55,195
+SAW-12500,design,reply / communication (no tool),25,4.59,183
+SAW-12500,design,skill / memory reads,7,0.98,139
+SAW-12500,design,source edits,8,1.32,164
+SAW-12500,design,subagent dispatch,1,0.18,184
+SAW-12500,design,tests / measurements,1,0.22,216
+SAW-12500,design,"tk bookkeeping (step, estimate)",1,0.17,168
+SAW-12500,design,waiting,2,0.28,142
+SAW-12500,design,worktree setup / cleanup,3,0.24,79
+SAW-12500,finish,codex management (herdr),2,0.52,259
+SAW-12500,finish,git,2,0.52,262
+SAW-12500,finish,github / CI / bot threads,1,0.26,254
+SAW-12500,finish,other,2,0.52,262
+SAW-12500,finish,reply / communication (no tool),1,0.26,264
+SAW-12500,finish,worktree setup / cleanup,1,0.26,264
+SAW-12502,develop,code / doc reading,3,0.85,283
+SAW-12502,develop,codex management (herdr),13,3.67,282
+SAW-12502,develop,git,1,0.24,243
+SAW-12502,develop,github / CI / bot threads,17,4.92,289
+SAW-12502,develop,other,2,0.5,248
+SAW-12502,develop,reply / communication (no tool),8,2.2,274
+SAW-12502,develop,"tk bookkeeping (step, estimate)",2,0.65,323
+SAW-12502,review,code / doc reading,25,6.06,242
+SAW-12502,review,codex management (herdr),7,1.0,142
+SAW-12502,review,git,11,2.57,233
+SAW-12502,review,github / CI / bot threads,10,1.08,108
+SAW-12502,review,native codex review,1,0.34,339
+SAW-12502,review,other,11,1.52,138
+SAW-12502,review,reply / communication (no tool),26,3.98,152
+SAW-12502,review,source edits,7,1.09,154
+SAW-12502,review,subagent dispatch,1,0.34,337
+SAW-12502,review,"tk bookkeeping (step, estimate)",1,0.33,334
+SAW-12502,unknown,code / doc reading,15,2.74,183
+SAW-12502,unknown,codex management (herdr),25,4.89,195
+SAW-12502,unknown,git,4,0.64,160
+SAW-12502,unknown,github / CI / bot threads,13,2.43,187
+SAW-12502,unknown,human poll,1,0.15,144
+SAW-12502,unknown,other,9,1.82,201
+SAW-12502,unknown,reply / communication (no tool),16,3.2,199
+SAW-12502,unknown,skill / memory reads,3,0.44,147
+SAW-12502,unknown,source edits,5,0.97,193
+SAW-12502,unknown,"tk bookkeeping (step, estimate)",2,0.42,208
+SAW-12502,unknown,waiting,2,0.37,183
+SAW-12506,design,code / doc reading,32,5.79,181
+SAW-12506,design,codex management (herdr),20,3.77,188
+SAW-12506,design,git,2,0.31,156
+SAW-12506,design,github / CI / bot threads,22,5.86,266
+SAW-12506,design,human poll,1,0.16,163
+SAW-12506,design,other,15,3.43,228
+SAW-12506,design,reply / communication (no tool),27,6.68,247
+SAW-12506,design,skill / memory reads,1,0.1,99
+SAW-12506,design,source edits,20,4.22,210
+SAW-12506,design,subagent dispatch,1,0.25,251
+SAW-12506,design,tests / measurements,3,0.4,134
+SAW-12506,design,"tk bookkeeping (step, estimate)",3,0.72,241
+SAW-12506,design,waiting,3,0.61,203
+SAW-12506,design,worktree setup / cleanup,2,0.16,77
+SAW-12506,finish,code / doc reading,2,0.64,320
+SAW-12506,finish,codex management (herdr),2,0.65,326
+SAW-12506,finish,git,3,0.94,312
+SAW-12506,finish,github / CI / bot threads,1,0.3,303
+SAW-12506,finish,human poll,1,0.31,305
+SAW-12506,finish,other,6,1.9,316
+SAW-12506,finish,reply / communication (no tool),1,0.33,329
+SAW-12506,finish,skill / memory reads,4,1.3,324
+SAW-12506,finish,source edits,1,0.33,328
+SAW-12506,finish,worktree setup / cleanup,1,0.33,328
+SAW-12508,design,code / doc reading,25,4.13,165
+SAW-12508,design,codex management (herdr),26,5.33,204
+SAW-12508,design,github / CI / bot threads,27,5.47,202
+SAW-12508,design,human poll,2,0.38,190
+SAW-12508,design,linear,2,0.18,88
+SAW-12508,design,other,25,4.97,198
+SAW-12508,design,reply / communication (no tool),18,4.24,235
+SAW-12508,design,skill / memory reads,2,0.41,204
+SAW-12508,design,source edits,12,2.55,211
+SAW-12508,design,tests / measurements,3,0.41,137
+SAW-12508,design,"tk bookkeeping (step, estimate)",1,0.22,224
+SAW-12508,design,waiting,10,1.55,154
+SAW-12508,design,worktree setup / cleanup,5,1.06,213
+SAW-12509,design,code / doc reading,39,9.48,242
+SAW-12509,design,codex management (herdr),36,8.82,245
+SAW-12509,design,git,21,5.87,279
+SAW-12509,design,github / CI / bot threads,53,13.76,259
+SAW-12509,design,human poll,3,0.84,279
+SAW-12509,design,other,37,9.44,255
+SAW-12509,design,reply / communication (no tool),59,18.11,307
+SAW-12509,design,skill / memory reads,5,1.91,381
+SAW-12509,design,source edits,29,7.46,256
+SAW-12509,design,subagent dispatch,2,0.55,274
+SAW-12509,design,"tk bookkeeping (step, estimate)",1,0.23,229
+SAW-12509,design,worktree setup / cleanup,4,1.12,279
+SAW-12510,unknown,code / doc reading,29,9.13,315
+SAW-12510,unknown,codex management (herdr),30,9.55,318
+SAW-12510,unknown,git,7,2.77,395
+SAW-12510,unknown,github / CI / bot threads,66,23.45,355
+SAW-12510,unknown,human poll,2,0.32,158
+SAW-12510,unknown,other,34,12.17,357
+SAW-12510,unknown,reply / communication (no tool),79,28.53,361
+SAW-12510,unknown,skill / memory reads,4,1.04,260
+SAW-12510,unknown,source edits,21,5.85,277
+SAW-12510,unknown,subagent dispatch,4,1.27,315
+SAW-12510,unknown,tests / measurements,1,0.52,522
+SAW-12510,unknown,"tk bookkeeping (step, estimate)",3,0.84,279
+SAW-12510,unknown,waiting,11,4.17,379
+SAW-12510,unknown,worktree setup / cleanup,9,3.31,368
+SAW-12511,design,code / doc reading,42,6.91,164
+SAW-12511,design,codex briefs and replies,2,0.68,340
+SAW-12511,design,codex management (herdr),15,4.44,295
+SAW-12511,design,git,1,0.3,299
+SAW-12511,design,github / CI / bot threads,23,5.22,226
+SAW-12511,design,human poll,1,0.13,134
+SAW-12511,design,linear,3,0.81,270
+SAW-12511,design,other,36,6.47,179
+SAW-12511,design,reply / communication (no tool),18,4.12,228
+SAW-12511,design,source edits,4,1.11,277
+SAW-12511,design,subagent dispatch,1,0.23,226
+SAW-12511,design,waiting,4,0.55,136
+SAW-12519,design,code / doc reading,38,7.88,207
+SAW-12519,design,codex management (herdr),21,5.17,246
+SAW-12519,design,git,4,0.82,203
+SAW-12519,design,github / CI / bot threads,20,2.91,145
+SAW-12519,design,human poll,4,0.94,235
+SAW-12519,design,other,24,5.82,242
+SAW-12519,design,reply / communication (no tool),12,3.35,278
+SAW-12519,design,skill / memory reads,2,0.3,149
+SAW-12519,design,source edits,10,1.73,171
+SAW-12519,design,"tk bookkeeping (step, estimate)",1,0.25,252
+SAW-12519,design,waiting,3,0.82,272
+SAW-12519,design,worktree setup / cleanup,15,2.66,176
+SAW-12519,unknown,code / doc reading,7,0.54,77
+SAW-12519,unknown,codex management (herdr),3,0.49,165
+SAW-12519,unknown,github / CI / bot threads,5,0.74,145
+SAW-12519,unknown,linear,1,0.11,110
+SAW-12519,unknown,other,1,0.11,108
+SAW-12519,unknown,reply / communication (no tool),1,0.17,166
+SAW-12519,unknown,source edits,1,0.16,155
+SAW-12535,design,code / doc reading,201,43.76,217
+SAW-12535,design,codex management (herdr),16,4.01,249
+SAW-12535,design,git,28,7.4,264
+SAW-12535,design,github / CI / bot threads,61,11.81,193
+SAW-12535,design,human poll,4,1.09,272
+SAW-12535,design,other,95,19.97,209
+SAW-12535,design,reply / communication (no tool),64,15.46,241
+SAW-12535,design,skill / memory reads,7,1.09,155
+SAW-12535,design,source edits,38,7.31,190
+SAW-12535,design,subagent dispatch,1,0.17,170
+SAW-12535,design,waiting,17,5.3,310
+SAW-12535,design,worktree setup / cleanup,7,0.62,88
+SAW-12537,design,code / doc reading,72,12.31,171
+SAW-12537,design,codex management (herdr),50,8.89,177
+SAW-12537,design,git,29,5.58,192
+SAW-12537,design,github / CI / bot threads,31,6.41,206
+SAW-12537,design,human poll,3,0.41,137
+SAW-12537,design,other,24,5.43,226
+SAW-12537,design,reply / communication (no tool),73,14.13,193
+SAW-12537,design,skill / memory reads,2,0.59,293
+SAW-12537,design,source edits,28,5.21,185
+SAW-12537,design,subagent dispatch,3,0.41,134
+SAW-12537,design,"tk bookkeeping (step, estimate)",5,0.95,189
+SAW-12537,design,waiting,5,0.88,175
+SAW-12537,design,worktree setup / cleanup,3,0.71,235
+SAW-12538,design,code / doc reading,83,17.0,204
+SAW-12538,design,codex management (herdr),34,8.12,238
+SAW-12538,design,git,12,2.65,220
+SAW-12538,design,github / CI / bot threads,73,14.48,198
+SAW-12538,design,human poll,7,1.41,201
+SAW-12538,design,other,40,8.13,203
+SAW-12538,design,reply / communication (no tool),57,13.11,230
+SAW-12538,design,skill / memory reads,8,1.86,232
+SAW-12538,design,source edits,40,9.57,238
+SAW-12538,design,subagent dispatch,2,0.36,177
+SAW-12538,design,"tk bookkeeping (step, estimate)",1,0.24,242
+SAW-12538,design,waiting,6,1.42,237
+SAW-12538,design,worktree setup / cleanup,12,2.82,234
+SAW-12538,unknown,worktree setup / cleanup,1,0.33,328
+SAW-12541,design,code / doc reading,26,3.33,128
+SAW-12541,design,codex management (herdr),1,0.08,79
+SAW-12541,design,git,20,3.17,158
+SAW-12541,design,github / CI / bot threads,18,2.67,148
+SAW-12541,design,human poll,1,0.11,111
+SAW-12541,design,other,33,5.15,156
+SAW-12541,design,reply / communication (no tool),12,2.04,169
+SAW-12541,design,skill / memory reads,4,0.55,138
+SAW-12541,design,source edits,13,2.06,157
+SAW-12541,design,subagent dispatch,1,0.14,139
+SAW-12541,design,waiting,3,0.53,176
+SAW-12541,design,worktree setup / cleanup,5,0.6,120
+SAW-12601,design,code / doc reading,53,17.27,326
+SAW-12601,design,codex management (herdr),35,8.27,236
+SAW-12601,design,git,47,12.38,263
+SAW-12601,design,github / CI / bot threads,43,15.76,366
+SAW-12601,design,human poll,1,0.3,303
+SAW-12601,design,other,39,14.61,374
+SAW-12601,design,reply / communication (no tool),60,21.16,352
+SAW-12601,design,skill / memory reads,3,0.98,325
+SAW-12601,design,source edits,17,5.39,316
+SAW-12601,design,subagent dispatch,1,0.25,245
+SAW-12601,design,"tk bookkeeping (step, estimate)",2,0.46,230
+SAW-12601,design,waiting,4,1.19,298
+SAW-12601,design,worktree setup / cleanup,14,4.53,323
+SAW-12603,design,code / doc reading,16,4.23,264
+SAW-12603,design,codex management (herdr),33,7.83,237
+SAW-12603,design,git,11,3.55,322
+SAW-12603,design,github / CI / bot threads,60,18.32,305
+SAW-12603,design,human poll,4,1.05,261
+SAW-12603,design,other,30,9.13,304
+SAW-12603,design,reply / communication (no tool),54,16.6,307
+SAW-12603,design,skill / memory reads,5,1.43,286
+SAW-12603,design,source edits,21,5.99,284
+SAW-12603,design,subagent dispatch,1,0.22,218
+SAW-12603,design,"tk bookkeeping (step, estimate)",2,0.4,200
+SAW-12603,design,waiting,7,1.9,272
+SAW-12603,design,worktree setup / cleanup,5,0.76,152
+SAW-12608,design,code / doc reading,27,4.32,160
+SAW-12608,design,codex management (herdr),18,2.87,159
+SAW-12608,design,git,4,0.81,203
+SAW-12608,design,github / CI / bot threads,24,3.96,164
+SAW-12608,design,human poll,1,0.12,123
+SAW-12608,design,linear,7,0.81,115
+SAW-12608,design,other,19,3.49,183
+SAW-12608,design,reply / communication (no tool),36,6.41,178
+SAW-12608,design,skill / memory reads,2,0.21,102
+SAW-12608,design,source edits,13,2.48,189
+SAW-12608,design,subagent dispatch,2,0.28,137
+SAW-12608,design,"tk bookkeeping (step, estimate)",3,0.57,189
+SAW-12608,design,waiting,5,0.74,147
+SAW-12608,design,worktree setup / cleanup,3,0.41,135
+SAW-12609,design,code / doc reading,48,7.31,152
+SAW-12609,design,codex management (herdr),3,0.27,91
+SAW-12609,design,git,6,1.12,186
+SAW-12609,design,github / CI / bot threads,22,4.08,185
+SAW-12609,design,human poll,1,0.16,155
+SAW-12609,design,other,11,1.96,177
+SAW-12609,design,reply / communication (no tool),15,3.09,206
+SAW-12609,design,skill / memory reads,4,0.69,171
+SAW-12609,design,source edits,15,2.6,172
+SAW-12609,design,subagent dispatch,1,0.18,177
+SAW-12609,design,waiting,2,0.4,198
+SAW-12609,design,worktree setup / cleanup,3,0.37,122
+SAW-12628,design,code / doc reading,40,6.29,157
+SAW-12628,design,codex management (herdr),29,5.49,189
+SAW-12628,design,git,4,1.01,253
+SAW-12628,design,github / CI / bot threads,27,6.93,256
+SAW-12628,design,human poll,1,0.15,152
+SAW-12628,design,other,22,4.21,191
+SAW-12628,design,reply / communication (no tool),40,9.86,246
+SAW-12628,design,skill / memory reads,3,0.41,137
+SAW-12628,design,source edits,30,6.43,213
+SAW-12628,design,subagent dispatch,1,0.23,226
+SAW-12628,design,"tk bookkeeping (step, estimate)",2,0.43,215
+SAW-12628,design,waiting,7,1.15,163
+SAW-12628,design,worktree setup / cleanup,4,0.39,98
+SAW-12638,design,code / doc reading,21,2.65,126
+SAW-12638,design,codex briefs and replies,2,0.31,154
+SAW-12638,design,codex management (herdr),12,1.8,149
+SAW-12638,design,"design docs (models, plan, KISS)",2,0.33,165
+SAW-12638,design,git,9,1.16,129
+SAW-12638,design,human poll,1,0.13,133
+SAW-12638,design,other,5,0.72,144
+SAW-12638,design,reply / communication (no tool),4,0.67,167
+SAW-12638,design,skill / memory reads,2,0.21,107
+SAW-12638,design,"tk bookkeeping (step, estimate)",1,0.17,174
+SAW-12638,design,waiting,2,0.33,165
+SAW-12638,design,worktree setup / cleanup,2,0.13,67
+SAW-12638,develop,code / doc reading,7,1.41,201
+SAW-12638,develop,codex briefs and replies,2,0.4,197
+SAW-12638,develop,codex management (herdr),4,0.82,205
+SAW-12638,develop,git,5,1.01,202
+SAW-12638,develop,github / CI / bot threads,1,0.22,222
+SAW-12638,develop,human poll,1,0.2,195
+SAW-12638,develop,reply / communication (no tool),4,0.82,205
+SAW-12638,develop,review docs,1,0.23,227
+SAW-12638,develop,subagent dispatch,1,0.22,218
+SAW-12638,develop,"tk bookkeeping (step, estimate)",1,0.23,228
+SAW-12638,develop,waiting,1,0.22,215
+SAW-12638,review,code / doc reading,15,4.67,311
+SAW-12638,review,codex briefs and replies,1,0.23,232
+SAW-12638,review,codex management (herdr),8,2.27,283
+SAW-12638,review,git,7,1.95,278
+SAW-12638,review,github / CI / bot threads,37,10.47,283
+SAW-12638,review,human poll,1,0.27,270
+SAW-12638,review,other,13,4.07,312
+SAW-12638,review,reply / communication (no tool),23,6.53,284
+SAW-12638,review,skill / memory reads,2,0.71,355
+SAW-12638,review,source edits,4,1.23,305
+SAW-12638,review,"tk bookkeeping (step, estimate)",1,0.28,282
+SAW-12638,review,waiting,3,0.82,274
+SAW-12638,review,worktree setup / cleanup,2,0.61,305
+SAW-12640,unknown,code / doc reading,6,3.17,529
+SAW-12640,unknown,git,9,4.6,510
+SAW-12640,unknown,github / CI / bot threads,18,9.59,533
+SAW-12640,unknown,other,7,3.74,534
+SAW-12640,unknown,reply / communication (no tool),13,6.95,534
+SAW-12640,unknown,skill / memory reads,2,1.1,552
+SAW-12640,unknown,source edits,4,2.11,527
+SAW-12643,design,code / doc reading,41,6.62,161
+SAW-12643,design,codex briefs and replies,4,0.69,172
+SAW-12643,design,codex management (herdr),20,3.26,163
+SAW-12643,design,"design docs (models, plan, KISS)",2,0.4,199
+SAW-12643,design,git,6,0.9,150
+SAW-12643,design,github / CI / bot threads,3,0.41,138
+SAW-12643,design,human poll,2,0.37,181
+SAW-12643,design,linear,14,2.85,203
+SAW-12643,design,other,11,1.86,169
+SAW-12643,design,reply / communication (no tool),13,2.93,225
+SAW-12643,design,skill / memory reads,3,0.64,212
+SAW-12643,design,source edits,13,2.2,168
+SAW-12643,design,tests / measurements,2,0.29,146
+SAW-12643,design,waiting,1,0.17,165
+SAW-12643,design,worktree setup / cleanup,5,0.84,167
+SAW-12650,design,code / doc reading,37,11.03,298
+SAW-12650,design,codex management (herdr),57,14.09,247
+SAW-12650,design,git,12,3.92,327
+SAW-12650,design,github / CI / bot threads,16,5.52,344
+SAW-12650,design,human poll,5,1.24,247
+SAW-12650,design,native codex review,1,0.41,407
+SAW-12650,design,other,35,10.91,311
+SAW-12650,design,reply / communication (no tool),50,17.21,344
+SAW-12650,design,skill / memory reads,9,2.85,316
+SAW-12650,design,source edits,23,6.39,277
+SAW-12650,design,subagent dispatch,2,0.51,251
+SAW-12650,design,tests / measurements,1,0.12,120
+SAW-12650,design,"tk bookkeeping (step, estimate)",2,0.6,300
+SAW-12650,design,waiting,13,3.64,279
+SAW-12650,design,worktree setup / cleanup,3,0.95,318
+SAW-12658,design,code / doc reading,32,5.1,159
+SAW-12658,design,codex management (herdr),35,5.9,168
+SAW-12658,design,git,17,3.01,177
+SAW-12658,design,github / CI / bot threads,41,6.03,147
+SAW-12658,design,human poll,1,0.1,100
+SAW-12658,design,other,35,5.15,147
+SAW-12658,design,reply / communication (no tool),49,7.97,162
+SAW-12658,design,skill / memory reads,12,1.65,137
+SAW-12658,design,source edits,17,2.83,165
+SAW-12658,design,subagent dispatch,1,0.16,157
+SAW-12658,design,tests / measurements,1,0.23,230
+SAW-12658,design,"tk bookkeeping (step, estimate)",3,0.29,98
+SAW-12658,design,waiting,2,0.32,161
+SAW-12658,design,worktree setup / cleanup,5,0.5,100
+SAW-12659,design,code / doc reading,17,2.34,137
+SAW-12659,design,codex briefs and replies,3,0.51,171
+SAW-12659,design,codex management (herdr),7,1.07,153
+SAW-12659,design,"design docs (models, plan, KISS)",3,0.5,165
+SAW-12659,design,git,1,0.16,159
+SAW-12659,design,github / CI / bot threads,3,0.39,128
+SAW-12659,design,human poll,1,0.14,139
+SAW-12659,design,other,8,1.06,132
+SAW-12659,design,reply / communication (no tool),6,1.01,168
+SAW-12659,design,skill / memory reads,2,0.23,116
+SAW-12659,design,source edits,4,0.59,147
+SAW-12659,design,"tk bookkeeping (step, estimate)",2,0.39,192
+SAW-12659,design,waiting,2,0.36,179
+SAW-12659,design,worktree setup / cleanup,1,0.08,80
+SAW-12659,develop,code / doc reading,2,0.41,205
+SAW-12659,develop,codex briefs and replies,1,0.21,210
+SAW-12659,develop,codex management (herdr),5,1.01,201
+SAW-12659,develop,git,1,0.21,205
+SAW-12659,develop,reply / communication (no tool),3,0.61,204
+SAW-12659,develop,subagent dispatch,1,0.21,213
+SAW-12659,develop,worktree setup / cleanup,1,0.2,203
+SAW-12659,review,code / doc reading,23,6.44,280
+SAW-12659,review,codex management (herdr),18,5.0,277
+SAW-12659,review,git,4,1.03,257
+SAW-12659,review,github / CI / bot threads,11,2.9,264
+SAW-12659,review,linear,3,0.99,330
+SAW-12659,review,native codex review,1,0.26,262
+SAW-12659,review,other,16,4.6,287
+SAW-12659,review,reply / communication (no tool),23,6.21,270
+SAW-12659,review,review docs,1,0.22,217
+SAW-12659,review,source edits,6,1.59,264
+SAW-12659,review,tests / measurements,1,0.24,236
+SAW-12659,review,"tk bookkeeping (step, estimate)",1,0.23,224
+SAW-12659,review,waiting,1,0.23,227
+SAW-12659,review,worktree setup / cleanup,2,0.57,283
+SAW-12660,design,code / doc reading,17,2.8,164
+SAW-12660,design,codex management (herdr),28,5.52,197
+SAW-12660,design,git,14,3.24,231
+SAW-12660,design,github / CI / bot threads,65,12.39,190
+SAW-12660,design,human poll,2,0.27,137
+SAW-12660,design,native codex review,1,0.14,139
+SAW-12660,design,other,14,3.09,220
+SAW-12660,design,reply / communication (no tool),39,8.25,211
+SAW-12660,design,skill / memory reads,4,0.65,162
+SAW-12660,design,source edits,16,3.07,191
+SAW-12660,design,subagent dispatch,1,0.12,115
+SAW-12660,design,"tk bookkeeping (step, estimate)",1,0.2,203
+SAW-12660,design,waiting,1,0.17,172
+SAW-12660,design,worktree setup / cleanup,5,0.88,176
+SAW-12662,design,code / doc reading,17,2.34,137
+SAW-12662,design,codex management (herdr),2,0.18,91
+SAW-12662,design,git,7,0.93,133
+SAW-12662,design,github / CI / bot threads,43,5.96,138
+SAW-12662,design,human poll,1,0.11,111
+SAW-12662,design,other,11,1.72,156
+SAW-12662,design,reply / communication (no tool),14,2.26,162
+SAW-12662,design,skill / memory reads,1,0.18,178
+SAW-12662,design,source edits,7,0.99,140
+SAW-12662,design,subagent dispatch,1,0.13,126
+SAW-12662,design,worktree setup / cleanup,5,0.51,103
+SAW-12685,design,code / doc reading,10,1.32,131
+SAW-12685,design,codex management (herdr),25,3.66,146
+SAW-12685,design,git,4,0.69,172
+SAW-12685,design,github / CI / bot threads,37,5.07,137
+SAW-12685,design,human poll,1,0.14,140
+SAW-12685,design,other,27,3.35,123
+SAW-12685,design,reply / communication (no tool),32,4.32,135
+SAW-12685,design,skill / memory reads,3,0.47,156
+SAW-12685,design,source edits,8,1.3,162
+SAW-12685,design,subagent dispatch,1,0.17,164
+SAW-12685,design,"tk bookkeeping (step, estimate)",2,0.32,158
+SAW-12685,design,waiting,3,0.44,146
+SAW-12685,design,worktree setup / cleanup,1,0.22,217
+SAW-12688,design,code / doc reading,14,2.64,188
+SAW-12688,design,codex management (herdr),17,3.08,181
+SAW-12688,design,git,2,0.4,201
+SAW-12688,design,github / CI / bot threads,19,3.12,164
+SAW-12688,design,human poll,1,0.13,129
+SAW-12688,design,other,13,2.7,207
+SAW-12688,design,reply / communication (no tool),29,5.72,197
+SAW-12688,design,skill / memory reads,2,0.24,122
+SAW-12688,design,source edits,14,2.88,205
+SAW-12688,design,subagent dispatch,3,0.58,193
+SAW-12688,design,"tk bookkeeping (step, estimate)",2,0.38,192
+SAW-12688,design,waiting,1,0.18,179
+SAW-12688,design,worktree setup / cleanup,3,0.42,140
+SAW-12689,design,code / doc reading,102,32.53,319
+SAW-12689,design,codex management (herdr),31,7.8,251
+SAW-12689,design,git,25,8.74,349
+SAW-12689,design,github / CI / bot threads,98,35.0,357
+SAW-12689,design,human poll,4,0.85,211
+SAW-12689,design,other,51,14.94,293
+SAW-12689,design,reply / communication (no tool),59,21.67,367
+SAW-12689,design,skill / memory reads,4,0.58,144
+SAW-12689,design,source edits,24,8.15,338
+SAW-12689,design,subagent dispatch,2,0.71,355
+SAW-12689,design,"tk bookkeeping (step, estimate)",3,0.56,188
+SAW-12689,design,waiting,7,2.48,355
+SAW-12689,design,worktree setup / cleanup,9,1.58,176
+SAW-12690,design,code / doc reading,37,5.89,159
+SAW-12690,design,codex management (herdr),2,0.19,95
+SAW-12690,design,git,8,1.47,183
+SAW-12690,design,github / CI / bot threads,6,1.02,169
+SAW-12690,design,human poll,1,0.17,168
+SAW-12690,design,other,18,3.51,194
+SAW-12690,design,reply / communication (no tool),8,1.66,207
+SAW-12690,design,source edits,2,0.33,166
+SAW-12690,design,worktree setup / cleanup,4,0.52,131
+SAW-12691,design,code / doc reading,36,6.2,172
+SAW-12691,design,codex management (herdr),24,3.78,157
+SAW-12691,design,git,17,2.71,159
+SAW-12691,design,github / CI / bot threads,17,2.87,168
+SAW-12691,design,human poll,1,0.12,115
+SAW-12691,design,other,27,5.02,186
+SAW-12691,design,reply / communication (no tool),37,6.82,184
+SAW-12691,design,skill / memory reads,3,0.47,155
+SAW-12691,design,source edits,12,2.39,198
+SAW-12691,design,subagent dispatch,1,0.19,184
+SAW-12691,design,"tk bookkeeping (step, estimate)",1,0.17,167
+SAW-12691,design,waiting,6,1.09,180
+SAW-12691,design,worktree setup / cleanup,6,0.65,107
+SAW-12720,design,code / doc reading,60,18.55,309
+SAW-12720,design,codex management (herdr),27,7.47,276
+SAW-12720,design,git,17,6.26,368
+SAW-12720,design,github / CI / bot threads,35,14.0,400
+SAW-12720,design,human poll,3,1.11,369
+SAW-12720,design,other,40,12.95,323
+SAW-12720,design,reply / communication (no tool),37,12.51,338
+SAW-12720,design,skill / memory reads,1,0.17,171
+SAW-12720,design,source edits,22,8.26,374
+SAW-12720,design,subagent dispatch,2,0.47,235
+SAW-12720,design,"tk bookkeeping (step, estimate)",4,0.82,204
+SAW-12720,design,waiting,3,0.77,256
+SAW-12720,design,worktree setup / cleanup,3,0.66,221
+SAW-12721,design,code / doc reading,61,13.5,221
+SAW-12721,design,codex briefs and replies,3,0.85,284
+SAW-12721,design,codex management (herdr),21,6.34,302
+SAW-12721,design,"design docs (models, plan, KISS)",4,1.2,298
+SAW-12721,design,git,5,1.8,360
+SAW-12721,design,github / CI / bot threads,11,1.91,173
+SAW-12721,design,human poll,2,0.43,215
+SAW-12721,design,other,21,4.98,237
+SAW-12721,design,reply / communication (no tool),30,9.18,306
+SAW-12721,design,skill / memory reads,1,0.36,359
+SAW-12721,design,source edits,13,2.87,220
+SAW-12721,design,subagent dispatch,1,0.21,204
+SAW-12721,design,"tk bookkeeping (step, estimate)",2,0.72,360
+SAW-12721,design,waiting,1,0.32,319
+SAW-12721,design,worktree setup / cleanup,5,1.14,226
+SAW-12721,develop,code / doc reading,2,0.75,375
+SAW-12721,develop,codex management (herdr),5,1.88,376
+SAW-12721,develop,reply / communication (no tool),5,1.88,375
+SAW-12721,develop,subagent dispatch,1,0.39,389
+SAW-12721,develop,"tk bookkeeping (step, estimate)",1,0.38,381
+SAW-12721,develop,waiting,1,0.37,370
+SAW-12721,develop,worktree setup / cleanup,1,0.38,375
+SAW-12721,review,code / doc reading,21,9.82,467
+SAW-12721,review,codex briefs and replies,2,0.9,448
+SAW-12721,review,codex management (herdr),4,1.9,474
+SAW-12721,review,git,1,0.55,550
+SAW-12721,review,github / CI / bot threads,25,11.78,471
+SAW-12721,review,other,10,5.3,529
+SAW-12721,review,reply / communication (no tool),23,11.42,496
+SAW-12721,review,review docs,1,0.42,420
+SAW-12721,review,"tk bookkeeping (step, estimate)",1,0.48,482
+SAW-12721,review,worktree setup / cleanup,10,4.74,474
+SAW-12721,unknown,code / doc reading,4,0.46,114
+SAW-12721,unknown,git,3,0.29,97
+SAW-12721,unknown,linear,4,0.52,129
+SAW-12721,unknown,other,1,0.13,133
+SAW-12721,unknown,reply / communication (no tool),2,0.25,127
+SAW-12721,unknown,worktree setup / cleanup,2,0.21,104
+SAW-12723,design,code / doc reading,17,2.73,160
+SAW-12723,design,codex management (herdr),20,3.36,168
+SAW-12723,design,git,3,0.53,176
+SAW-12723,design,github / CI / bot threads,19,3.56,187
+SAW-12723,design,other,15,2.87,191
+SAW-12723,design,reply / communication (no tool),19,3.66,192
+SAW-12723,design,skill / memory reads,1,0.15,149
+SAW-12723,design,source edits,16,2.9,180
+SAW-12723,design,subagent dispatch,1,0.2,199
+SAW-12723,design,tests / measurements,2,0.25,126
+SAW-12723,design,"tk bookkeeping (step, estimate)",1,0.18,180
+SAW-12723,design,waiting,4,0.54,135
+SAW-12723,design,worktree setup / cleanup,2,0.3,151
+SAW-12727,design,code / doc reading,16,1.86,116
+SAW-12727,design,codex management (herdr),2,0.24,118
+SAW-12727,design,git,6,0.66,109
+SAW-12727,design,github / CI / bot threads,12,1.46,121
+SAW-12727,design,human poll,2,0.2,99
+SAW-12727,design,other,8,1.06,133
+SAW-12727,design,reply / communication (no tool),9,1.19,132
+SAW-12727,design,waiting,1,0.13,134
+SAW-12727,design,worktree setup / cleanup,7,0.81,115
+SAW-12752,design,code / doc reading,114,36.66,321
+SAW-12752,design,codex management (herdr),36,11.02,306
+SAW-12752,design,git,15,5.16,344
+SAW-12752,design,github / CI / bot threads,67,26.01,388
+SAW-12752,design,human poll,2,0.72,361
+SAW-12752,design,native codex review,1,0.27,267
+SAW-12752,design,other,30,12.24,408
+SAW-12752,design,reply / communication (no tool),57,22.88,401
+SAW-12752,design,skill / memory reads,7,2.61,372
+SAW-12752,design,source edits,50,18.87,376
+SAW-12752,design,subagent dispatch,2,0.73,366
+SAW-12752,design,"tk bookkeeping (step, estimate)",3,0.98,325
+SAW-12752,design,waiting,1,0.22,215
+SAW-12752,design,worktree setup / cleanup,7,2.76,394
+SAW-12784,design,code / doc reading,9,1.25,138
+SAW-12784,design,codex briefs and replies,2,0.35,175
+SAW-12784,design,codex management (herdr),14,2.39,170
+SAW-12784,design,"design docs (models, plan, KISS)",2,0.36,176
+SAW-12784,design,git,3,0.35,117
+SAW-12784,design,github / CI / bot threads,3,0.41,137
+SAW-12784,design,human poll,1,0.15,144
+SAW-12784,design,other,10,1.69,169
+SAW-12784,design,reply / communication (no tool),9,1.61,178
+SAW-12784,design,skill / memory reads,1,0.09,94
+SAW-12784,design,source edits,5,0.72,144
+SAW-12784,design,subagent dispatch,1,0.15,146
+SAW-12784,design,waiting,1,0.18,176
+SAW-12784,design,worktree setup / cleanup,2,0.14,70
+SAW-12784,develop,code / doc reading,3,0.67,223
+SAW-12784,develop,codex briefs and replies,1,0.22,217
+SAW-12784,develop,codex management (herdr),5,1.13,225
+SAW-12784,develop,git,3,0.68,227
+SAW-12784,develop,reply / communication (no tool),5,1.13,225
+SAW-12784,develop,"tk bookkeeping (step, estimate)",1,0.23,231
+SAW-12784,develop,waiting,2,0.45,223
+SAW-12784,review,code / doc reading,9,2.47,274
+SAW-12784,review,codex briefs and replies,1,0.27,266
+SAW-12784,review,codex management (herdr),10,2.85,284
+SAW-12784,review,"design docs (models, plan, KISS)",1,0.3,304
+SAW-12784,review,git,5,1.36,272
+SAW-12784,review,github / CI / bot threads,7,2.03,289
+SAW-12784,review,other,6,1.83,304
+SAW-12784,review,reply / communication (no tool),19,5.27,277
+SAW-12784,review,review docs,1,0.25,247
+SAW-12784,review,source edits,1,0.25,243
+SAW-12784,review,subagent dispatch,1,0.24,234
+SAW-12784,review,"tk bookkeeping (step, estimate)",1,0.29,292
+SAW-12784,review,waiting,4,1.07,268
+SAW-12784,review,worktree setup / cleanup,2,0.62,310
+SAW-12785,unknown,code / doc reading,19,3.41,179
+SAW-12785,unknown,codex briefs and replies,1,0.24,239
+SAW-12785,unknown,codex management (herdr),10,1.84,184
+SAW-12785,unknown,"design docs (models, plan, KISS)",1,0.14,142
+SAW-12785,unknown,github / CI / bot threads,4,0.43,107
+SAW-12785,unknown,human poll,2,0.3,150
+SAW-12785,unknown,linear,1,0.15,145
+SAW-12785,unknown,other,4,0.61,152
+SAW-12785,unknown,reply / communication (no tool),4,0.87,216
+SAW-12785,unknown,skill / memory reads,1,0.08,83
+SAW-12785,unknown,source edits,7,1.31,185
+SAW-12785,unknown,waiting,1,0.18,175
+SAW-12789,design,code / doc reading,15,2.15,143
+SAW-12789,design,codex management (herdr),14,2.51,179
+SAW-12789,design,"design docs (models, plan, KISS)",3,0.61,201
+SAW-12789,design,human poll,1,0.16,159
+SAW-12789,design,other,10,1.66,165
+SAW-12789,design,reply / communication (no tool),7,1.3,186
+SAW-12789,design,skill / memory reads,2,0.27,133
+SAW-12789,design,source edits,3,0.42,141
+SAW-12789,design,subagent dispatch,1,0.12,122
+SAW-12789,design,"tk bookkeeping (step, estimate)",1,0.21,208
+SAW-12789,design,waiting,2,0.4,198
+SAW-12789,design,worktree setup / cleanup,2,0.17,82
+SAW-12789,develop,code / doc reading,1,0.23,230
+SAW-12789,develop,codex management (herdr),11,2.65,241
+SAW-12789,develop,git,2,0.48,238
+SAW-12789,develop,github / CI / bot threads,1,0.25,251
+SAW-12789,develop,reply / communication (no tool),7,1.91,273
+SAW-12789,develop,subagent dispatch,2,0.72,359
+SAW-12789,develop,"tk bookkeeping (step, estimate)",1,0.25,254
+SAW-12789,review,code / doc reading,56,25.01,446
+SAW-12789,review,codex management (herdr),23,9.54,414
+SAW-12789,review,git,17,7.0,412
+SAW-12789,review,github / CI / bot threads,63,29.64,470
+SAW-12789,review,human poll,2,0.75,376
+SAW-12789,review,other,13,6.67,512
+SAW-12789,review,reply / communication (no tool),76,35.69,469
+SAW-12789,review,review docs,3,1.19,397
+SAW-12789,review,skill / memory reads,2,1.28,638
+SAW-12789,review,source edits,16,7.91,493
+SAW-12789,review,subagent dispatch,1,0.42,416
+SAW-12789,review,"tk bookkeeping (step, estimate)",4,1.69,422
+SAW-12789,review,waiting,10,4.56,456
+SAW-12789,review,worktree setup / cleanup,17,8.47,498
+SAW-12790,design,code / doc reading,43,8.9,206
+SAW-12790,design,codex briefs and replies,1,0.2,201
+SAW-12790,design,codex management (herdr),13,2.91,223
+SAW-12790,design,"design docs (models, plan, KISS)",2,0.39,194
+SAW-12790,design,git,7,1.49,213
+SAW-12790,design,github / CI / bot threads,6,0.88,146
+SAW-12790,design,human poll,5,0.97,194
+SAW-12790,design,linear,8,1.72,214
+SAW-12790,design,other,5,0.89,179
+SAW-12790,design,reply / communication (no tool),21,5.39,256
+SAW-12790,design,skill / memory reads,1,0.3,303
+SAW-12790,design,"tk bookkeeping (step, estimate)",3,0.9,300
+SAW-12790,design,waiting,1,0.21,213
+SAW-12790,design,worktree setup / cleanup,3,0.28,91
+SAW-12790,develop,code / doc reading,4,1.47,368
+SAW-12790,develop,codex management (herdr),17,5.59,329
+SAW-12790,develop,git,1,0.33,328
+SAW-12790,develop,github / CI / bot threads,1,0.33,331
+SAW-12790,develop,reply / communication (no tool),7,2.39,342
+SAW-12790,develop,subagent dispatch,1,0.33,332
+SAW-12790,review,code / doc reading,49,17.04,347
+SAW-12790,review,codex briefs and replies,2,0.91,451
+SAW-12790,review,codex management (herdr),13,6.18,475
+SAW-12790,review,git,16,6.66,416
+SAW-12790,review,github / CI / bot threads,31,14.18,457
+SAW-12790,review,linear,29,14.33,493
+SAW-12790,review,other,7,2.88,411
+SAW-12790,review,reply / communication (no tool),51,23.85,467
+SAW-12790,review,review docs,2,0.93,461
+SAW-12790,review,source edits,1,0.46,461
+SAW-12790,review,subagent dispatch,1,0.61,608
+SAW-12790,review,"tk bookkeeping (step, estimate)",4,1.82,453
+SAW-12790,review,waiting,2,0.81,407
+SAW-12790,review,worktree setup / cleanup,4,2.27,567
+SAW-12791,design,code / doc reading,3,0.27,91
+SAW-12791,design,git,1,0.08,79
+SAW-12791,design,other,3,0.24,81
+SAW-12791,design,reply / communication (no tool),3,0.26,87
+SAW-12791,design,worktree setup / cleanup,1,0.08,77
+SAW-12793,design,code / doc reading,20,3.58,179
+SAW-12793,design,codex management (herdr),16,2.9,181
+SAW-12793,design,git,5,0.87,174
+SAW-12793,design,github / CI / bot threads,16,3.16,197
+SAW-12793,design,human poll,1,0.15,143
+SAW-12793,design,other,6,1.29,214
+SAW-12793,design,reply / communication (no tool),21,4.38,209
+SAW-12793,design,skill / memory reads,4,0.72,179
+SAW-12793,design,source edits,6,1.13,187
+SAW-12793,design,subagent dispatch,1,0.2,195
+SAW-12793,design,"tk bookkeeping (step, estimate)",2,0.37,183
+SAW-12793,design,waiting,1,0.17,168
+SAW-12793,design,worktree setup / cleanup,6,0.78,129
+SAW-12797,review,code / doc reading,22,7.47,339
+SAW-12797,review,"design docs (models, plan, KISS)",2,0.73,366
+SAW-12797,review,git,17,5.7,335
+SAW-12797,review,github / CI / bot threads,15,5.38,358
+SAW-12797,review,other,5,1.7,340
+SAW-12797,review,reply / communication (no tool),11,4.01,364
+SAW-12797,review,review docs,2,0.52,261
+SAW-12797,review,source edits,8,2.54,317
+SAW-12797,review,subagent dispatch,2,0.64,320
+SAW-12797,review,"tk bookkeeping (step, estimate)",1,0.31,312
+SAW-12797,unknown,code / doc reading,35,7.46,212
+SAW-12797,unknown,"design docs (models, plan, KISS)",1,0.21,211
+SAW-12797,unknown,git,7,1.6,228
+SAW-12797,unknown,github / CI / bot threads,2,0.5,249
+SAW-12797,unknown,other,2,0.47,237
+SAW-12797,unknown,reply / communication (no tool),1,0.24,244
+SAW-12797,unknown,source edits,9,1.93,213
+SAW-12797,unknown,"tk bookkeeping (step, estimate)",1,0.25,251
+SAW-12815,design,code / doc reading,13,1.42,109
+SAW-12815,design,codex briefs and replies,1,0.13,132
+SAW-12815,design,codex management (herdr),10,1.29,129
+SAW-12815,design,"design docs (models, plan, KISS)",1,0.12,119
+SAW-12815,design,git,1,0.12,118
+SAW-12815,design,github / CI / bot threads,1,0.09,88
+SAW-12815,design,human poll,1,0.12,120
+SAW-12815,design,other,4,0.42,104
+SAW-12815,design,reply / communication (no tool),3,0.41,137
+SAW-12815,design,"tk bookkeeping (step, estimate)",1,0.14,137
+SAW-12815,design,waiting,1,0.13,134
+SAW-12815,design,worktree setup / cleanup,1,0.07,74
+SAW-12815,review,code / doc reading,10,2.0,199
+SAW-12815,review,codex management (herdr),1,0.22,219
+SAW-12815,review,git,6,1.27,211
+SAW-12815,review,github / CI / bot threads,4,0.66,165
+SAW-12815,review,human poll,2,0.39,193
+SAW-12815,review,other,16,3.08,192
+SAW-12815,review,reply / communication (no tool),12,2.19,182
+SAW-12815,review,source edits,3,0.54,180
+SAW-12815,review,subagent dispatch,1,0.17,172
+SAW-12815,review,"tk bookkeeping (step, estimate)",1,0.15,153
+SAW-12815,review,waiting,1,0.14,144
+SAW-12815,review,worktree setup / cleanup,1,0.22,219
+SAW-12816,design,code / doc reading,12,1.29,108
+SAW-12816,design,codex briefs and replies,1,0.13,130
+SAW-12816,design,codex management (herdr),7,0.87,124
+SAW-12816,design,"design docs (models, plan, KISS)",3,0.4,133
+SAW-12816,design,git,3,0.3,101
+SAW-12816,design,github / CI / bot threads,2,0.21,105
+SAW-12816,design,human poll,1,0.12,117
+SAW-12816,design,linear,4,0.46,115
+SAW-12816,design,other,3,0.32,106
+SAW-12816,design,reply / communication (no tool),12,1.69,140
+SAW-12816,design,source edits,2,0.21,106
+SAW-12816,design,"tk bookkeeping (step, estimate)",1,0.15,148
+SAW-12816,design,waiting,2,0.28,142
+SAW-12819,design,code / doc reading,16,1.96,122
+SAW-12819,design,codex briefs and replies,1,0.13,125
+SAW-12819,design,codex management (herdr),1,0.07,74
+SAW-12819,design,"design docs (models, plan, KISS)",1,0.13,134
+SAW-12819,design,git,4,0.51,127
+SAW-12819,design,github / CI / bot threads,3,0.32,105
+SAW-12819,design,human poll,1,0.13,126
+SAW-12819,design,linear,4,0.42,105
+SAW-12819,design,other,7,0.86,123
+SAW-12819,design,reply / communication (no tool),2,0.31,156
+SAW-12819,design,review docs,1,0.15,150
+SAW-12819,design,source edits,4,0.48,118
+SAW-12819,design,subagent dispatch,1,0.15,147
+SAW-12819,design,"tk bookkeeping (step, estimate)",1,0.16,159
+SAW-12819,design,worktree setup / cleanup,2,0.13,66
+SAW-12819,review,code / doc reading,4,0.69,171
+SAW-12819,review,github / CI / bot threads,5,0.85,169
+SAW-12819,review,linear,4,0.7,174
+SAW-12819,review,other,2,0.34,170
+SAW-12819,review,reply / communication (no tool),5,0.87,174
+SAW-12819,review,source edits,2,0.32,161
+SAW-12819,review,worktree setup / cleanup,1,0.19,185
+SAW-12821,design,code / doc reading,5,0.54,108
+SAW-12821,design,codex management (herdr),1,0.08,80
+SAW-12821,design,"design docs (models, plan, KISS)",1,0.12,120
+SAW-12821,design,git,1,0.13,134
+SAW-12821,design,github / CI / bot threads,7,0.76,109
+SAW-12821,design,human poll,1,0.12,121
+SAW-12821,design,linear,5,0.55,109
+SAW-12821,design,other,4,0.43,107
+SAW-12821,design,reply / communication (no tool),1,0.14,137
+SAW-12821,design,skill / memory reads,3,0.37,122
+SAW-12821,design,source edits,1,0.11,107
+SAW-12821,design,waiting,1,0.13,129
+SAW-12821,design,worktree setup / cleanup,1,0.13,133
+SAW-12824,design,code / doc reading,21,2.46,117
+SAW-12824,design,codex management (herdr),1,0.09,85
+SAW-12824,design,"design docs (models, plan, KISS)",1,0.13,127
+SAW-12824,design,git,5,0.64,127
+SAW-12824,design,github / CI / bot threads,2,0.26,131
+SAW-12824,design,human poll,1,0.13,127
+SAW-12824,design,other,3,0.32,106
+SAW-12824,design,skill / memory reads,1,0.09,91
+SAW-12824,design,source edits,2,0.25,125
+SAW-12824,design,subagent dispatch,1,0.13,132
+SAW-12824,design,worktree setup / cleanup,2,0.16,81
+SAW-12824,review,code / doc reading,1,0.15,145
+SAW-12824,review,git,1,0.17,169
+SAW-12824,review,github / CI / bot threads,16,2.52,157
+SAW-12824,review,human poll,1,0.15,154
+SAW-12824,review,other,8,1.22,152
+SAW-12824,review,reply / communication (no tool),19,2.88,152
+SAW-12824,review,review docs,1,0.14,136
+SAW-12824,review,"tk bookkeeping (step, estimate)",2,0.31,153
+SAW-12824,review,worktree setup / cleanup,3,0.49,164
+SAW-12828,design,code / doc reading,12,1.55,128
+SAW-12828,design,codex management (herdr),1,0.09,87
+SAW-12828,design,"design docs (models, plan, KISS)",1,0.15,150
+SAW-12828,design,github / CI / bot threads,4,0.56,140
+SAW-12828,design,human poll,1,0.13,130
+SAW-12828,design,other,5,0.6,120
+SAW-12828,design,skill / memory reads,1,0.1,96
+SAW-12828,design,source edits,1,0.14,143
+SAW-12828,design,"tk bookkeeping (step, estimate)",1,0.16,155
+SAW-12828,design,worktree setup / cleanup,3,0.26,85
+SAW-12828,develop,code / doc reading,10,1.76,176
+SAW-12828,develop,git,6,1.03,171
+SAW-12828,develop,github / CI / bot threads,3,0.54,179
+SAW-12828,develop,other,2,0.35,175
+SAW-12828,develop,reply / communication (no tool),3,0.52,174
+SAW-12828,develop,review docs,1,0.17,172
+SAW-12828,develop,source edits,6,1.02,169
+SAW-12828,develop,subagent dispatch,1,0.17,170
+SAW-12828,develop,"tk bookkeeping (step, estimate)",1,0.19,190
+SAW-12828,develop,worktree setup / cleanup,1,0.16,159
+SAW-12828,review,code / doc reading,15,3.52,234
+SAW-12828,review,codex management (herdr),1,0.3,299
+SAW-12828,review,git,6,1.53,255
+SAW-12828,review,github / CI / bot threads,14,3.32,237
+SAW-12828,review,human poll,3,0.69,228
+SAW-12828,review,other,20,4.94,246
+SAW-12828,review,reply / communication (no tool),12,3.02,251
+SAW-12828,review,skill / memory reads,2,0.6,302
+SAW-12828,review,source edits,20,4.66,232
+SAW-12828,review,waiting,1,0.3,295
+SAW-12828,review,worktree setup / cleanup,2,0.6,300
+SAW-12833,develop,code / doc reading,3,0.78,259
+SAW-12833,develop,codex briefs and replies,1,0.27,273
+SAW-12833,develop,codex management (herdr),7,1.82,260
+SAW-12833,develop,reply / communication (no tool),8,2.09,261
+SAW-12833,develop,review docs,2,0.52,261
+SAW-12833,develop,"tk bookkeeping (step, estimate)",1,0.28,276
+SAW-12833,develop,waiting,1,0.27,272
+SAW-12833,develop,worktree setup / cleanup,6,1.55,258
+SAW-12833,review,code / doc reading,6,2.07,345
+SAW-12833,review,codex management (herdr),6,2.11,350
+SAW-12833,review,"design docs (models, plan, KISS)",1,0.38,378
+SAW-12833,review,git,6,1.92,319
+SAW-12833,review,github / CI / bot threads,19,6.57,345
+SAW-12833,review,other,4,1.49,372
+SAW-12833,review,reply / communication (no tool),14,4.9,350
+SAW-12833,review,review docs,1,0.31,308
+SAW-12833,review,source edits,3,1.05,349
+SAW-12833,review,subagent dispatch,1,0.28,278
+SAW-12833,review,waiting,3,1.03,342
+SAW-12833,review,worktree setup / cleanup,1,0.36,356
+SAW-12833,unknown,code / doc reading,27,4.4,162
+SAW-12833,unknown,codex briefs and replies,2,0.44,217
+SAW-12833,unknown,codex management (herdr),10,2.1,209
+SAW-12833,unknown,"design docs (models, plan, KISS)",7,1.51,215
+SAW-12833,unknown,git,3,0.34,114
+SAW-12833,unknown,github / CI / bot threads,8,1.33,166
+SAW-12833,unknown,human poll,2,0.41,201
+SAW-12833,unknown,other,4,0.91,228
+SAW-12833,unknown,reply / communication (no tool),2,0.43,216
+SAW-12833,unknown,skill / memory reads,2,0.27,134
+SAW-12833,unknown,"tk bookkeeping (step, estimate)",1,0.23,231
+SAW-12833,unknown,waiting,3,0.64,214
+SAW-12834,design,code / doc reading,17,2.13,125
+SAW-12834,design,codex management (herdr),7,0.98,140
+SAW-12834,design,"design docs (models, plan, KISS)",1,0.15,149
+SAW-12834,design,git,9,1.1,121
+SAW-12834,design,github / CI / bot threads,2,0.29,142
+SAW-12834,design,human poll,1,0.15,150
+SAW-12834,design,other,2,0.2,98
+SAW-12834,design,skill / memory reads,1,0.09,87
+SAW-12834,design,source edits,4,0.54,134
+SAW-12834,design,waiting,1,0.15,145
+SAW-12834,design,worktree setup / cleanup,4,0.33,83
+SAW-12834,develop,code / doc reading,7,1.23,175
+SAW-12834,develop,codex management (herdr),2,0.36,177
+SAW-12834,develop,git,2,0.35,176
+SAW-12834,develop,reply / communication (no tool),4,0.69,173
+SAW-12834,develop,subagent dispatch,1,0.18,177
+SAW-12834,develop,"tk bookkeeping (step, estimate)",1,0.19,190
+SAW-12834,develop,waiting,1,0.17,168
+SAW-12834,review,code / doc reading,4,0.86,214
+SAW-12834,review,codex management (herdr),3,0.62,207
+SAW-12834,review,"design docs (models, plan, KISS)",1,0.22,219
+SAW-12834,review,git,2,0.39,193
+SAW-12834,review,github / CI / bot threads,14,2.88,205
+SAW-12834,review,other,3,0.67,223
+SAW-12834,review,reply / communication (no tool),10,2.11,211
+SAW-12834,review,skill / memory reads,2,0.46,231
+SAW-12834,review,"tk bookkeeping (step, estimate)",1,0.2,196
+SAW-12834,review,waiting,2,0.43,213
+SAW-12834,review,worktree setup / cleanup,1,0.23,232
+SAW-12854,design,code / doc reading,28,4.28,152
+SAW-12854,design,codex briefs and replies,2,0.44,219
+SAW-12854,design,codex management (herdr),17,3.81,223
+SAW-12854,design,"design docs (models, plan, KISS)",3,0.72,238
+SAW-12854,design,git,3,0.52,172
+SAW-12854,design,github / CI / bot threads,4,0.65,163
+SAW-12854,design,human poll,1,0.15,146
+SAW-12854,design,linear,14,2.73,194
+SAW-12854,design,other,3,0.56,186
+SAW-12854,design,reply / communication (no tool),14,2.83,201
+SAW-12854,design,skill / memory reads,1,0.1,96
+SAW-12854,design,source edits,1,0.17,169
+SAW-12854,design,"tk bookkeeping (step, estimate)",2,0.5,250
+SAW-12854,design,waiting,1,0.22,218
+SAW-12854,design,worktree setup / cleanup,1,0.07,67
+SAW-12854,develop,code / doc reading,13,4.3,331
+SAW-12854,develop,codex management (herdr),16,5.0,312
+SAW-12854,develop,git,2,0.67,335
+SAW-12854,develop,github / CI / bot threads,1,0.35,346
+SAW-12854,develop,linear,1,0.32,316
+SAW-12854,develop,other,1,0.32,324
+SAW-12854,develop,reply / communication (no tool),9,2.79,310
+SAW-12854,develop,subagent dispatch,1,0.33,324
+SAW-12854,develop,waiting,1,0.35,354
+SAW-12854,develop,worktree setup / cleanup,6,1.87,312
+SAW-12854,review,code / doc reading,114,63.87,560
+SAW-12854,review,codex management (herdr),84,49.75,592
+SAW-12854,review,"design docs (models, plan, KISS)",2,1.88,937
+SAW-12854,review,git,9,1.98,219
+SAW-12854,review,github / CI / bot threads,101,65.6,649
+SAW-12854,review,human poll,3,2.17,721
+SAW-12854,review,linear,13,7.26,557
+SAW-12854,review,native codex review,1,0.54,538
+SAW-12854,review,other,11,6.97,633
+SAW-12854,review,reply / communication (no tool),160,100.25,626
+SAW-12854,review,review docs,2,1.04,520
+SAW-12854,review,source edits,16,12.76,797
+SAW-12854,review,subagent dispatch,6,3.87,643
+SAW-12854,review,"tk bookkeeping (step, estimate)",4,2.47,618
+SAW-12854,review,waiting,3,2.84,944
+SAW-12854,review,worktree setup / cleanup,60,38.38,639
+SAW-12855,design,code / doc reading,10,1.27,126
+SAW-12855,design,codex management (herdr),1,0.09,95
+SAW-12855,design,"design docs (models, plan, KISS)",1,0.14,138
+SAW-12855,design,git,2,0.28,139
+SAW-12855,design,github / CI / bot threads,2,0.29,145
+SAW-12855,design,linear,4,0.47,117
+SAW-12855,design,other,3,0.3,99
+SAW-12855,design,reply / communication (no tool),2,0.28,139
+SAW-12855,design,skill / memory reads,1,0.11,107
+SAW-12855,design,source edits,4,0.54,133
+SAW-12855,design,tests / measurements,3,0.4,133
+SAW-12855,design,waiting,1,0.13,131
+SAW-12855,design,worktree setup / cleanup,1,0.08,78
+SAW-12855,review,code / doc reading,3,0.48,160
+SAW-12855,review,codex management (herdr),3,0.52,173
+SAW-12855,review,github / CI / bot threads,11,1.73,157
+SAW-12855,review,linear,4,0.69,172
+SAW-12855,review,other,2,0.34,171
+SAW-12855,review,reply / communication (no tool),9,1.46,162
+SAW-12855,review,review docs,1,0.15,147
+SAW-12855,review,subagent dispatch,1,0.15,146
+SAW-12855,review,"tk bookkeeping (step, estimate)",2,0.32,158
+SAW-12894,develop,code / doc reading,1,0.18,183
+SAW-12894,develop,codex management (herdr),9,1.69,188
+SAW-12894,develop,github / CI / bot threads,1,0.19,194
+SAW-12894,develop,linear,1,0.19,194
+SAW-12894,develop,reply / communication (no tool),5,0.94,189
+SAW-12894,develop,review docs,1,0.21,208
+SAW-12894,develop,subagent dispatch,1,0.2,196
+SAW-12894,develop,"tk bookkeeping (step, estimate)",1,0.21,213
+SAW-12894,develop,worktree setup / cleanup,2,0.38,191
+SAW-12894,review,code / doc reading,9,2.15,238
+SAW-12894,review,codex management (herdr),8,1.9,237
+SAW-12894,review,github / CI / bot threads,13,3.22,247
+SAW-12894,review,linear,2,0.54,267
+SAW-12894,review,other,2,0.48,241
+SAW-12894,review,reply / communication (no tool),12,2.93,244
+SAW-12894,review,skill / memory reads,1,0.27,272
+SAW-12894,review,source edits,2,0.5,249
+SAW-12894,review,"tk bookkeeping (step, estimate)",1,0.27,274
+SAW-12894,review,worktree setup / cleanup,5,1.26,252
+SAW-12894,unknown,code / doc reading,11,1.41,128
+SAW-12894,unknown,codex briefs and replies,2,0.3,151
+SAW-12894,unknown,codex management (herdr),9,1.4,155
+SAW-12894,unknown,"design docs (models, plan, KISS)",4,0.66,163
+SAW-12894,unknown,git,1,0.11,113
+SAW-12894,unknown,human poll,1,0.12,123
+SAW-12894,unknown,linear,1,0.18,175
+SAW-12894,unknown,other,4,0.64,161
+SAW-12894,unknown,reply / communication (no tool),8,1.3,162
+SAW-12894,unknown,skill / memory reads,2,0.23,116
+SAW-12894,unknown,source edits,1,0.15,154
+SAW-12894,unknown,"tk bookkeeping (step, estimate)",1,0.17,170
+SAW-12895,design,code / doc reading,10,1.18,117
+SAW-12895,design,codex briefs and replies,1,0.14,134
+SAW-12895,design,codex management (herdr),18,2.58,143
+SAW-12895,design,"design docs (models, plan, KISS)",2,0.3,150
+SAW-12895,design,github / CI / bot threads,3,0.36,118
+SAW-12895,design,human poll,1,0.13,126
+SAW-12895,design,linear,3,0.32,105
+SAW-12895,design,other,3,0.35,116
+SAW-12895,design,reply / communication (no tool),7,1.08,155
+SAW-12895,design,skill / memory reads,1,0.09,91
+SAW-12895,design,source edits,1,0.12,120
+SAW-12895,design,"tk bookkeeping (step, estimate)",1,0.16,159
+SAW-12895,design,waiting,2,0.29,147
+SAW-12895,develop,code / doc reading,1,0.17,174
+SAW-12895,develop,codex management (herdr),2,0.34,171
+SAW-12895,develop,linear,1,0.18,175
+SAW-12895,develop,reply / communication (no tool),3,0.52,172
+SAW-12895,develop,worktree setup / cleanup,1,0.17,172
+SAW-12895,review,code / doc reading,11,2.55,231
+SAW-12895,review,codex management (herdr),5,1.15,228
+SAW-12895,review,git,4,0.77,191
+SAW-12895,review,github / CI / bot threads,28,6.26,223
+SAW-12895,review,human poll,1,0.27,272
+SAW-12895,review,linear,3,0.81,270
+SAW-12895,review,other,4,0.99,247
+SAW-12895,review,reply / communication (no tool),12,2.8,233
+SAW-12895,review,skill / memory reads,8,1.91,238
+SAW-12895,review,source edits,4,0.98,244
+SAW-12895,review,subagent dispatch,1,0.18,177
+SAW-12895,review,"tk bookkeeping (step, estimate)",1,0.25,251
+SAW-12895,review,worktree setup / cleanup,5,1.08,215
+SAW-12896,design,code / doc reading,24,3.26,135
+SAW-12896,design,codex briefs and replies,2,0.32,158
+SAW-12896,design,codex management (herdr),11,1.78,161
+SAW-12896,design,"design docs (models, plan, KISS)",2,0.38,189
+SAW-12896,design,git,6,0.87,144
+SAW-12896,design,github / CI / bot threads,6,0.66,109
+SAW-12896,design,human poll,3,0.49,160
+SAW-12896,design,linear,7,1.02,145
+SAW-12896,design,other,5,0.64,127
+SAW-12896,design,reply / communication (no tool),7,1.17,167
+SAW-12896,design,skill / memory reads,1,0.08,80
+SAW-12896,design,source edits,2,0.3,150
+SAW-12896,design,tests / measurements,1,0.1,104
+SAW-12896,design,"tk bookkeeping (step, estimate)",2,0.42,208
+SAW-12896,design,waiting,3,0.52,172
+SAW-12896,design,worktree setup / cleanup,1,0.06,63
+SAW-12896,develop,code / doc reading,3,0.97,322
+SAW-12896,develop,codex management (herdr),4,0.89,222
+SAW-12896,develop,git,1,0.22,225
+SAW-12896,develop,github / CI / bot threads,6,1.9,316
+SAW-12896,develop,linear,1,0.24,235
+SAW-12896,develop,other,1,0.32,324
+SAW-12896,develop,reply / communication (no tool),6,1.74,290
+SAW-12896,develop,source edits,1,0.32,323
+SAW-12896,develop,"tk bookkeeping (step, estimate)",1,0.33,328
+SAW-12896,develop,waiting,1,0.23,232
+SAW-12896,develop,worktree setup / cleanup,2,0.46,229
+SAW-12896,review,code / doc reading,17,5.38,316
+SAW-12896,review,codex management (herdr),4,1.25,311
+SAW-12896,review,git,4,1.19,296
+SAW-12896,review,github / CI / bot threads,31,8.84,285
+SAW-12896,review,human poll,1,0.27,271
+SAW-12896,review,linear,8,2.92,365
+SAW-12896,review,other,20,6.24,312
+SAW-12896,review,reply / communication (no tool),20,6.39,319
+SAW-12896,review,review docs,1,0.25,245
+SAW-12896,review,skill / memory reads,2,0.71,355
+SAW-12896,review,source edits,6,1.9,315
+SAW-12896,review,subagent dispatch,1,0.24,238
+SAW-12896,review,"tk bookkeeping (step, estimate)",2,0.62,312
+SAW-12896,review,waiting,2,0.57,284
+SAW-12896,review,worktree setup / cleanup,5,1.62,323
+SAW-12904,design,code / doc reading,33,4.7,142
+SAW-12904,design,codex briefs and replies,2,0.32,160
+SAW-12904,design,codex management (herdr),22,3.4,154
+SAW-12904,design,"design docs (models, plan, KISS)",4,0.59,146
+SAW-12904,design,git,6,0.56,93
+SAW-12904,design,github / CI / bot threads,7,0.75,106
+SAW-12904,design,human poll,2,0.33,165
+SAW-12904,design,linear,7,1.0,142
+SAW-12904,design,other,4,0.7,176
+SAW-12904,design,reply / communication (no tool),19,3.05,160
+SAW-12904,design,skill / memory reads,2,0.3,149
+SAW-12904,design,subagent dispatch,1,0.12,116
+SAW-12904,design,"tk bookkeeping (step, estimate)",3,0.58,192
+SAW-12904,design,waiting,2,0.28,139
+SAW-12904,design,worktree setup / cleanup,4,0.41,103
+SAW-12904,develop,code / doc reading,6,1.58,262
+SAW-12904,develop,codex management (herdr),17,3.87,227
+SAW-12904,develop,github / CI / bot threads,14,3.88,277
+SAW-12904,develop,linear,1,0.19,192
+SAW-12904,develop,reply / communication (no tool),11,2.56,232
+SAW-12904,develop,worktree setup / cleanup,1,0.25,245
+SAW-12904,review,code / doc reading,24,9.39,391
+SAW-12904,review,codex management (herdr),37,17.0,459
+SAW-12904,review,"design docs (models, plan, KISS)",1,0.48,483
+SAW-12904,review,git,20,8.88,443
+SAW-12904,review,github / CI / bot threads,59,27.7,469
+SAW-12904,review,linear,13,7.03,540
+SAW-12904,review,native codex review,1,0.37,372
+SAW-12904,review,other,4,2.3,576
+SAW-12904,review,reply / communication (no tool),79,36.89,467
+SAW-12904,review,review docs,2,0.69,341
+SAW-12904,review,skill / memory reads,5,2.51,501
+SAW-12904,review,source edits,1,0.4,400
+SAW-12904,review,subagent dispatch,2,0.64,319
+SAW-12904,review,"tk bookkeeping (step, estimate)",4,1.73,432
+SAW-12904,review,waiting,3,1.54,512
+SAW-12904,review,worktree setup / cleanup,19,9.21,484
+SAW-12907,design,code / doc reading,44,6.47,147
+SAW-12907,design,codex management (herdr),12,2.17,180
+SAW-12907,design,"design docs (models, plan, KISS)",2,0.26,127
+SAW-12907,design,git,7,1.0,143
+SAW-12907,design,github / CI / bot threads,2,0.25,123
+SAW-12907,design,linear,5,0.7,139
+SAW-12907,design,other,3,0.47,155
+SAW-12907,design,reply / communication (no tool),8,1.48,185
+SAW-12907,design,skill / memory reads,2,0.25,124
+SAW-12907,design,source edits,2,0.27,136
+SAW-12907,design,"tk bookkeeping (step, estimate)",1,0.2,197
+SAW-12907,design,waiting,4,0.61,153
+SAW-12907,design,worktree setup / cleanup,2,0.17,85
+SAW-12907,develop,code / doc reading,1,0.22,220
+SAW-12907,develop,codex management (herdr),2,0.43,214
+SAW-12907,develop,git,2,0.44,218
+SAW-12907,develop,linear,1,0.22,222
+SAW-12907,develop,reply / communication (no tool),2,0.43,217
+SAW-12907,review,code / doc reading,20,5.63,281
+SAW-12907,review,codex management (herdr),5,1.35,269
+SAW-12907,review,git,14,4.1,292
+SAW-12907,review,github / CI / bot threads,26,7.69,296
+SAW-12907,review,human poll,3,0.9,299
+SAW-12907,review,linear,7,2.04,290
+SAW-12907,review,other,2,0.58,287
+SAW-12907,review,reply / communication (no tool),27,8.13,301
+SAW-12907,review,review docs,1,0.23,228
+SAW-12907,review,skill / memory reads,4,1.37,342
+SAW-12907,review,subagent dispatch,1,0.23,225
+SAW-12907,review,waiting,1,0.31,310
+SAW-12907,review,worktree setup / cleanup,2,0.69,346
+SAW-12909,design,code / doc reading,78,19.8,253
+SAW-12909,design,codex briefs and replies,7,1.58,224
+SAW-12909,design,codex management (herdr),45,14.29,317
+SAW-12909,design,"design docs (models, plan, KISS)",2,0.49,243
+SAW-12909,design,git,27,9.97,369
+SAW-12909,design,github / CI / bot threads,58,25.38,437
+SAW-12909,design,human poll,1,0.15,149
+SAW-12909,design,linear,29,8.68,298
+SAW-12909,design,other,15,4.21,281
+SAW-12909,design,reply / communication (no tool),99,35.73,360
+SAW-12909,design,review docs,2,0.9,448
+SAW-12909,design,skill / memory reads,5,2.15,429
+SAW-12909,design,source edits,12,3.3,274
+SAW-12909,design,subagent dispatch,3,1.36,453
+SAW-12909,design,"tk bookkeeping (step, estimate)",4,1.67,418
+SAW-12909,design,waiting,4,0.83,208
+SAW-12909,design,worktree setup / cleanup,12,4.42,368
+SAW-12909,develop,code / doc reading,8,1.79,223
+SAW-12909,develop,codex management (herdr),4,0.78,194
+SAW-12909,develop,git,3,0.58,192
+SAW-12909,develop,github / CI / bot threads,3,0.7,232
+SAW-12909,develop,linear,1,0.22,221
+SAW-12909,develop,other,2,0.42,211
+SAW-12909,develop,reply / communication (no tool),5,1.05,210
+SAW-12909,develop,review docs,1,0.22,219
+SAW-12909,develop,subagent dispatch,1,0.19,188
+SAW-12909,develop,waiting,1,0.23,230
+SAW-12909,develop,worktree setup / cleanup,1,0.17,173
+SAW-12909,review,code / doc reading,14,4.25,303
+SAW-12909,review,codex management (herdr),4,1.19,295
+SAW-12909,review,git,9,2.63,292
+SAW-12909,review,github / CI / bot threads,10,2.87,287
+SAW-12909,review,linear,3,0.98,326
+SAW-12909,review,other,5,1.53,306
+SAW-12909,review,reply / communication (no tool),20,5.98,299
+SAW-12909,review,source edits,2,0.7,347
+SAW-12909,review,subagent dispatch,1,0.27,270
+SAW-12909,review,"tk bookkeeping (step, estimate)",4,1.31,327
+SAW-12909,review,waiting,5,1.46,292
+SAW-12909,review,worktree setup / cleanup,5,1.52,304
+SAW-12910,design,code / doc reading,20,2.93,146
+SAW-12910,design,codex briefs and replies,4,0.71,176
+SAW-12910,design,codex management (herdr),12,2.11,175
+SAW-12910,design,"design docs (models, plan, KISS)",3,0.52,170
+SAW-12910,design,github / CI / bot threads,3,0.36,120
+SAW-12910,design,human poll,1,0.14,140
+SAW-12910,design,linear,4,0.56,140
+SAW-12910,design,other,3,0.41,137
+SAW-12910,design,reply / communication (no tool),6,1.18,197
+SAW-12910,design,skill / memory reads,3,0.38,127
+SAW-12910,design,source edits,3,0.45,148
+SAW-12910,design,"tk bookkeeping (step, estimate)",1,0.2,199
+SAW-12910,design,waiting,3,0.56,185
+SAW-12910,design,worktree setup / cleanup,1,0.06,63
+SAW-12910,develop,code / doc reading,2,0.44,220
+SAW-12910,develop,codex management (herdr),1,0.22,221
+SAW-12910,develop,linear,1,0.22,223
+SAW-12910,develop,reply / communication (no tool),4,0.88,219
+SAW-12910,develop,subagent dispatch,1,0.23,225
+SAW-12910,develop,worktree setup / cleanup,3,0.66,220
+SAW-12910,review,code / doc reading,44,10.78,245
+SAW-12910,review,codex briefs and replies,6,1.61,267
+SAW-12910,review,codex management (herdr),24,4.01,166
+SAW-12910,review,git,6,1.45,241
+SAW-12910,review,github / CI / bot threads,23,5.48,238
+SAW-12910,review,linear,17,3.3,193
+SAW-12910,review,other,9,2.38,264
+SAW-12910,review,reply / communication (no tool),47,10.99,233
+SAW-12910,review,review docs,1,0.31,310
+SAW-12910,review,skill / memory reads,5,1.04,208
+SAW-12910,review,source edits,10,2.41,240
+SAW-12910,review,"tk bookkeeping (step, estimate)",1,0.31,312
+SAW-12910,review,waiting,8,2.21,276
+SAW-12910,review,worktree setup / cleanup,16,3.47,216
+SAW-12913,develop,code / doc reading,10,3.54,353
+SAW-12913,develop,codex management (herdr),3,1.02,338
+SAW-12913,develop,git,3,1.0,334
+SAW-12913,develop,linear,2,0.68,339
+SAW-12913,develop,reply / communication (no tool),8,2.72,340
+SAW-12913,develop,review docs,1,0.36,358
+SAW-12913,develop,subagent dispatch,1,0.35,347
+SAW-12913,develop,waiting,1,0.33,332
+SAW-12913,review,code / doc reading,5,1.97,394
+SAW-12913,review,codex management (herdr),9,3.48,386
+SAW-12913,review,git,8,3.12,389
+SAW-12913,review,github / CI / bot threads,12,4.7,392
+SAW-12913,review,other,3,1.24,411
+SAW-12913,review,reply / communication (no tool),14,5.48,391
+SAW-12913,review,waiting,1,0.37,369
+SAW-12913,unknown,code / doc reading,45,11.31,251
+SAW-12913,unknown,codex briefs and replies,1,0.28,280
+SAW-12913,unknown,codex management (herdr),13,3.87,298
+SAW-12913,unknown,"design docs (models, plan, KISS)",1,0.31,313
+SAW-12913,unknown,git,16,3.96,247
+SAW-12913,unknown,linear,1,0.32,316
+SAW-12913,unknown,other,1,0.23,233
+SAW-12913,unknown,reply / communication (no tool),7,2.07,295
+SAW-12913,unknown,source edits,4,0.97,241
+SAW-12913,unknown,"tk bookkeeping (step, estimate)",1,0.31,312
+SAW-12913,unknown,waiting,4,1.15,288
+SAW-12920,design,code / doc reading,30,5.29,176
+SAW-12920,design,codex briefs and replies,2,0.41,205
+SAW-12920,design,codex management (herdr),15,3.12,207
+SAW-12920,design,"design docs (models, plan, KISS)",2,0.43,212
+SAW-12920,design,github / CI / bot threads,1,0.09,92
+SAW-12920,design,human poll,3,0.65,217
+SAW-12920,design,linear,5,0.9,179
+SAW-12920,design,other,2,0.24,122
+SAW-12920,design,reply / communication (no tool),7,1.54,220
+SAW-12920,design,skill / memory reads,2,0.27,136
+SAW-12920,design,source edits,1,0.18,174
+SAW-12920,design,"tk bookkeeping (step, estimate)",2,0.46,231
+SAW-12920,design,waiting,2,0.42,207
+SAW-12920,design,worktree setup / cleanup,2,0.16,81
+SAW-12920,develop,code / doc reading,13,3.96,304
+SAW-12920,develop,codex management (herdr),3,0.94,313
+SAW-12920,develop,git,2,0.58,290
+SAW-12920,develop,github / CI / bot threads,4,1.31,328
+SAW-12920,develop,linear,1,0.28,278
+SAW-12920,develop,native codex review,1,0.3,296
+SAW-12920,develop,other,4,1.28,320
+SAW-12920,develop,reply / communication (no tool),5,1.44,287
+SAW-12920,develop,source edits,4,1.21,302
+SAW-12920,develop,subagent dispatch,1,0.28,280
+SAW-12920,develop,waiting,1,0.26,259
+SAW-12920,develop,worktree setup / cleanup,5,1.38,276
+SAW-12920,review,code / doc reading,7,2.61,372
+SAW-12920,review,codex management (herdr),2,0.79,396
+SAW-12920,review,git,4,1.49,373
+SAW-12920,review,github / CI / bot threads,7,2.56,365
+SAW-12920,review,linear,3,1.16,384
+SAW-12920,review,other,4,1.47,367
+SAW-12920,review,reply / communication (no tool),9,3.29,365
+SAW-12920,review,review docs,1,0.36,354
+SAW-12920,review,skill / memory reads,3,1.15,383
+SAW-12920,review,source edits,2,0.72,358
+SAW-12920,review,waiting,1,0.35,345
+SAW-12920,review,worktree setup / cleanup,1,0.35,346
+SAW-12934,design,code / doc reading,9,2.35,260
+SAW-12934,design,codex briefs and replies,2,0.52,262
+SAW-12934,design,codex management (herdr),13,3.5,269
+SAW-12934,design,"design docs (models, plan, KISS)",2,0.53,263
+SAW-12934,design,github / CI / bot threads,1,0.24,238
+SAW-12934,design,human poll,1,0.25,252
+SAW-12934,design,linear,4,1.01,251
+SAW-12934,design,other,1,0.24,240
+SAW-12934,design,reply / communication (no tool),8,2.21,276
+SAW-12934,design,skill / memory reads,1,0.22,222
+SAW-12934,design,source edits,1,0.29,290
+SAW-12934,design,tests / measurements,1,0.25,249
+SAW-12934,design,"tk bookkeeping (step, estimate)",1,0.27,273
+SAW-12934,design,waiting,2,0.53,266
+SAW-12934,develop,code / doc reading,5,1.58,316
+SAW-12934,develop,codex management (herdr),3,0.92,305
+SAW-12934,develop,linear,1,0.3,304
+SAW-12934,develop,native codex review,1,0.32,323
+SAW-12934,develop,other,3,0.95,317
+SAW-12934,develop,reply / communication (no tool),7,2.17,310
+SAW-12934,develop,review docs,1,0.31,306
+SAW-12934,develop,subagent dispatch,1,0.31,305
+SAW-12934,develop,"tk bookkeeping (step, estimate)",2,0.64,318
+SAW-12934,develop,waiting,1,0.32,319
+SAW-12934,develop,worktree setup / cleanup,5,1.52,304
+SAW-12934,review,code / doc reading,23,6.65,288
+SAW-12934,review,codex management (herdr),4,1.38,345
+SAW-12934,review,git,3,0.57,191
+SAW-12934,review,github / CI / bot threads,11,3.61,328
+SAW-12934,review,linear,8,2.13,265
+SAW-12934,review,other,6,1.84,306
+SAW-12934,review,reply / communication (no tool),13,4.03,310
+SAW-12934,review,skill / memory reads,1,0.36,355
+SAW-12934,review,source edits,6,1.63,271
+SAW-12934,review,waiting,2,0.71,353
+SAW-12934,review,worktree setup / cleanup,5,1.7,339
+SAW-12938,design,code / doc reading,20,3.34,166
+SAW-12938,design,codex briefs and replies,8,1.7,212
+SAW-12938,design,codex management (herdr),15,2.64,176
+SAW-12938,design,"design docs (models, plan, KISS)",1,0.17,165
+SAW-12938,design,git,3,0.39,129
+SAW-12938,design,github / CI / bot threads,10,1.43,142
+SAW-12938,design,human poll,2,0.3,150
+SAW-12938,design,linear,6,1.02,170
+SAW-12938,design,other,9,1.54,171
+SAW-12938,design,reply / communication (no tool),11,2.3,209
+SAW-12938,design,skill / memory reads,4,0.7,175
+SAW-12938,design,source edits,5,0.88,176
+SAW-12938,design,tests / measurements,1,0.11,114
+SAW-12938,design,"tk bookkeeping (step, estimate)",1,0.24,238
+SAW-12938,design,waiting,3,0.54,178
+SAW-12938,develop,code / doc reading,6,1.58,263
+SAW-12938,develop,codex briefs and replies,2,0.52,259
+SAW-12938,develop,codex management (herdr),4,1.03,257
+SAW-12938,develop,git,4,1.02,255
+SAW-12938,develop,github / CI / bot threads,4,1.07,267
+SAW-12938,develop,linear,1,0.26,257
+SAW-12938,develop,other,3,0.8,268
+SAW-12938,develop,reply / communication (no tool),10,2.6,259
+SAW-12938,develop,subagent dispatch,1,0.28,275
+SAW-12938,review,code / doc reading,14,4.37,311
+SAW-12938,review,codex briefs and replies,1,0.3,305
+SAW-12938,review,codex management (herdr),4,1.32,330
+SAW-12938,review,git,4,1.31,326
+SAW-12938,review,github / CI / bot threads,12,3.72,309
+SAW-12938,review,human poll,1,0.32,319
+SAW-12938,review,linear,3,1.01,335
+SAW-12938,review,other,7,2.21,315
+SAW-12938,review,reply / communication (no tool),13,4.05,311
+SAW-12938,review,review docs,1,0.28,277
+SAW-12938,review,skill / memory reads,3,1.04,345
+SAW-12938,review,source edits,4,1.27,316
+SAW-12938,review,"tk bookkeeping (step, estimate)",4,1.23,306
+SAW-12938,review,worktree setup / cleanup,1,0.35,349
+SAW-12975,design,code / doc reading,28,4.09,146
+SAW-12975,design,"design docs (models, plan, KISS)",2,0.38,187
+SAW-12975,design,git,20,3.1,154
+SAW-12975,design,github / CI / bot threads,11,1.65,149
+SAW-12975,design,human poll,1,0.19,186
+SAW-12975,design,linear,4,0.57,143
+SAW-12975,design,other,7,1.11,159
+SAW-12975,design,reply / communication (no tool),1,0.21,205
+SAW-12975,design,source edits,7,1.16,165
+SAW-12975,design,waiting,2,0.25,126
+SAW-12975,design,worktree setup / cleanup,2,0.21,105
+SAW-12975,review,code / doc reading,5,1.17,234
+SAW-12975,review,git,5,1.14,228
+SAW-12975,review,github / CI / bot threads,8,1.86,232
+SAW-12975,review,linear,2,0.48,241
+SAW-12975,review,other,4,0.95,236
+SAW-12975,review,reply / communication (no tool),15,3.56,237
+SAW-12975,review,review docs,1,0.22,218
+SAW-12975,review,skill / memory reads,1,0.24,236
+SAW-12975,review,source edits,1,0.24,241
+SAW-12975,review,subagent dispatch,1,0.22,215
+SAW-12975,review,"tk bookkeeping (step, estimate)",2,0.46,227
+SAW-12975,review,worktree setup / cleanup,3,0.7,235
+SAW-12982,design,code / doc reading,12,2.22,185
+SAW-12982,design,codex briefs and replies,3,0.57,191
+SAW-12982,design,codex management (herdr),16,3.21,200
+SAW-12982,design,"design docs (models, plan, KISS)",2,0.51,252
+SAW-12982,design,git,8,1.45,180
+SAW-12982,design,human poll,1,0.21,213
+SAW-12982,design,linear,13,2.82,216
+SAW-12982,design,other,1,0.13,132
+SAW-12982,design,reply / communication (no tool),10,2.46,245
+SAW-12982,design,skill / memory reads,1,0.11,107
+SAW-12982,design,source edits,8,1.31,162
+SAW-12982,design,"tk bookkeeping (step, estimate)",2,0.56,277
+SAW-12982,design,waiting,4,0.75,188
+SAW-12982,design,worktree setup / cleanup,4,0.52,129
+SAW-12982,develop,code / doc reading,10,3.69,368
+SAW-12982,develop,codex management (herdr),9,3.11,345
+SAW-12982,develop,git,6,2.38,397
+SAW-12982,develop,github / CI / bot threads,2,0.75,374
+SAW-12982,develop,linear,2,0.6,301
+SAW-12982,develop,native codex review,1,0.38,378
+SAW-12982,develop,other,1,0.47,468
+SAW-12982,develop,reply / communication (no tool),12,4.4,366
+SAW-12982,develop,review docs,2,0.84,420
+SAW-12982,develop,subagent dispatch,2,0.77,386
+SAW-12982,review,code / doc reading,27,13.57,502
+SAW-12982,review,codex management (herdr),15,6.78,452
+SAW-12982,review,git,4,1.9,475
+SAW-12982,review,github / CI / bot threads,41,19.81,483
+SAW-12982,review,linear,11,5.82,528
+SAW-12982,review,other,8,4.43,554
+SAW-12982,review,reply / communication (no tool),45,22.37,497
+SAW-12982,review,skill / memory reads,4,2.14,535
+SAW-12982,review,source edits,12,6.29,523
+SAW-12982,review,"tk bookkeeping (step, estimate)",3,1.39,462
+SAW-12982,review,waiting,5,2.74,547
+SAW-12982,review,worktree setup / cleanup,6,2.91,485
+SAW-12983,design,code / doc reading,35,7.3,208
+SAW-12983,design,codex briefs and replies,4,1.24,308
+SAW-12983,design,codex management (herdr),12,3.5,291
+SAW-12983,design,"design docs (models, plan, KISS)",4,1.12,278
+SAW-12983,design,git,25,5.71,228
+SAW-12983,design,github / CI / bot threads,12,2.24,187
+SAW-12983,design,human poll,1,0.17,167
+SAW-12983,design,other,30,6.34,211
+SAW-12983,design,reply / communication (no tool),26,6.63,255
+SAW-12983,design,skill / memory reads,1,0.22,222
+SAW-12983,design,"tk bookkeeping (step, estimate)",1,0.32,322
+SAW-12983,design,waiting,1,0.25,245
+SAW-12983,design,worktree setup / cleanup,3,0.27,88
+SAW-12983,develop,code / doc reading,9,3.78,420
+SAW-12983,develop,codex management (herdr),15,5.68,379
+SAW-12983,develop,git,5,2.09,417
+SAW-12983,develop,other,6,2.9,484
+SAW-12983,develop,reply / communication (no tool),10,4.13,413
+SAW-12983,develop,skill / memory reads,1,0.35,349
+SAW-12983,develop,source edits,1,0.34,344
+SAW-12983,develop,subagent dispatch,2,0.89,441
+SAW-12983,develop,"tk bookkeeping (step, estimate)",1,0.36,355
+SAW-12983,develop,worktree setup / cleanup,1,0.34,344
+SAW-12983,review,code / doc reading,34,16.63,489
+SAW-12983,review,codex management (herdr),13,6.38,490
+SAW-12983,review,git,29,13.51,466
+SAW-12983,review,github / CI / bot threads,34,16.95,498
+SAW-12983,review,other,17,8.75,514
+SAW-12983,review,reply / communication (no tool),44,21.86,496
+SAW-12983,review,review docs,2,0.92,459
+SAW-12983,review,skill / memory reads,3,1.63,542
+SAW-12983,review,source edits,14,6.63,473
+SAW-12983,review,"tk bookkeeping (step, estimate)",8,3.65,455
+SAW-12983,review,waiting,1,0.47,473
+SAW-12983,review,worktree setup / cleanup,2,1.23,612
+SAW-12985,design,code / doc reading,30,4.39,146
+SAW-12985,design,codex management (herdr),2,0.17,85
+SAW-12985,design,"design docs (models, plan, KISS)",1,0.17,172
+SAW-12985,design,git,13,1.88,144
+SAW-12985,design,github / CI / bot threads,4,0.46,116
+SAW-12985,design,human poll,1,0.13,130
+SAW-12985,design,other,2,0.21,104
+SAW-12985,design,reply / communication (no tool),1,0.17,172
+SAW-12985,design,skill / memory reads,1,0.09,91
+SAW-12985,design,source edits,4,0.62,154
+SAW-12985,design,"tk bookkeeping (step, estimate)",1,0.17,173
+SAW-12985,design,worktree setup / cleanup,3,0.24,80
+SAW-12985,develop,subagent dispatch,1,0.17,174
+SAW-12985,review,code / doc reading,18,4.03,224
+SAW-12985,review,"design docs (models, plan, KISS)",1,0.21,209
+SAW-12985,review,git,6,1.29,214
+SAW-12985,review,github / CI / bot threads,19,4.19,220
+SAW-12985,review,other,6,1.26,210
+SAW-12985,review,reply / communication (no tool),16,3.53,221
+SAW-12985,review,review docs,1,0.18,182
+SAW-12985,review,skill / memory reads,1,0.22,221
+SAW-12985,review,source edits,1,0.19,188
+SAW-12985,review,"tk bookkeeping (step, estimate)",3,0.56,186
+SAW-12985,review,waiting,2,0.48,239
+SAW-12985,review,worktree setup / cleanup,3,0.66,221
+SAW-12989,design,code / doc reading,20,2.77,138
+SAW-12989,design,codex management (herdr),2,0.18,89
+SAW-12989,design,git,2,0.3,150
+SAW-12989,design,human poll,1,0.18,175
+SAW-12989,design,other,7,1.13,161
+SAW-12989,design,reply / communication (no tool),5,0.8,159
+SAW-12989,design,skill / memory reads,1,0.09,92
+SAW-12989,design,source edits,1,0.16,162
+SAW-12989,design,subagent dispatch,1,0.13,128
+SAW-12989,design,worktree setup / cleanup,2,0.16,79
+SAW-12991,design,code / doc reading,41,6.78,165
+SAW-12991,design,codex management (herdr),1,0.09,86
+SAW-12991,design,"design docs (models, plan, KISS)",2,0.29,146
+SAW-12991,design,git,25,4.23,169
+SAW-12991,design,github / CI / bot threads,4,0.57,142
+SAW-12991,design,human poll,1,0.15,148
+SAW-12991,design,other,3,0.39,128
+SAW-12991,design,source edits,1,0.2,197
+SAW-12991,design,"tk bookkeeping (step, estimate)",1,0.2,203
+SAW-12991,design,waiting,1,0.18,182
+SAW-12991,design,worktree setup / cleanup,4,0.54,135
+SAW-12991,review,code / doc reading,8,1.95,243
+SAW-12991,review,"design docs (models, plan, KISS)",1,0.27,267
+SAW-12991,review,git,5,1.14,228
+SAW-12991,review,github / CI / bot threads,14,3.53,252
+SAW-12991,review,human poll,1,0.25,252
+SAW-12991,review,other,8,1.98,247
+SAW-12991,review,reply / communication (no tool),18,4.46,248
+SAW-12991,review,review docs,1,0.22,213
+SAW-12991,review,subagent dispatch,1,0.21,205
+SAW-12991,review,"tk bookkeeping (step, estimate)",2,0.49,244
+SAW-12991,review,worktree setup / cleanup,4,1.13,282
+SAW-12992,design,code / doc reading,50,7.63,152
+SAW-12992,design,codex briefs and replies,5,1.02,203
+SAW-12992,design,codex management (herdr),15,2.93,195
+SAW-12992,design,"design docs (models, plan, KISS)",5,1.14,226
+SAW-12992,design,git,1,0.14,138
+SAW-12992,design,github / CI / bot threads,4,0.69,171
+SAW-12992,design,human poll,1,0.15,148
+SAW-12992,design,other,4,0.83,207
+SAW-12992,design,reply / communication (no tool),8,1.73,216
+SAW-12992,design,skill / memory reads,2,0.24,121
+SAW-12992,design,source edits,2,0.38,187
+SAW-12992,design,"tk bookkeeping (step, estimate)",1,0.22,221
+SAW-12992,design,waiting,3,0.62,205
+SAW-12992,design,worktree setup / cleanup,2,0.17,82
+SAW-12992,develop,code / doc reading,23,7.65,332
+SAW-12992,develop,codex briefs and replies,3,0.99,328
+SAW-12992,develop,codex management (herdr),18,5.58,309
+SAW-12992,develop,github / CI / bot threads,4,1.51,376
+SAW-12992,develop,other,1,0.36,364
+SAW-12992,develop,reply / communication (no tool),24,7.82,326
+SAW-12992,develop,source edits,1,0.38,376
+SAW-12992,develop,subagent dispatch,1,0.3,293
+SAW-12992,develop,waiting,1,0.36,360
+SAW-12992,develop,worktree setup / cleanup,6,1.79,299
+SAW-12992,review,code / doc reading,39,21.76,558
+SAW-12992,review,codex briefs and replies,4,2.12,528
+SAW-12992,review,codex management (herdr),27,15.49,573
+SAW-12992,review,git,5,3.3,659
+SAW-12992,review,github / CI / bot threads,76,44.59,586
+SAW-12992,review,native codex review,3,1.68,560
+SAW-12992,review,other,29,19.83,683
+SAW-12992,review,reply / communication (no tool),90,54.34,603
+SAW-12992,review,review docs,1,0.41,407
+SAW-12992,review,source edits,10,6.3,629
+SAW-12992,review,subagent dispatch,6,3.26,542
+SAW-12992,review,"tk bookkeeping (step, estimate)",3,1.44,479
+SAW-12992,review,waiting,6,3.25,541
+SAW-12992,review,worktree setup / cleanup,36,18.66,518
+SAW-12994,design,code / doc reading,30,4.27,142
+SAW-12994,design,codex briefs and replies,3,0.6,201
+SAW-12994,design,codex management (herdr),14,2.58,184
+SAW-12994,design,"design docs (models, plan, KISS)",4,0.78,194
+SAW-12994,design,git,9,1.33,147
+SAW-12994,design,human poll,2,0.35,175
+SAW-12994,design,other,18,3.45,191
+SAW-12994,design,reply / communication (no tool),5,1.11,221
+SAW-12994,design,source edits,3,0.43,144
+SAW-12994,design,subagent dispatch,1,0.19,187
+SAW-12994,design,"tk bookkeeping (step, estimate)",1,0.25,250
+SAW-12994,design,waiting,2,0.41,207
+SAW-12994,design,worktree setup / cleanup,2,0.17,82
+SAW-12994,develop,code / doc reading,2,0.62,311
+SAW-12994,develop,codex briefs and replies,1,0.27,270
+SAW-12994,develop,codex management (herdr),3,0.88,294
+SAW-12994,develop,github / CI / bot threads,1,0.37,364
+SAW-12994,develop,other,3,0.79,262
+SAW-12994,develop,reply / communication (no tool),4,1.16,291
+SAW-12994,develop,subagent dispatch,1,0.28,275
+SAW-12994,develop,"tk bookkeeping (step, estimate)",1,0.27,272
+SAW-12994,develop,waiting,1,0.36,355
+SAW-12994,develop,worktree setup / cleanup,3,0.98,328
+SAW-12994,review,code / doc reading,13,4.64,357
+SAW-12994,review,codex briefs and replies,3,0.97,324
+SAW-12994,review,codex management (herdr),8,2.71,337
+SAW-12994,review,git,3,1.3,431
+SAW-12994,review,github / CI / bot threads,23,8.07,350
+SAW-12994,review,human poll,1,0.32,318
+SAW-12994,review,other,10,3.77,376
+SAW-12994,review,reply / communication (no tool),31,11.16,360
+SAW-12994,review,skill / memory reads,2,0.83,413
+SAW-12994,review,subagent dispatch,1,0.38,375
+SAW-12994,review,"tk bookkeeping (step, estimate)",5,1.69,338
+SAW-12994,review,waiting,6,2.26,377
+SAW-12994,review,worktree setup / cleanup,8,2.72,340
+SAW-13067,design,code / doc reading,5,0.83,165
+SAW-13067,design,codex briefs and replies,3,0.74,245
+SAW-13067,design,codex management (herdr),9,2.17,240
+SAW-13067,design,"design docs (models, plan, KISS)",5,1.37,272
+SAW-13067,design,git,10,2.4,239
+SAW-13067,design,human poll,1,0.19,186
+SAW-13067,design,linear,13,3.16,243
+SAW-13067,design,other,4,0.79,197
+SAW-13067,design,reply / communication (no tool),14,3.57,254
+SAW-13067,design,skill / memory reads,1,0.15,150
+SAW-13067,design,source edits,2,0.34,169
+SAW-13067,design,subagent dispatch,1,0.16,162
+SAW-13067,design,"tk bookkeeping (step, estimate)",1,0.27,272
+SAW-13067,design,worktree setup / cleanup,3,0.42,139
+SAW-13067,develop,code / doc reading,1,0.31,309
+SAW-13067,develop,codex management (herdr),4,1.22,304
+SAW-13067,develop,linear,1,0.31,310
+SAW-13067,develop,reply / communication (no tool),4,1.22,305
+SAW-13067,develop,subagent dispatch,1,0.32,314
+SAW-13067,develop,worktree setup / cleanup,1,0.31,307
+SAW-13067,review,code / doc reading,20,8.05,402
+SAW-13067,review,codex briefs and replies,1,0.4,401
+SAW-13067,review,codex management (herdr),6,2.51,417
+SAW-13067,review,git,5,1.81,362
+SAW-13067,review,github / CI / bot threads,41,16.48,402
+SAW-13067,review,linear,3,1.29,430
+SAW-13067,review,other,10,4.28,428
+SAW-13067,review,reply / communication (no tool),25,9.92,397
+SAW-13067,review,review docs,1,0.34,342
+SAW-13067,review,skill / memory reads,3,1.38,460
+SAW-13067,review,source edits,4,1.63,408
+SAW-13067,review,subagent dispatch,1,0.41,407
+SAW-13067,review,"tk bookkeeping (step, estimate)",1,0.35,345
+SAW-13067,review,waiting,2,0.88,438
+SAW-13067,review,worktree setup / cleanup,4,1.64,410
+SAW-13068,design,code / doc reading,40,6.93,173
+SAW-13068,design,codex briefs and replies,1,0.17,168
+SAW-13068,design,codex management (herdr),17,3.12,183
+SAW-13068,design,"design docs (models, plan, KISS)",2,0.38,188
+SAW-13068,design,git,2,0.21,104
+SAW-13068,design,github / CI / bot threads,3,0.45,150
+SAW-13068,design,human poll,1,0.11,106
+SAW-13068,design,other,11,1.83,165
+SAW-13068,design,reply / communication (no tool),25,4.81,191
+SAW-13068,design,skill / memory reads,1,0.25,244
+SAW-13068,design,"tk bookkeeping (step, estimate)",1,0.2,204
+SAW-13068,design,waiting,3,0.57,189
+SAW-13068,design,worktree setup / cleanup,3,0.41,136
+SAW-13070,design,code / doc reading,35,5.49,156
+SAW-13070,design,codex briefs and replies,2,0.41,206
+SAW-13070,design,codex management (herdr),13,2.6,200
+SAW-13070,design,"design docs (models, plan, KISS)",4,0.87,216
+SAW-13070,design,github / CI / bot threads,14,2.07,148
+SAW-13070,design,human poll,2,0.32,160
+SAW-13070,design,other,7,1.18,169
+SAW-13070,design,reply / communication (no tool),8,1.67,208
+SAW-13070,design,skill / memory reads,2,0.27,134
+SAW-13070,design,source edits,2,0.3,151
+SAW-13070,design,waiting,1,0.2,202
+SAW-13070,design,worktree setup / cleanup,4,0.34,85
+SAW-13070,develop,codex management (herdr),2,0.47,237
+SAW-13070,develop,github / CI / bot threads,1,0.24,244
+SAW-13070,develop,reply / communication (no tool),2,0.48,238
+SAW-13070,develop,subagent dispatch,1,0.24,240
+SAW-13070,develop,waiting,1,0.24,238
+SAW-13070,develop,worktree setup / cleanup,1,0.24,239
+SAW-13070,review,code / doc reading,21,7.13,339
+SAW-13070,review,codex briefs and replies,2,0.6,301
+SAW-13070,review,codex management (herdr),7,2.42,345
+SAW-13070,review,git,12,4.5,374
+SAW-13070,review,github / CI / bot threads,43,15.01,349
+SAW-13070,review,human poll,2,0.7,350
+SAW-13070,review,other,9,3.46,383
+SAW-13070,review,reply / communication (no tool),41,14.34,349
+SAW-13070,review,review docs,1,0.27,264
+SAW-13070,review,source edits,9,3.0,332
+SAW-13070,review,"tk bookkeeping (step, estimate)",2,0.6,301
+SAW-13070,review,worktree setup / cleanup,5,1.57,314
+SAW-13073,design,code / doc reading,24,4.05,169
+SAW-13073,design,codex briefs and replies,6,1.32,219
+SAW-13073,design,codex management (herdr),12,2.44,203
+SAW-13073,design,"design docs (models, plan, KISS)",3,0.68,224
+SAW-13073,design,git,2,0.3,149
+SAW-13073,design,human poll,1,0.16,162
+SAW-13073,design,other,5,0.94,187
+SAW-13073,design,reply / communication (no tool),9,1.92,213
+SAW-13073,design,skill / memory reads,2,0.27,136
+SAW-13073,design,source edits,1,0.17,168
+SAW-13073,design,"tk bookkeeping (step, estimate)",1,0.23,227
+SAW-13073,design,waiting,1,0.22,215
+SAW-13073,design,worktree setup / cleanup,4,0.35,86
+SAW-13073,develop,code / doc reading,1,0.26,255
+SAW-13073,develop,codex management (herdr),1,0.25,246
+SAW-13073,develop,reply / communication (no tool),2,0.5,251
+SAW-13073,develop,"tk bookkeeping (step, estimate)",1,0.26,256
+SAW-13073,develop,waiting,1,0.25,255
+SAW-13073,develop,worktree setup / cleanup,3,0.75,249
+SAW-13073,review,code / doc reading,19,5.97,314
+SAW-13073,review,codex briefs and replies,1,0.28,281
+SAW-13073,review,codex management (herdr),5,1.58,315
+SAW-13073,review,git,5,1.8,359
+SAW-13073,review,github / CI / bot threads,23,7.05,306
+SAW-13073,review,other,12,4.16,346
+SAW-13073,review,reply / communication (no tool),41,14.0,341
+SAW-13073,review,review docs,1,0.26,262
+SAW-13073,review,skill / memory reads,2,0.74,370
+SAW-13073,review,source edits,4,1.26,315
+SAW-13073,review,subagent dispatch,1,0.26,258
+SAW-13073,review,"tk bookkeeping (step, estimate)",3,0.87,290
+SAW-13073,review,waiting,3,1.0,334
+SAW-13073,review,worktree setup / cleanup,8,2.57,322
+SAW-13074,design,code / doc reading,40,6.01,150
+SAW-13074,design,codex briefs and replies,1,0.2,199
+SAW-13074,design,codex management (herdr),14,2.74,195
+SAW-13074,design,"design docs (models, plan, KISS)",2,0.44,221
+SAW-13074,design,github / CI / bot threads,5,0.72,144
+SAW-13074,design,human poll,1,0.14,140
+SAW-13074,design,other,6,0.92,153
+SAW-13074,design,reply / communication (no tool),23,4.22,183
+SAW-13074,design,skill / memory reads,1,0.08,78
+SAW-13074,design,source edits,1,0.13,130
+SAW-13074,design,"tk bookkeeping (step, estimate)",1,0.23,232
+SAW-13074,design,waiting,2,0.43,217
+SAW-13074,design,worktree setup / cleanup,2,0.14,72
+SAW-13074,develop,codex management (herdr),1,0.24,244
+SAW-13074,develop,git,1,0.25,246
+SAW-13074,develop,reply / communication (no tool),2,0.49,245
+SAW-13074,develop,subagent dispatch,1,0.25,248
+SAW-13074,develop,waiting,1,0.25,245
+SAW-13074,review,code / doc reading,13,4.41,339
+SAW-13074,review,codex management (herdr),5,1.63,325
+SAW-13074,review,git,13,4.23,325
+SAW-13074,review,github / CI / bot threads,15,4.9,326
+SAW-13074,review,other,7,2.4,343
+SAW-13074,review,reply / communication (no tool),23,7.88,342
+SAW-13074,review,review docs,1,0.28,282
+SAW-13074,review,skill / memory reads,4,1.51,376
+SAW-13074,review,"tk bookkeeping (step, estimate)",3,0.97,325
+SAW-13074,review,waiting,2,0.61,304
+SAW-13074,review,worktree setup / cleanup,1,0.37,370
+SAW-13076,design,code / doc reading,45,7.75,172
+SAW-13076,design,codex briefs and replies,3,0.55,182
+SAW-13076,design,codex management (herdr),14,2.57,183
+SAW-13076,design,"design docs (models, plan, KISS)",4,0.83,206
+SAW-13076,design,git,4,0.52,130
+SAW-13076,design,github / CI / bot threads,2,0.47,235
+SAW-13076,design,human poll,1,0.16,154
+SAW-13076,design,other,3,0.38,126
+SAW-13076,design,reply / communication (no tool),12,2.45,204
+SAW-13076,design,skill / memory reads,4,0.54,136
+SAW-13076,design,source edits,2,0.42,207
+SAW-13076,design,"tk bookkeeping (step, estimate)",1,0.21,206
+SAW-13076,design,waiting,1,0.18,176
+SAW-13076,design,worktree setup / cleanup,4,0.34,84
+SAW-13076,develop,code / doc reading,1,0.24,245
+SAW-13076,develop,codex management (herdr),5,1.24,248
+SAW-13076,develop,reply / communication (no tool),4,0.99,248
+SAW-13076,develop,subagent dispatch,1,0.26,255
+SAW-13076,develop,"tk bookkeeping (step, estimate)",1,0.25,253
+SAW-13076,develop,worktree setup / cleanup,2,0.5,249
+SAW-13076,review,code / doc reading,16,5.14,321
+SAW-13076,review,codex management (herdr),17,5.96,350
+SAW-13076,review,git,10,3.08,308
+SAW-13076,review,github / CI / bot threads,17,6.09,358
+SAW-13076,review,human poll,2,0.7,350
+SAW-13076,review,other,1,0.33,328
+SAW-13076,review,reply / communication (no tool),14,4.99,356
+SAW-13076,review,review docs,2,0.69,343
+SAW-13076,review,source edits,4,1.28,319
+SAW-13076,review,"tk bookkeeping (step, estimate)",1,0.39,388
+SAW-13076,review,waiting,1,0.34,342
+SAW-13076,review,worktree setup / cleanup,3,1.1,368
+SAW-13076,unknown,code / doc reading,12,4.18,348
+SAW-13076,unknown,codex briefs and replies,2,0.62,308
+SAW-13076,unknown,codex management (herdr),25,4.9,196
+SAW-13076,unknown,git,34,7.26,213
+SAW-13076,unknown,github / CI / bot threads,43,11.74,273
+SAW-13076,unknown,linear,1,0.21,208
+SAW-13076,unknown,native codex review,1,0.32,321
+SAW-13076,unknown,other,12,3.86,321
+SAW-13076,unknown,reply / communication (no tool),46,12.05,261
+SAW-13076,unknown,review docs,2,0.66,327
+SAW-13076,unknown,skill / memory reads,4,0.91,227
+SAW-13076,unknown,source edits,13,3.61,277
+SAW-13076,unknown,subagent dispatch,1,0.29,283
+SAW-13077,design,code / doc reading,18,2.67,148
+SAW-13077,design,"design docs (models, plan, KISS)",1,0.15,149
+SAW-13077,design,git,3,0.48,159
+SAW-13077,design,github / CI / bot threads,3,0.44,145
+SAW-13077,design,human poll,1,0.15,147
+SAW-13077,design,linear,4,0.5,125
+SAW-13077,design,other,4,0.4,99
+SAW-13077,design,skill / memory reads,1,0.11,107
+SAW-13077,design,source edits,3,0.46,153
+SAW-13077,design,"tk bookkeeping (step, estimate)",1,0.17,165
+SAW-13077,design,worktree setup / cleanup,3,0.29,96
+SAW-13077,develop,subagent dispatch,1,0.17,166
+SAW-13077,review,code / doc reading,4,0.76,191
+SAW-13077,review,git,4,0.73,182
+SAW-13077,review,github / CI / bot threads,11,2.02,183
+SAW-13077,review,human poll,1,0.18,177
+SAW-13077,review,linear,4,0.81,203
+SAW-13077,review,other,2,0.39,193
+SAW-13077,review,reply / communication (no tool),9,1.68,186
+SAW-13077,review,skill / memory reads,3,0.61,205
+SAW-13077,review,source edits,2,0.37,183
+SAW-13077,review,"tk bookkeeping (step, estimate)",4,0.74,185
+SAW-13077,review,waiting,1,0.19,192
+SAW-13077,review,worktree setup / cleanup,2,0.4,202
+SAW-13078,design,code / doc reading,5,0.61,122
+SAW-13078,design,codex management (herdr),1,0.09,86
+SAW-13078,design,git,8,1.03,128
+SAW-13078,design,github / CI / bot threads,1,0.1,96
+SAW-13078,design,human poll,1,0.14,135
+SAW-13078,design,other,3,0.35,118
+SAW-13078,design,reply / communication (no tool),3,0.41,138
+SAW-13078,design,skill / memory reads,1,0.1,96
+SAW-13078,design,source edits,2,0.28,140
+SAW-13078,design,subagent dispatch,1,0.13,131
+SAW-13078,design,worktree setup / cleanup,6,0.61,101
+SAW-13082,design,code / doc reading,24,2.92,121
+SAW-13082,design,codex briefs and replies,2,0.34,170
+SAW-13082,design,codex management (herdr),11,1.6,145
+SAW-13082,design,"design docs (models, plan, KISS)",2,0.36,177
+SAW-13082,design,git,1,0.12,122
+SAW-13082,design,human poll,2,0.27,133
+SAW-13082,design,other,2,0.23,116
+SAW-13082,design,reply / communication (no tool),11,1.7,154
+SAW-13082,design,skill / memory reads,2,0.22,112
+SAW-13082,design,"tk bookkeeping (step, estimate)",1,0.19,185
+SAW-13082,design,waiting,1,0.16,161
+SAW-13082,design,worktree setup / cleanup,3,0.22,73
+SAW-13084,design,code / doc reading,43,6.3,146
+SAW-13084,design,codex briefs and replies,4,0.82,204
+SAW-13084,design,codex management (herdr),14,2.84,202
+SAW-13084,design,"design docs (models, plan, KISS)",3,0.67,221
+SAW-13084,design,human poll,2,0.37,181
+SAW-13084,design,other,7,1.57,224
+SAW-13084,design,reply / communication (no tool),14,3.12,223
+SAW-13084,design,skill / memory reads,2,0.26,127
+SAW-13084,design,source edits,1,0.21,212
+SAW-13084,design,"tk bookkeeping (step, estimate)",1,0.23,229
+SAW-13084,design,waiting,4,0.86,216
+SAW-13084,design,worktree setup / cleanup,4,0.3,74
+SAW-13084,develop,code / doc reading,2,0.54,268
+SAW-13084,develop,codex management (herdr),7,1.88,268
+SAW-13084,develop,git,1,0.27,274
+SAW-13084,develop,reply / communication (no tool),5,1.34,268
+SAW-13084,develop,subagent dispatch,1,0.28,277
+SAW-13084,review,code / doc reading,41,17.69,431
+SAW-13084,review,codex briefs and replies,1,0.45,454
+SAW-13084,review,codex management (herdr),24,9.3,387
+SAW-13084,review,"design docs (models, plan, KISS)",1,0.55,549
+SAW-13084,review,git,15,6.46,431
+SAW-13084,review,github / CI / bot threads,60,26.21,437
+SAW-13084,review,human poll,2,0.82,410
+SAW-13084,review,other,23,10.88,472
+SAW-13084,review,reply / communication (no tool),53,23.39,441
+SAW-13084,review,skill / memory reads,3,1.66,553
+SAW-13084,review,source edits,13,6.03,463
+SAW-13084,review,subagent dispatch,1,0.4,402
+SAW-13084,review,"tk bookkeeping (step, estimate)",5,1.88,375
+SAW-13084,review,waiting,5,1.93,387
+SAW-13084,review,worktree setup / cleanup,17,6.93,408
+SAW-13086,unknown,code / doc reading,37,9.93,268
+SAW-13086,unknown,codex briefs and replies,2,0.51,256
+SAW-13086,unknown,codex management (herdr),5,1.25,250
+SAW-13086,unknown,"design docs (models, plan, KISS)",1,0.26,260
+SAW-13086,unknown,github / CI / bot threads,3,0.96,319
+SAW-13086,unknown,human poll,4,1.03,256
+SAW-13086,unknown,other,4,1.32,330
+SAW-13086,unknown,reply / communication (no tool),11,3.39,307
+SAW-13086,unknown,skill / memory reads,2,0.54,271
+SAW-13090,design,code / doc reading,30,3.94,131
+SAW-13090,design,codex briefs and replies,3,0.48,161
+SAW-13090,design,codex management (herdr),12,1.9,158
+SAW-13090,design,"design docs (models, plan, KISS)",4,0.66,163
+SAW-13090,design,human poll,1,0.14,137
+SAW-13090,design,other,2,0.26,127
+SAW-13090,design,reply / communication (no tool),5,0.85,170
+SAW-13090,design,skill / memory reads,4,0.45,112
+SAW-13090,design,"tk bookkeeping (step, estimate)",1,0.17,174
+SAW-13090,design,waiting,2,0.32,162
+SAW-13090,design,worktree setup / cleanup,3,0.22,74
+SAW-13090,develop,code / doc reading,1,0.2,200
+SAW-13090,develop,codex briefs and replies,1,0.2,204
+SAW-13090,develop,codex management (herdr),6,1.21,201
+SAW-13090,develop,other,1,0.21,214
+SAW-13090,develop,reply / communication (no tool),4,0.81,201
+SAW-13090,develop,subagent dispatch,1,0.22,216
+SAW-13090,review,code / doc reading,42,15.65,372
+SAW-13090,review,codex briefs and replies,2,0.59,297
+SAW-13090,review,codex management (herdr),16,5.49,342
+SAW-13090,review,git,12,4.13,344
+SAW-13090,review,github / CI / bot threads,31,11.98,386
+SAW-13090,review,human poll,1,0.34,338
+SAW-13090,review,native codex review,2,0.77,385
+SAW-13090,review,other,19,8.62,453
+SAW-13090,review,reply / communication (no tool),41,16.36,399
+SAW-13090,review,review docs,1,0.29,283
+SAW-13090,review,source edits,4,1.84,459
+SAW-13090,review,subagent dispatch,2,0.76,379
+SAW-13090,review,"tk bookkeeping (step, estimate)",5,1.8,359
+SAW-13090,review,waiting,6,2.48,414
+SAW-13090,review,worktree setup / cleanup,7,3.22,460
+SAW-13092,design,code / doc reading,25,4.24,169
+SAW-13092,design,codex briefs and replies,3,0.68,226
+SAW-13092,design,codex management (herdr),16,3.56,222
+SAW-13092,design,"design docs (models, plan, KISS)",6,1.79,297
+SAW-13092,design,git,34,8.25,242
+SAW-13092,design,github / CI / bot threads,3,0.66,218
+SAW-13092,design,human poll,2,0.45,222
+SAW-13092,design,other,13,2.88,221
+SAW-13092,design,reply / communication (no tool),13,3.65,280
+SAW-13092,design,skill / memory reads,1,0.19,186
+SAW-13092,design,source edits,24,5.37,223
+SAW-13092,design,"tk bookkeeping (step, estimate)",1,0.25,243
+SAW-13092,design,waiting,6,1.45,242
+SAW-13092,design,worktree setup / cleanup,3,0.21,71
+SAW-13092,develop,code / doc reading,17,8.41,494
+SAW-13092,develop,codex management (herdr),12,4.73,394
+SAW-13092,develop,git,7,3.57,509
+SAW-13092,develop,github / CI / bot threads,5,2.58,515
+SAW-13092,develop,human poll,1,0.52,518
+SAW-13092,develop,other,11,5.62,510
+SAW-13092,develop,reply / communication (no tool),26,12.02,462
+SAW-13092,develop,skill / memory reads,1,0.48,480
+SAW-13092,develop,source edits,11,5.61,509
+SAW-13092,develop,subagent dispatch,1,0.56,559
+SAW-13092,develop,"tk bookkeeping (step, estimate)",3,1.25,418
+SAW-13092,develop,waiting,1,0.54,539
+SAW-13092,develop,worktree setup / cleanup,3,1.08,358
+SAW-13092,review,code / doc reading,41,23.92,583
+SAW-13092,review,codex briefs and replies,1,0.44,439
+SAW-13092,review,codex management (herdr),20,10.61,530
+SAW-13092,review,git,20,9.9,495
+SAW-13092,review,github / CI / bot threads,35,20.45,584
+SAW-13092,review,human poll,3,1.98,660
+SAW-13092,review,other,20,14.23,711
+SAW-13092,review,reply / communication (no tool),45,27.1,602
+SAW-13092,review,source edits,17,10.88,639
+SAW-13092,review,subagent dispatch,1,0.38,380
+SAW-13092,review,"tk bookkeeping (step, estimate)",4,2.16,538
+SAW-13092,review,waiting,1,0.67,672
+SAW-13092,review,worktree setup / cleanup,6,3.9,649
+SAW-13103,design,code / doc reading,1,0.12,122
+SAW-13103,design,codex briefs and replies,1,0.18,173
+SAW-13103,design,codex management (herdr),5,0.8,159
+SAW-13103,design,git,1,0.13,127
+SAW-13103,design,github / CI / bot threads,5,0.75,150
+SAW-13103,design,human poll,1,0.16,159
+SAW-13103,design,other,2,0.16,80
+SAW-13103,design,skill / memory reads,3,0.39,128
+SAW-13103,design,worktree setup / cleanup,3,0.36,120
+SAW-13103,develop,code / doc reading,15,3.48,232
+SAW-13103,develop,codex briefs and replies,4,0.91,226
+SAW-13103,develop,codex management (herdr),11,2.9,264
+SAW-13103,develop,"design docs (models, plan, KISS)",3,0.68,225
+SAW-13103,develop,git,8,1.88,235
+SAW-13103,develop,github / CI / bot threads,9,2.44,271
+SAW-13103,develop,human poll,1,0.25,244
+SAW-13103,develop,other,6,1.65,274
+SAW-13103,develop,reply / communication (no tool),12,2.91,242
+SAW-13103,develop,source edits,11,2.49,225
+SAW-13103,develop,subagent dispatch,1,0.29,292
+SAW-13103,develop,"tk bookkeeping (step, estimate)",2,0.54,270
+SAW-13103,develop,waiting,2,0.56,280
+SAW-13103,develop,worktree setup / cleanup,5,1.19,237
+SAW-13103,review,code / doc reading,18,6.73,374
+SAW-13103,review,codex briefs and replies,2,0.66,330
+SAW-13103,review,codex management (herdr),8,2.81,351
+SAW-13103,review,"design docs (models, plan, KISS)",1,0.38,382
+SAW-13103,review,git,2,0.78,388
+SAW-13103,review,github / CI / bot threads,23,8.14,354
+SAW-13103,review,human poll,3,1.31,435
+SAW-13103,review,other,21,9.08,432
+SAW-13103,review,reply / communication (no tool),29,11.18,385
+SAW-13103,review,review docs,1,0.32,319
+SAW-13103,review,skill / memory reads,2,0.79,393
+SAW-13103,review,source edits,6,2.41,402
+SAW-13103,review,worktree setup / cleanup,4,1.49,371
+SAW-13192,design,code / doc reading,30,4.75,158
+SAW-13192,design,codex briefs and replies,3,0.58,194
+SAW-13192,design,codex management (herdr),11,1.98,179
+SAW-13192,design,"design docs (models, plan, KISS)",4,0.78,193
+SAW-13192,design,github / CI / bot threads,4,0.55,136
+SAW-13192,design,human poll,1,0.17,167
+SAW-13192,design,other,3,0.52,171
+SAW-13192,design,reply / communication (no tool),5,1.03,204
+SAW-13192,design,skill / memory reads,1,0.1,104
+SAW-13192,design,source edits,1,0.17,175
+SAW-13192,design,"tk bookkeeping (step, estimate)",1,0.2,204
+SAW-13192,design,waiting,2,0.39,196
+SAW-13192,design,worktree setup / cleanup,3,0.26,85
+SAW-13192,develop,codex management (herdr),2,0.45,223
+SAW-13192,develop,git,1,0.22,225
+SAW-13192,develop,github / CI / bot threads,2,0.67,334
+SAW-13192,develop,reply / communication (no tool),3,0.78,260
+SAW-13192,develop,subagent dispatch,1,0.23,226
+SAW-13192,develop,"tk bookkeeping (step, estimate)",1,0.23,230
+SAW-13192,develop,waiting,1,0.22,224
+SAW-13192,review,code / doc reading,13,3.81,293
+SAW-13192,review,codex briefs and replies,2,0.56,279
+SAW-13192,review,codex management (herdr),9,2.76,305
+SAW-13192,review,git,7,2.11,301
+SAW-13192,review,github / CI / bot threads,21,6.34,302
+SAW-13192,review,human poll,1,0.32,317
+SAW-13192,review,other,5,1.67,334
+SAW-13192,review,reply / communication (no tool),20,6.2,310
+SAW-13192,review,review docs,1,0.25,245
+SAW-13192,review,skill / memory reads,1,0.35,354
+SAW-13192,review,source edits,1,0.3,301
+SAW-13192,review,subagent dispatch,1,0.31,305
+SAW-13192,review,"tk bookkeeping (step, estimate)",2,0.61,304
+SAW-13192,review,waiting,3,0.89,296
+SAW-13192,review,worktree setup / cleanup,5,1.74,348
+SAW-13200,design,code / doc reading,26,4.95,190
+SAW-13200,design,codex briefs and replies,4,0.93,233
+SAW-13200,design,codex management (herdr),14,2.98,212
+SAW-13200,design,"design docs (models, plan, KISS)",2,0.44,218
+SAW-13200,design,git,2,0.25,123
+SAW-13200,design,github / CI / bot threads,4,1.02,255
+SAW-13200,design,human poll,1,0.17,173
+SAW-13200,design,other,4,0.73,182
+SAW-13200,design,reply / communication (no tool),6,1.51,251
+SAW-13200,design,skill / memory reads,3,0.47,157
+SAW-13200,design,"tk bookkeeping (step, estimate)",2,0.51,250
+SAW-13200,design,worktree setup / cleanup,1,0.09,87
+SAW-13200,develop,code / doc reading,4,2.21,551
+SAW-13200,develop,codex management (herdr),7,2.6,371
+SAW-13200,develop,git,3,2.52,840
+SAW-13200,develop,github / CI / bot threads,1,0.81,805
+SAW-13200,develop,other,4,3.32,829
+SAW-13200,develop,reply / communication (no tool),8,4.02,502
+SAW-13200,develop,"tk bookkeeping (step, estimate)",1,0.32,322
+SAW-13200,develop,worktree setup / cleanup,4,2.22,555
+SAW-13200,review,code / doc reading,28,13.75,491
+SAW-13200,review,codex briefs and replies,2,1.0,501
+SAW-13200,review,codex management (herdr),17,9.41,551
+SAW-13200,review,git,16,9.56,597
+SAW-13200,review,github / CI / bot threads,60,39.75,662
+SAW-13200,review,human poll,1,0.6,594
+SAW-13200,review,other,17,11.92,700
+SAW-13200,review,reply / communication (no tool),35,22.49,642
+SAW-13200,review,review docs,2,1.12,558
+SAW-13200,review,source edits,18,12.52,695
+SAW-13200,review,subagent dispatch,2,0.93,465
+SAW-13200,review,"tk bookkeeping (step, estimate)",2,1.27,633
+SAW-13200,review,waiting,1,0.54,537
+SAW-13200,review,worktree setup / cleanup,4,2.44,609
+SAW-13279,design,code / doc reading,27,4.5,166
+SAW-13279,design,codex briefs and replies,2,0.43,217
+SAW-13279,design,codex management (herdr),14,2.86,203
+SAW-13279,design,"design docs (models, plan, KISS)",5,1.14,227
+SAW-13279,design,git,3,0.43,141
+SAW-13279,design,github / CI / bot threads,2,0.32,160
+SAW-13279,design,human poll,1,0.18,176
+SAW-13279,design,other,5,0.81,161
+SAW-13279,design,reply / communication (no tool),7,1.58,225
+SAW-13279,design,skill / memory reads,1,0.1,101
+SAW-13279,design,source edits,5,0.74,148
+SAW-13279,design,"tk bookkeeping (step, estimate)",1,0.23,228
+SAW-13279,design,waiting,3,0.66,219
+SAW-13279,design,worktree setup / cleanup,3,0.39,130
+SAW-13279,develop,code / doc reading,2,0.51,253
+SAW-13279,develop,codex management (herdr),5,1.23,246
+SAW-13279,develop,reply / communication (no tool),5,1.25,251
+SAW-13279,develop,subagent dispatch,1,0.26,260
+SAW-13279,develop,waiting,1,0.26,255
+SAW-13279,develop,worktree setup / cleanup,3,0.75,249
+SAW-13279,review,code / doc reading,19,6.07,319
+SAW-13279,review,codex management (herdr),2,0.67,334
+SAW-13279,review,git,1,0.29,285
+SAW-13279,review,github / CI / bot threads,17,5.57,327
+SAW-13279,review,human poll,2,0.61,304
+SAW-13279,review,native codex review,1,0.31,306
+SAW-13279,review,other,6,2.14,357
+SAW-13279,review,reply / communication (no tool),18,5.91,328
+SAW-13279,review,review docs,1,0.29,289
+SAW-13279,review,skill / memory reads,2,0.74,370
+SAW-13279,review,source edits,5,1.72,343
+SAW-13279,review,"tk bookkeeping (step, estimate)",3,0.92,306
+SAW-13279,review,worktree setup / cleanup,4,1.36,340

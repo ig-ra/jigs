@@ -1,0 +1,9 @@
+ticket,actor,session_or_threads,wall_min,active_min,turns,source
+IGR-15,claude,design e5c5cb7a,51,11,14,system turn_duration
+IGR-15,claude,develop 5812a79a,17,3,5,system turn_duration
+IGR-15,claude,review 0311fd21,118,49,33,system turn_duration
+IGR-16,claude,design 5d92909e,93,12,9,system turn_duration
+IGR-16,claude,develop d7328052,7,2,5,system turn_duration
+IGR-16,claude,review fa04e260,45,12,19,system turn_duration
+IGR-15,codex,5 threads,286,105,36,task_started to task_complete
+IGR-16,codex,5 threads,185,32,35,task_started to task_complete

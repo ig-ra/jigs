@@ -1,0 +1,229 @@
+day,activity,calls,tokens_m,ctx_mean_k
+2026-10-05,code / doc reading,429,100.03,233
+2026-10-05,codex management (herdr),199,54.08,271
+2026-10-05,git,167,52.92,317
+2026-10-05,github / CI / bot threads,232,62.79,270
+2026-10-05,human poll,9,1.67,184
+2026-10-05,linear,18,6.33,350
+2026-10-05,native codex review,4,2.62,654
+2026-10-05,other,187,56.08,299
+2026-10-05,reply / communication (no tool),333,111.51,334
+2026-10-05,skill / memory reads,26,7.36,282
+2026-10-05,source edits,84,23.56,279
+2026-10-05,subagent dispatch,9,2.44,270
+2026-10-05,"tk bookkeeping (step, estimate)",14,4.01,286
+2026-10-05,waiting,30,8.97,299
+2026-10-05,worktree setup / cleanup,48,9.93,207
+2026-10-06,code / doc reading,665,243.46,366
+2026-10-06,codex management (herdr),247,70.42,285
+2026-10-06,git,124,42.66,344
+2026-10-06,github / CI / bot threads,459,183.28,399
+2026-10-06,human poll,13,2.86,219
+2026-10-06,linear,140,51.72,368
+2026-10-06,native codex review,1,0.42,421
+2026-10-06,other,152,61.14,402
+2026-10-06,reply / communication (no tool),636,270.36,425
+2026-10-06,skill / memory reads,32,13.81,431
+2026-10-06,source edits,100,33.69,336
+2026-10-06,subagent dispatch,15,3.94,261
+2026-10-06,tests / measurements,2,0.41,207
+2026-10-06,"tk bookkeeping (step, estimate)",11,2.6,236
+2026-10-06,waiting,58,24.01,414
+2026-10-06,worktree setup / cleanup,39,11.52,295
+2026-10-07,code / doc reading,949,328.48,346
+2026-10-07,codex management (herdr),245,55.32,225
+2026-10-07,git,213,44.73,210
+2026-10-07,github / CI / bot threads,522,115.2,220
+2026-10-07,human poll,25,4.79,190
+2026-10-07,linear,30,6.74,224
+2026-10-07,native codex review,1,0.52,520
+2026-10-07,other,344,73.12,212
+2026-10-07,reply / communication (no tool),757,320.16,423
+2026-10-07,skill / memory reads,56,13.84,246
+2026-10-07,source edits,192,43.33,225
+2026-10-07,subagent dispatch,13,2.75,210
+2026-10-07,tests / measurements,7,1.01,144
+2026-10-07,"tk bookkeeping (step, estimate)",16,3.87,242
+2026-10-07,waiting,50,12.38,247
+2026-10-07,worktree setup / cleanup,73,13.62,186
+2026-10-08,code / doc reading,588,117.88,200
+2026-10-08,codex management (herdr),287,60.95,212
+2026-10-08,git,223,56.2,252
+2026-10-08,github / CI / bot threads,432,108.41,251
+2026-10-08,human poll,23,4.7,203
+2026-10-08,linear,2,0.23,116
+2026-10-08,other,441,106.21,240
+2026-10-08,reply / communication (no tool),577,144.85,251
+2026-10-08,skill / memory reads,34,7.69,226
+2026-10-08,source edits,204,49.33,240
+2026-10-08,subagent dispatch,16,3.55,220
+2026-10-08,tests / measurements,2,0.29,146
+2026-10-08,"tk bookkeeping (step, estimate)",19,4.24,223
+2026-10-08,waiting,58,12.58,216
+2026-10-08,worktree setup / cleanup,56,11.96,213
+2026-10-09,code / doc reading,506,113.32,224
+2026-10-09,codex management (herdr),279,57.89,207
+2026-10-09,git,138,35.5,257
+2026-10-09,github / CI / bot threads,490,121.02,247
+2026-10-09,human poll,18,3.93,217
+2026-10-09,linear,6,0.57,95
+2026-10-09,native codex review,3,0.75,249
+2026-10-09,other,296,65.58,221
+2026-10-09,reply / communication (no tool),435,105.68,243
+2026-10-09,skill / memory reads,41,6.46,157
+2026-10-09,source edits,188,46.87,248
+2026-10-09,subagent dispatch,16,3.54,220
+2026-10-09,tests / measurements,7,1.13,161
+2026-10-09,"tk bookkeeping (step, estimate)",18,3.42,190
+2026-10-09,waiting,40,9.53,238
+2026-10-09,worktree setup / cleanup,52,8.97,172
+2026-10-10,code / doc reading,438,105.58,241
+2026-10-10,codex briefs and replies,5,1.09,218
+2026-10-10,codex management (herdr),202,45.79,226
+2026-10-10,"design docs (models, plan, KISS)",5,1.36,271
+2026-10-10,git,151,33.3,220
+2026-10-10,github / CI / bot threads,264,73.01,276
+2026-10-10,human poll,18,3.6,198
+2026-10-10,linear,3,0.41,135
+2026-10-10,native codex review,3,0.88,293
+2026-10-10,other,233,56.2,241
+2026-10-10,reply / communication (no tool),382,104.07,272
+2026-10-10,review docs,3,0.79,262
+2026-10-10,skill / memory reads,30,8.41,280
+2026-10-10,source edits,154,43.19,279
+2026-10-10,subagent dispatch,18,4.7,259
+2026-10-10,tests / measurements,4,0.6,150
+2026-10-10,"tk bookkeeping (step, estimate)",15,4.13,275
+2026-10-10,waiting,41,10.57,257
+2026-10-10,worktree setup / cleanup,64,13.66,213
+2026-10-11,code / doc reading,678,170.65,251
+2026-10-11,codex briefs and replies,29,6.87,236
+2026-10-11,codex management (herdr),374,107.79,288
+2026-10-11,"design docs (models, plan, KISS)",35,7.5,213
+2026-10-11,git,179,45.18,252
+2026-10-11,github / CI / bot threads,408,130.79,320
+2026-10-11,human poll,30,6.28,208
+2026-10-11,linear,56,9.46,168
+2026-10-11,native codex review,3,1.14,380
+2026-10-11,other,332,89.98,270
+2026-10-11,reply / communication (no tool),581,186.18,320
+2026-10-11,review docs,16,4.93,307
+2026-10-11,skill / memory reads,38,9.76,256
+2026-10-11,source edits,151,39.89,263
+2026-10-11,subagent dispatch,28,7.34,261
+2026-10-11,tests / measurements,7,1.45,207
+2026-10-11,"tk bookkeeping (step, estimate)",40,11.22,280
+2026-10-11,waiting,63,18.63,295
+2026-10-11,worktree setup / cleanup,122,39.3,322
+2026-10-12,code / doc reading,545,160.13,293
+2026-10-12,codex briefs and replies,24,5.65,234
+2026-10-12,codex management (herdr),276,80.59,291
+2026-10-12,"design docs (models, plan, KISS)",23,5.44,235
+2026-10-12,git,135,37.76,279
+2026-10-12,github / CI / bot threads,313,124.52,397
+2026-10-12,human poll,25,6.46,257
+2026-10-12,linear,162,49.09,302
+2026-10-12,other,126,33.62,266
+2026-10-12,reply / communication (no tool),526,198.53,377
+2026-10-12,review docs,8,2.83,351
+2026-10-12,skill / memory reads,38,9.63,253
+2026-10-12,source edits,69,24.92,360
+2026-10-12,subagent dispatch,17,6.61,388
+2026-10-12,tests / measurements,1,0.1,104
+2026-10-12,"tk bookkeeping (step, estimate)",32,10.95,342
+2026-10-12,waiting,39,11.89,304
+2026-10-12,worktree setup / cleanup,104,46.47,446
+2026-10-13,code / doc reading,779,196.19,251
+2026-10-13,codex briefs and replies,51,13.04,255
+2026-10-13,codex management (herdr),373,111.17,297
+2026-10-13,"design docs (models, plan, KISS)",34,7.55,221
+2026-10-13,git,281,73.14,260
+2026-10-13,github / CI / bot threads,444,159.81,360
+2026-10-13,human poll,21,4.14,196
+2026-10-13,linear,129,37.52,290
+2026-10-13,native codex review,7,3.05,436
+2026-10-13,other,229,67.41,294
+2026-10-13,reply / communication (no tool),675,240.46,356
+2026-10-13,review docs,15,4.7,311
+2026-10-13,skill / memory reads,42,12.74,303
+2026-10-13,source edits,104,32.59,312
+2026-10-13,subagent dispatch,28,9.52,338
+2026-10-13,tests / measurements,3,0.84,278
+2026-10-13,"tk bookkeeping (step, estimate)",63,21.02,333
+2026-10-13,waiting,84,27.59,328
+2026-10-13,worktree setup / cleanup,146,47.66,326
+2026-10-14,code / doc reading,558,133.14,238
+2026-10-14,codex briefs and replies,24,5.81,241
+2026-10-14,codex management (herdr),236,61.75,261
+2026-10-14,"design docs (models, plan, KISS)",22,5.46,247
+2026-10-14,git,146,44.41,304
+2026-10-14,github / CI / bot threads,215,88.22,410
+2026-10-14,human poll,25,5.32,211
+2026-10-14,linear,34,7.28,213
+2026-10-14,native codex review,2,0.77,385
+2026-10-14,other,178,63.49,356
+2026-10-14,reply / communication (no tool),420,141.96,338
+2026-10-14,review docs,4,1.44,359
+2026-10-14,skill / memory reads,30,8.59,286
+2026-10-14,source edits,62,21.16,340
+2026-10-14,subagent dispatch,18,5.24,289
+2026-10-14,tests / measurements,3,0.72,239
+2026-10-14,"tk bookkeeping (step, estimate)",22,7.43,337
+2026-10-14,waiting,42,12.51,298
+2026-10-14,worktree setup / cleanup,71,20.45,288
+2026-10-15,code / doc reading,559,202.72,362
+2026-10-15,codex briefs and replies,41,12.37,301
+2026-10-15,codex management (herdr),327,142.27,434
+2026-10-15,"design docs (models, plan, KISS)",29,7.47,256
+2026-10-15,git,207,81.5,393
+2026-10-15,github / CI / bot threads,503,247.73,492
+2026-10-15,human poll,30,9.85,327
+2026-10-15,linear,40,8.41,209
+2026-10-15,native codex review,2,1.25,622
+2026-10-15,other,194,83.67,431
+2026-10-15,reply / communication (no tool),608,282.56,464
+2026-10-15,review docs,10,3.88,387
+2026-10-15,skill / memory reads,32,9.81,306
+2026-10-15,source edits,122,56.9,465
+2026-10-15,subagent dispatch,18,7.14,395
+2026-10-15,"tk bookkeeping (step, estimate)",46,18.09,392
+2026-10-15,waiting,26,8.96,344
+2026-10-15,worktree setup / cleanup,97,32.63,336
+2026-10-16,code / doc reading,194,62.9,324
+2026-10-16,codex briefs and replies,6,1.39,232
+2026-10-16,codex management (herdr),83,22.14,266
+2026-10-16,"design docs (models, plan, KISS)",9,2.5,277
+2026-10-16,git,100,32.22,322
+2026-10-16,github / CI / bot threads,139,50.95,366
+2026-10-16,human poll,4,0.93,231
+2026-10-16,linear,18,3.3,182
+2026-10-16,native codex review,3,1.2,399
+2026-10-16,other,116,44.73,385
+2026-10-16,reply / communication (no tool),230,78.48,341
+2026-10-16,review docs,3,0.95,314
+2026-10-16,skill / memory reads,16,4.91,306
+2026-10-16,source edits,30,9.26,308
+2026-10-16,subagent dispatch,5,1.81,359
+2026-10-16,"tk bookkeeping (step, estimate)",16,6.73,420
+2026-10-16,waiting,18,7.85,436
+2026-10-16,worktree setup / cleanup,18,6.38,354
+2026-10-17,checkpoint,21,3.54,168
+2026-10-17,code / doc reading,113,21.34,188
+2026-10-17,codex briefs and replies,20,3.6,179
+2026-10-17,codex management (herdr),205,36.3,176
+2026-10-17,"design docs (models, plan, KISS)",8,1.87,231
+2026-10-17,git,67,13.22,197
+2026-10-17,github / CI / bot threads,50,10.49,209
+2026-10-17,human poll,9,1.75,193
+2026-10-17,linear,75,15.51,206
+2026-10-17,native codex review,1,0.39,392
+2026-10-17,other,51,7.35,144
+2026-10-17,reply / communication (no tool),172,37.41,217
+2026-10-17,review docs,4,0.69,170
+2026-10-17,skill / memory reads,31,7.08,228
+2026-10-17,source edits,3,0.53,173
+2026-10-17,subagent dispatch,7,1.26,179
+2026-10-17,tests / measurements,25,4.61,183
+2026-10-17,"tk bookkeeping (step, estimate)",31,4.75,152
+2026-10-17,waiting,2,0.38,190
+2026-10-17,worktree setup / cleanup,23,4.13,179

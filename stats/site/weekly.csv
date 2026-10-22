@@ -1,0 +1,3 @@
+week_start,tickets,claude_calls,tagged_pct,tokens_m,main_sessions,sessions_over_160_calls,main_calls,ctx_median_k,ctx_p90_k,ctx_max_k,pct_400k_plus,subagent_call_pct,opus_call_pct,tickets_100plus_calls,tokens_per_ticket_m_median,calls_per_ticket_median
+2026-10-05,80,19869,78.0,4444,84,34,14661,229,468,966,17.4,26,98,61,48,246
+2026-10-12,60,19064,93.4,4782,64,31,12127,293,610,968,29.3,36,89,46,58,267
