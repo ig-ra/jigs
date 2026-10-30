@@ -664,6 +664,20 @@ class LifecycleTests(unittest.TestCase):
                 self.assertEqual(tk.close(ctx, args(key="TEAM-7", owner=owner, mode="apply")), 0)
             self.assertFalse(tree.exists())
 
+    def test_go_passes_model_to_claude(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}):
+            (tree / "igr").mkdir()
+            (tree / "igr" / "resume.md").write_text("checkpoint\n")
+            before = os.getcwd()
+            try:
+                for extra, flags in (([], []), (["--model", "sonnet"], ["--model", "sonnet"])):
+                    with self.subTest(extra=extra), patch.object(tk.os, "execvp") as launch:
+                        self.assertEqual(tk.main(["--cwd", str(root), "go", "TEAM-7", *extra]), 0)
+                        launch.assert_called_once_with(
+                            "claude", ["claude", *flags, "/igr:ticket resume TEAM-7"])
+            finally:
+                os.chdir(before)
+
     def test_close_apply_from_inside_the_ticket_worktree(self):
         with ticket_setup() as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}), \
                 patch("sys.stdout", new_callable=io.StringIO):

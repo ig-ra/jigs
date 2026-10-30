@@ -4,7 +4,7 @@
 Exit: 0 ready, 1 failed/stopped, 2 usage, 3 prerequisite/API error, 8 pending,
 124 timeout. State's verdict is required checks (merged succeeds); threads' verdict
 is unresolved count. Watch timeouts/intervals are seconds. No shell command strings.
-go KEY|NUMBER prepares a ticket worktree and launches Claude at start or resume.
+go KEY|NUMBER [--model M] prepares a ticket worktree and launches Claude at start or resume.
 Only go, reply, enqueue, close apply and step mutate anything.
 """
 from __future__ import annotations
@@ -571,7 +571,8 @@ def go(ctx: Context, a: argparse.Namespace) -> int:
     if os.environ.get("HERDR_ENV") == "1":
         herdr(["tab", "rename", os.environ["HERDR_TAB_ID"], a.key.rsplit("-", 1)[1]])
     os.chdir(path)
-    os.execvp("claude", ["claude", f"/igr:ticket {action} {a.key}"])
+    model = ["--model", a.model] if a.model else []
+    os.execvp("claude", ["claude", *model, f"/igr:ticket {action} {a.key}"])
     return 0
 
 
@@ -756,6 +757,8 @@ def parser() -> argparse.ArgumentParser:
         cmd.add_argument("key")
         if name != "step":
             cmd.add_argument("--owner", help="worktree owner; default: cwd owner or git user first name")
+        if name == "go":
+            cmd.add_argument("--model", help="Claude model alias or full name; default: Claude's default")
         if name == "prep":
             cmd.set_defaults(json=True)
         if name == "close":
