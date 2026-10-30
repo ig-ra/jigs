@@ -678,6 +678,29 @@ class LifecycleTests(unittest.TestCase):
             finally:
                 os.chdir(before)
 
+    def test_go_without_origin_starts_from_local_default_branch(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {"HERDR_ENV": "0"}):
+            root = Path(folder).resolve() / "repo"
+            root.mkdir()
+            ctx = tk.Context(root)
+            ctx.git("init", "-b", "main")
+            ctx.git("config", "user.name", "Owner Example")
+            ctx.git("config", "user.email", "owner@example.invalid")
+            ctx.git("commit", "--allow-empty", "-m", "test: initial fixture")
+            info = tk.prep(ctx, args(key="TEAM-7", owner=None))
+            self.assertEqual((info["remote"], info["default_branch"]), (False, "main"))
+            before = os.getcwd()
+            try:
+                with patch.object(tk, "gh") as api, patch.object(tk.os, "execvp") as launch:
+                    self.assertEqual(tk.main(["--cwd", str(root), "go", "TEAM-7"]), 0)
+                api.assert_not_called()
+                launch.assert_called_once_with("claude", ["claude", "/igr:ticket start TEAM-7"])
+            finally:
+                os.chdir(before)
+            tree = Path(info["worktree"])
+            self.assertEqual(ctx.git("branch", "--show-current", cwd=tree), "owner/team-7")
+            self.assertEqual(ctx.git("rev-parse", "HEAD", cwd=tree), ctx.git("rev-parse", "main"))
+
     def test_close_apply_from_inside_the_ticket_worktree(self):
         with ticket_setup() as (root, tree), patch.dict(os.environ, {"HERDR_ENV": "0"}), \
                 patch("sys.stdout", new_callable=io.StringIO):

@@ -518,7 +518,10 @@ def ticket_worktree(ctx: Context, key: str, owner: str | None = None) -> tuple[P
 def prep(ctx: Context, a: argparse.Namespace) -> JSON:
     key = ticket_key(a.key)
     root, path = ticket_worktree(ctx, key, a.owner)
-    base = ctx.git("symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+    remote = "origin" in ctx.git("remote").split()
+    # Without origin (a local-only repo), tickets branch from the canonical checkout's branch.
+    base = (ctx.git("symbolic-ref", "--short", "refs/remotes/origin/HEAD") if remote
+            else ctx.git("symbolic-ref", "--short", "HEAD", cwd=root))
     all_trees = [dict(line.split(" ", 1) if " " in line else (line, True) for line in block.splitlines())
                  for block in ctx.git("worktree", "list", "--porcelain").split("\n\n")]
     matching = [t for t in all_trees if Path(t["worktree"]).name.lower() == key.lower()]
@@ -528,7 +531,7 @@ def prep(ctx: Context, a: argparse.Namespace) -> JSON:
     if os.environ.get("HERDR_ENV") == "1":
         panes = [p for p in agents() if p.get("name") == key.lower() or
                  any(in_tree(p, Path(t["worktree"]).resolve()) for t in matching)]
-    return {"key": key, "repo_root": str(root), "default_branch": base.removeprefix("origin/"),
+    return {"key": key, "repo_root": str(root), "remote": remote, "default_branch": base.removeprefix("origin/"),
             "worktree": str(path), "exists": path.exists(),
             "branch": (tree or {}).get("branch", "").removeprefix("refs/heads/") or None,
             "local": str(local), "leftover_worktrees": matching,
@@ -544,7 +547,7 @@ def go(ctx: Context, a: argparse.Namespace) -> int:
     checkpoint = (path / "igr" / "resume.md").exists()
     head = None
     prs = []
-    if not checkpoint:
+    if not checkpoint and info["remote"]:
         lookup = ["--search", f'"{a.key}"']
         if info["exists"]:
             head = ctx.git("rev-parse", "HEAD", cwd=path)
@@ -559,9 +562,12 @@ def go(ctx: Context, a: argparse.Namespace) -> int:
         return 0
     if not info["exists"]:
         root = Path(info["repo_root"])
-        ctx.git("fetch", "origin", "--quiet", cwd=root)
+        start = info["default_branch"]
+        if info["remote"]:
+            ctx.git("fetch", "origin", "--quiet", cwd=root)
+            start = f"origin/{start}"
         ctx.git("worktree", "add", "--no-track", "-b", f"{path.parent.name}/{path.name}",
-                str(path), f"origin/{info['default_branch']}", cwd=root)
+                str(path), start, cwd=root)
         common = Path(ctx.git("rev-parse", "--path-format=absolute", "--git-common-dir"))
         exclude = common / "info" / "exclude"
         content = exclude.read_text() if exclude.exists() else ""
