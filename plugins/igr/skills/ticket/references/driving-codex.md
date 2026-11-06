@@ -105,6 +105,11 @@ teaches the next reader the wrong lesson.
 **Deleting an impossible-state test can take a reachable guard with it.** Fixtures often assert two
 things — the impossible arrangement, and a property that still holds. Ask what else the test covered.
 
+**Keeping a test alive can fabricate an impossible state.** The mirror case: re-routing a test
+through a surviving path so its old assertions still pass often builds an input combination no
+producer sends. Ask which producer creates that setup; if none does, the test belongs to the removed
+behaviour.
+
 ## Hardening a ticket before there is a plan
 
 Different job: the thing under test is **my spec**. Cheapest round I run, and it has never failed to
