@@ -43,7 +43,7 @@ ROUTES = {"bounded", "design-choice", "trivial"}
 EVENTS = ("C", "X", "D")
 DESIGN_COLUMNS = ["ticket", "repo", "route", "intake", "approval", "plan_rows", "est_lines", "actual_lines",
                   "files", "T", "steps", "out", "R", "C", "X", "D", "judgment_findings", "fast_findings",
-                  "bot_threads", "fix_rounds", "events"]
+                  "review_threads", "fix_rounds", "events"]
 
 
 def estimate_engine():
@@ -841,7 +841,7 @@ def numbers(ctx: Context, a: argparse.Namespace) -> int:
            "steps": by_model(calls, lambda c: 1) + partial,
            "out": by_model(calls, lambda c: c["output_tokens"]) + partial,
            "R": record["rounds"], **event_counts(events), "judgment_findings": a.judgment,
-           "fast_findings": a.fast, "bot_threads": threads, "fix_rounds": a.fix_rounds,
+           "fast_findings": a.fast, "review_threads": threads, "fix_rounds": a.fix_rounds,
            "events": " | ".join(f"{e['type']}: {e['cause']} -> {e['caught_at']}" for e in events)}
     log = Path(os.environ.get("DESIGN_NUMBERS") or Path.home() / ".claude" / "design-numbers.tsv")
     with locked(log.with_suffix(".lock")):
@@ -950,7 +950,7 @@ def parser() -> argparse.ArgumentParser:
     cmd.add_argument("--route", choices=sorted(ROUTES))
     cmd.add_argument("--intake", help="UTC or offset time of the ticket read, e.g. 2026-01-02T10:00Z")
     cmd.add_argument("--approval", help="time of the first plan approval")
-    cmd.add_argument("--rounds", type=int, choices=range(0, 100), metavar="R", help="codex design rounds")
+    cmd.add_argument("--rounds", type=int, help="codex design rounds (R)")
     cmd.add_argument("--event", choices=EVENTS, help="C repair, X late trim, D implementer drift")
     cmd.add_argument("--cause")
     cmd.add_argument("--caught-at", help="the loop step that should have caught it")

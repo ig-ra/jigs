@@ -746,7 +746,7 @@ PRIOR = {"ticket": "TEAM-1", "repo": "repo", "route": "bounded", "intake": "x", 
          "plan_rows": "4", "est_lines": "100-300", "actual_lines": "+10/-0", "files": "1",
          "T": "4000000 claude/m=4000000", "steps": "20 claude/m=20", "out": "6000 claude/m=6000",
          "R": "1", "C": "0", "X": "1", "D": "0", "judgment_findings": "0", "fast_findings": "2",
-         "bot_threads": "1", "fix_rounds": "1", "events": "X: trimmed -> cut question"}
+         "review_threads": "1", "fix_rounds": "1", "events": "X: trimmed -> cut question"}
 
 
 class DesignNumbersTests(unittest.TestCase):
@@ -819,7 +819,7 @@ class DesignNumbersTests(unittest.TestCase):
             self.assertEqual(row["T"], "4545 claude/opus=4040 codex/sol=505")
             self.assertEqual(row["steps"], "3 claude/opus=2 codex/sol=1")
             self.assertEqual(row["out"], "45 claude/opus=40 codex/sol=5")
-            self.assertEqual((row["repo"], row["actual_lines"], row["files"], row["bot_threads"]),
+            self.assertEqual((row["repo"], row["actual_lines"], row["files"], row["review_threads"]),
                              ("repo", "+12/-40", "3", "2"))
             self.assertEqual((row["R"], row["C"], row["X"], row["D"]), ("2", "0", "1", "1"))
             self.assertEqual(row["events"], "X: cut a test -> cut question | D: unasked guard -> brief")
