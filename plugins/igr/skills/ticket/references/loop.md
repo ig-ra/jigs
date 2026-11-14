@@ -96,13 +96,24 @@ Never add lines or Before-code steps. A new push resets each invalidated line wi
    **Status:** the first push of the ticket's branch to GitHub, by codex or by me, moves the ticket to In Review (`save_issue(KEY, state: "In Review")`) as soon as I see it (watcher fire or codex's report). `/igr:ticket start` already set In Progress.
    On implementing dispatch: `<skill base directory>/scripts/tk step <KEY> implement running --dispatch --agent codex --rounds <low-high> --task "<short>" --model <model>`. Fix dispatches use the affected line (`reviews fixing` or `checks fixing`). `tk` starts the estimate and stores its id under that line in `state.json` → `tk.estimates`; one open id per line. One timer per implementing dispatch; question rounds are not logged. For exit 3, check whether the timer already started before manually using `estimate.py start`; retain its id in the working notes and close it with `estimate.py done` on report.
 
-**Design-phase numbers.** Four per ticket, recorded as they happen and reported at finish, to test whether the design phase gets cheaper without moving mistakes or trims later. The checkpoint's `Design numbers:` line keeps the route (bounded, design choice or trivial), R, the intake time (the start procedure's ticket read) and first-approval time, and C and X totals; each C and X event goes, dated, under "After approval" in `<LOCAL>/design-check.md`.
+**Design-phase numbers.** Five per ticket, recorded as they happen and logged at finish. They test whether the design phase gets cheaper without moving mistakes or trims later, and they show which loop step to fix. The checkpoint's `Design numbers:` line keeps the route (bounded, design choice or trivial), R, the intake time (the start procedure's ticket read) and first-approval time, and C, X and D totals. Each C, X and D event goes, dated, under "After approval" in `<LOCAL>/design-check.md` when it happens, with its cause and the loop step that should have caught it. Never reconstruct events at finish: a `/clear` handoff drops whatever lives only in the conversation.
 - **T, design tokens:** per-call context plus output, summed once, for both agents and their linked workers, from intake through first approval (for a trivial change, through the first posting of its "Final plan" comment, with R = 0): `bin/usage export <intake time> <approval time>` in the canonical jigs checkout (the one `~/.local/bin/tk` links to, `../SKILL.md` PATH setup), only the rows whose `ticket` is this key. Raw tokens, not a cost formula; note the providers and models, and mark coverage incomplete rather than counting missing usage as zero;
 - **R, design rounds:** codex design dispatches that needed a completed answer before approval, counted at dispatch; an evidence answer served inside a running turn is not a round;
 - **C, contract repairs:** distinct corrections after approval, through completion, to requirements, populations, scope or design facts that already applied at approval. One flaw fixed across several rows is one repair; a typo is not one; new scope from the human is not one;
-- **X, late trims:** distinct trims the human asks for at or after the approval report, each with a short reason, so a missed cut can be told apart from a new preference.
+- **X, late trims:** distinct trims of the plan the human asks for at or after the approval report, each with a short reason, so a missed cut can be told apart from a new preference;
+- **D, implementer drift:** distinct additions or changes the implementer made that no plan row, finding or human asked for, found after code and cut or reverted. An X is a design miss; a D is a brief or implementation miss.
 
-Compare tickets of the same route, shape and risk only; a decide ticket or a still-open ticket has a shorter C window. Lower T and R with no rise in C or X is the signal.
+**The log.** At finish, before cleanup deletes `<LOCAL>`, append one tab-separated row to `~/.claude/design-numbers.tsv` (create it with this header if absent):
+`ticket repo route intake approval plan_rows est_lines actual_lines files T steps out R C X D judgment_findings fast_findings bot_threads fix_rounds events`
+- `est_lines`: the sum of the Final plan's line ranges, as `low-high`. `actual_lines`: `+added/-deleted` of the merged diff against its base;
+- `T`, `steps`, `out`: from the same export as T. `steps` is the number of model calls; `out` is output tokens. Each column holds the total, then `provider/model=<value>` pairs; add `partial` when coverage is incomplete. T is roughly steps times the context re-read per step, so it grows with polling, waits and long sessions as much as with design work;
+- `events`: each C, X and D as `<type>: <cause> -> <step that should have caught it>`, separated by ` | `.
+
+The finish report compares the ticket with the median of the last 5 rows of the same route, in one line: steps and output per estimated line (range midpoint), average context per step (T / steps), C, X and D. T stays as the total cost; it is not the comparison.
+
+**Review.** When the log reaches a multiple of 10 rows, group its events by the step that should have caught them. The most frequent step gets a loop edit, proposed to the human with the rows behind it.
+
+Compare tickets of the same route, shape and risk only; a decide ticket or a still-open ticket has a shorter C window. Lower T and R with no rise in C, X or D is the signal.
 
 ## After code
 
