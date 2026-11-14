@@ -20,11 +20,23 @@
 
 ## Waiting
 
-- Prefer codex messaging me. When I need a fallback, run a background `herdr agent wait <name> --timeout <ms>`, or poll for the answer file in a background `until [ -s file ]` loop.
-- Bare `wait` returns on idle, done or blocked. Never pass `--until idle,blocked`, which drops `done`. Implement and review turns flicker between working and idle, so verify on fire (the pane footer plus the answer file) and re-wait if it is mid-step.
-- **Approvals:** `herdr agent wait <name> --until blocked` in the background; on fire, read the pane and ask for the approval.
-- **Never send keys while waiting.** An `esc` can interrupt codex mid-answer.
-- **Answering codex's own question dialog:** `herdr agent prompt` is refused while it is blocked. Use `herdr pane send-text <pane> "<text>"`, then `herdr pane send-keys <pane> enter`.
+Every time I send codex a message:
+
+1. Send it with `herdr agent prompt <codex> "<message>" --wait`, run in the background.
+   It waits for codex to start, then wakes me when codex stops.
+   (Not a separate `herdr agent wait`: right after sending, codex may still be idle, and that wait would wake me at once.)
+2. When it wakes me, read codex's pane:
+   - finished → read its reply file;
+   - asking a question in the chat → answer it (that is a new message: back to step 1);
+   - showing an approval or question dialog → answer it as below, then run `herdr agent wait <codex>` in the background and go back to step 2;
+   - still working → run `herdr agent wait <codex>` in the background and go back to step 2.
+3. If it fails with `agent_prompt_stalled`, codex never started: read the pane before sending anything again.
+
+Do not pass `--until` or `--timeout` to either command: the default already wakes on idle, done and blocked, and a background wait costs nothing.
+Never wait for the reply file alone: it cannot see a question, so a stuck codex goes unnoticed.
+Never send keys while waiting: an `esc` can interrupt codex mid-answer.
+
+**Answering codex's own dialog:** `herdr agent prompt` is refused while it is blocked. Use `herdr pane send-text <pane> "<text>"`, then `herdr pane send-keys <pane> enter`.
 
 ## Restarts and names
 

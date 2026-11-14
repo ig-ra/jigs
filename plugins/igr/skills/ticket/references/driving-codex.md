@@ -336,8 +336,8 @@ was caught this way).
   test-selection map replaced an entry and silently dropped an existing test from coverage.
 - **It commits and opens PRs unless told not to.** Say so when it matters.
 - **`git diff main..HEAD` shows phantom deletions** once main moves. Use `git merge-base` first.
-- **Arm the wait in a background shell right after every prompt.** Without it there is no notification
-  and I sit polling or miss the reply.
+- **Send every message to codex as in `herdr-codex.md`, "Waiting".** Without that wait there is no
+  notification, and a codex stuck on a question goes unnoticed.
 - **In a file that moves, cite the statement, not the line.** Give the anchor text or the object
   name and let it locate them. My line numbers went stale four times in one day on one migration
   file, and one stale citation had me reporting that the migration died before our fix when it had
