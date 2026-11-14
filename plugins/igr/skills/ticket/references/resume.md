@@ -31,7 +31,7 @@ Deviations: <implementation deviations from the contract, with their source, or 
 Unresolved: <findings/decision file and remaining items, or none>
 Follow-ups: <file or list of deferred items, or none>
 Corrections: <igr/corrections.md, or none>
-Design numbers: <route; R; intake and first-approval UTC times; C, X and D totals (events in igr/design-check.md, each with cause and the step that should have caught it), or pending>
+Design numbers: <igr/state.json → design (route, R, intake and approval times, C/X/D events via tk design), or pending>
 Next action: <the loop step by its heading, plus this ticket's data (PR, head, pending pass); identify any human decision it awaits>
 ```
 
@@ -46,7 +46,7 @@ Keep detailed evidence in the existing model, plan, findings and review files. `
 The loop hands off at fixed points only (`loop.md`): after approval, before the implement dispatch (phase `develop`); when codex reports a PR ready, before its reviews (phase `review`); and when the next PR of a multi-PR ticket starts after the previous one merged (phase `develop`). The PR-ready handoff happens only when the checkpoint's phase moves from `develop` to `review`; a fix report while already in `review` keeps the session, as do all ordinary review/fix rounds. Trivial changes do not hand off.
 
 1. Stop this session's own background watchers (TaskStop) and record in `Watcher:` what the next session must rearm. Codex keeps running in its own pane; never stop it for a handoff.
-2. Save the checkpoint with the new phase, and with `Loop position` and `Next action` set to the action after the handoff: the codex dispatch for `develop`, After code step 1 for `review`. A resumed session never repeats the handoff that created it. Before `/clear`, bring the `Design numbers:` line and every C, X and D event in `igr/design-check.md` up to date: `/clear` drops whatever exists only in the conversation. Token counts need nothing here; finish reads them from the usage logs.
+2. Save the checkpoint with the new phase, and with `Loop position` and `Next action` set to the action after the handoff: the codex dispatch for `develop`, After code step 1 for `review`. A resumed session never repeats the handoff that created it. Before `/clear`, record every pending design fact and C, X or D event with `tk design`: `/clear` drops whatever exists only in the conversation. Token counts need nothing here; finish reads them from the usage logs.
 3. Inside Herdr, queue the reset into my own pane by its agent name (`<key>` from start step 3; the worktree guard refuses `$HERDR_PANE_ID`), as two separate submissions without `--wait`:
    - `herdr agent prompt <key> "/clear"`
    - `herdr agent prompt <key> "/igr:ticket resume <KEY> <worktree>"`, with the worktree's absolute path: after `/clear` the session is back in the directory Claude was launched from, which may not be the worktree or even a Git repository.

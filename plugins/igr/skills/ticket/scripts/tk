@@ -5,13 +5,19 @@ Exit: 0 ready, 1 failed/stopped, 2 usage, 3 prerequisite/API error, 8 pending,
 124 timeout. State's verdict is required checks (merged succeeds); threads' verdict
 is unresolved count. Watch timeouts/intervals are seconds. No shell command strings.
 go KEY|NUMBER [--model M] prepares a ticket worktree and launches Claude at start or resume.
-Only go, reply, enqueue, close apply and step mutate anything.
+design KEY records the design route, times, rounds and C/X/D events in igr/state.json;
+numbers KEY appends the ticket's design-numbers row (see references/loop.md "The log").
+Only go, reply, enqueue, close apply, step, design and numbers (without --dry-run) mutate anything.
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import fcntl
+import importlib.machinery
 import importlib.util
+import statistics
+from datetime import datetime, timezone
 import json
 import os
 import re
@@ -32,6 +38,12 @@ BAD = {"FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP
 LINES = {"implement", "reviews", "checks"}
 STATUSES = {"running", "fixing", "done", "todo", "fail"}
 ESTIMATE = Path(__file__).resolve().parents[2] / "agent-estimate" / "estimate.py"
+USAGE = Path(__file__).resolve().parents[5] / "bin" / "usage"
+ROUTES = {"bounded", "design-choice", "trivial"}
+EVENTS = ("C", "X", "D")
+DESIGN_COLUMNS = ["ticket", "repo", "route", "intake", "approval", "plan_rows", "est_lines", "actual_lines",
+                  "files", "T", "steps", "out", "R", "C", "X", "D", "judgment_findings", "fast_findings",
+                  "bot_threads", "fix_rounds", "events"]
 
 
 def estimate_engine():
@@ -648,8 +660,7 @@ def close(ctx: Context, a: argparse.Namespace) -> int:
     return 0
 
 
-def step(ctx: Context, a: argparse.Namespace) -> int:
-    key = ticket_key(a.key)
+def band_path(ctx: Context, key: str) -> Path:
     _, worktree = ticket_worktree(ctx, key)
     if not worktree.is_dir() or Path(ctx.git("rev-parse", "--show-toplevel", cwd=worktree)).resolve() != worktree.resolve():
         raise TkError("ticket worktree missing; run prep/start first")
@@ -657,10 +668,21 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
     ignored = ctx.git("check-ignore", "--verbose", str(band), cwd=worktree)
     if ignored.split("\t", 1)[0].rsplit(":", 1)[-1] != "/igr/":
         raise TkError("ticket folder must be ignored with /igr/ in common Git info/exclude")
+    return band
+
+
+def band_state(band: Path, key: str) -> JSON:
+    state = decode(band.read_text()) if band.exists() else {"ticket": key}
+    if not isinstance(state, dict) or state.get("ticket", key).upper() != key:
+        raise TkError("band state belongs to another ticket")
+    return state
+
+
+def step(ctx: Context, a: argparse.Namespace) -> int:
+    key = ticket_key(a.key)
+    band = band_path(ctx, key)
     with locked(band.with_suffix(".lock")):
-        state = decode(band.read_text()) if band.exists() else {"ticket": key}
-        if not isinstance(state, dict) or state.get("ticket", key).upper() != key:
-            raise TkError("band state belongs to another ticket")
+        state = band_state(band, key)
         metadata = state.setdefault("tk", {})
         ids = metadata.setdefault("estimates", {})
         timer = "claude-review" if a.review else a.line
@@ -706,6 +728,142 @@ def step(ctx: Context, a: argparse.Namespace) -> int:
                 del ids[timer]
         atomic_json(band, state)
     output(state, f"{key} {a.line}={a.status}" + (f" estimate={ids[timer]}" if a.dispatch else ""), a.json)
+    return 0
+
+
+def utc_minute(value: str) -> str:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        parsed = None
+    if parsed is None or parsed.tzinfo is None:
+        raise TkError(f"time needs a timezone, e.g. 2026-01-02T10:00Z: {value}", 2)
+    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+
+def plain(text: str) -> str:
+    return " ".join(text.split())
+
+
+def event_counts(events: list[JSON]) -> dict[str, int]:
+    return {kind: sum(e["type"] == kind for e in events) for kind in EVENTS}
+
+
+def design(ctx: Context, a: argparse.Namespace) -> int:
+    key = ticket_key(a.key)
+    if a.event and not (a.cause and a.caught_at):
+        raise TkError("--event needs --cause and --caught-at", 2)
+    if not a.event and (a.cause or a.caught_at):
+        raise TkError("--cause and --caught-at need --event", 2)
+    fields = {"route": a.route, "rounds": a.rounds,
+              "intake": a.intake and utc_minute(a.intake), "approval": a.approval and utc_minute(a.approval)}
+    band = band_path(ctx, key)
+    with locked(band.with_suffix(".lock")):
+        state = band_state(band, key)
+        record = state.setdefault("design", {})
+        record.update({k: v for k, v in fields.items() if v is not None})
+        events = record.setdefault("events", [])
+        if a.event:
+            events.append({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "type": a.event,
+                           "cause": plain(a.cause), "caught_at": plain(a.caught_at)})
+        atomic_json(band, state)
+    counts = " ".join(f"{k}={v}" for k, v in event_counts(events).items())
+    output(record, f"{key} route={record.get('route', '-')} R={record.get('rounds', '-')} {counts}", a.json)
+    return 0
+
+
+def usage_engine():
+    loader = importlib.machinery.SourceFileLoader("usage", str(USAGE))
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader("usage", loader))
+    loader.exec_module(module)
+    return module
+
+
+def by_model(calls: list[JSON], value) -> str:
+    totals: dict[str, int] = {}
+    for c in calls:
+        name = f"{c['provider']}/{c['model']}"
+        totals[name] = totals.get(name, 0) + value(c)
+    return " ".join([str(sum(totals.values()))] + [f"{k}={v}" for k, v in sorted(totals.items())])
+
+
+def total(cell: str) -> int:
+    return int(cell.split()[0])
+
+
+def midpoint(lines: str) -> float:
+    low, high = (int(x) for x in lines.split("-"))
+    return (low + high) / 2
+
+
+def comparison(row: JSON, history: list[JSON]) -> str:
+    peers = [r for r in history if r["route"] == row["route"] and r["ticket"] != row["ticket"]][-5:]
+    def per(r: JSON) -> dict[str, float]:
+        mid = midpoint(r["est_lines"]) or 1
+        return {"steps/line": total(r["steps"]) / mid, "out/line": total(r["out"]) / mid,
+                "ctx/step": total(r["T"]) / max(total(r["steps"]), 1),
+                **{k: float(r[k]) for k in EVENTS}}
+    mine = per(row)
+    text = " ".join(f"{k}={v:.3g}" for k, v in mine.items())
+    if not peers:
+        return f"{text}; no same-route history"
+    medians = {k: statistics.median(per(r)[k] for r in peers) for k in mine}
+    return f"{text}; same-route median of {len(peers)}: " + " ".join(f"{k}={v:.3g}" for k, v in medians.items())
+
+
+def numbers(ctx: Context, a: argparse.Namespace) -> int:
+    key = ticket_key(a.key)
+    if not re.fullmatch(r"\d+-\d+", a.est_lines):
+        raise TkError("--est-lines must be LOW-HIGH", 2)
+    band = band_path(ctx, key)
+    with locked(band.with_suffix(".lock")):
+        record = band_state(band, key).get("design", {})
+    missing = [f for f in ("route", "intake", "approval", "rounds") if f not in record]
+    if missing:
+        raise TkError("record with tk design first: " + ", ".join(missing), 2)
+    start, end = (datetime.strptime(record[f], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+                  for f in ("intake", "approval"))
+    rows, _ = usage_engine().collect(start, end)
+    calls = [r for r in rows if r.get("type") == "call" and r.get("ticket") == key]
+    if not calls:
+        raise TkError("no usage calls for this ticket in its design window", 1)
+    partial = " partial" if a.partial else ""
+    events = record.get("events", [])
+    added = deleted = files = threads = 0
+    for number in a.pr:
+        pr = gh(["pr", "view", str(number), "--repo", ctx.slug(), "--json", "additions,deletions,changedFiles"], ctx.cwd)
+        added, deleted, files = added + pr["additions"], deleted + pr["deletions"], files + pr["changedFiles"]
+        threads += len(pr_data(ctx, number, thread_details=True)["threads"])
+    row = {"ticket": key, "repo": ctx.slug().split("/")[-1], "route": record["route"],
+           "intake": record["intake"], "approval": record["approval"], "plan_rows": a.plan_rows,
+           "est_lines": a.est_lines, "actual_lines": f"+{added}/-{deleted}", "files": files,
+           "T": by_model(calls, lambda c: c["context_tokens"] + c["output_tokens"]) + partial,
+           "steps": by_model(calls, lambda c: 1) + partial,
+           "out": by_model(calls, lambda c: c["output_tokens"]) + partial,
+           "R": record["rounds"], **event_counts(events), "judgment_findings": a.judgment,
+           "fast_findings": a.fast, "bot_threads": threads, "fix_rounds": a.fix_rounds,
+           "events": " | ".join(f"{e['type']}: {e['cause']} -> {e['caught_at']}" for e in events)}
+    log = Path(os.environ.get("DESIGN_NUMBERS") or Path.home() / ".claude" / "design-numbers.tsv")
+    with locked(log.with_suffix(".lock")):
+        history: list[JSON] = []
+        if log.exists():
+            with log.open() as f:
+                reader = csv.DictReader(f, delimiter="\t")
+                if reader.fieldnames != DESIGN_COLUMNS:
+                    raise TkError(f"{log} has a different header; migrate it first")
+                history = list(reader)
+        if any(r["ticket"] == key for r in history):
+            raise TkError(f"{key} is already in {log}", 1)
+        if not a.dry_run:
+            with log.open("a", newline="") as f:
+                writer = csv.DictWriter(f, DESIGN_COLUMNS, delimiter="\t", lineterminator="\n")
+                if not history and f.tell() == 0:
+                    writer.writeheader()
+                writer.writerow({k: str(v) for k, v in row.items()})
+    line = (f"{'DRY ' if a.dry_run else ''}{key} T={total(row['T'])} steps={total(row['steps'])} "
+            f"out={total(row['out'])} R={row['R']} C={row['C']} X={row['X']} D={row['D']} | "
+            + comparison({k: str(v) for k, v in row.items()}, history))
+    output(row, line, a.json)
     return 0
 
 
@@ -786,6 +944,27 @@ def parser() -> argparse.ArgumentParser:
             cmd.add_argument("--actual-minutes", type=positive,
                              help="actual run duration for a late --report (instead of elapsed time)")
             cmd.add_argument("--note")
+    cmd = sub.add_parser("design", help="record the design route, times, rounds and C/X/D events")
+    cmd.set_defaults(func=design)
+    cmd.add_argument("key")
+    cmd.add_argument("--route", choices=sorted(ROUTES))
+    cmd.add_argument("--intake", help="UTC or offset time of the ticket read, e.g. 2026-01-02T10:00Z")
+    cmd.add_argument("--approval", help="time of the first plan approval")
+    cmd.add_argument("--rounds", type=int, choices=range(0, 100), metavar="R", help="codex design rounds")
+    cmd.add_argument("--event", choices=EVENTS, help="C repair, X late trim, D implementer drift")
+    cmd.add_argument("--cause")
+    cmd.add_argument("--caught-at", help="the loop step that should have caught it")
+    cmd = sub.add_parser("numbers", help="append the ticket's row to ~/.claude/design-numbers.tsv")
+    cmd.set_defaults(func=numbers)
+    cmd.add_argument("key")
+    cmd.add_argument("--pr", type=int, action="append", required=True, help="each merged PR of the ticket")
+    cmd.add_argument("--plan-rows", type=int, required=True)
+    cmd.add_argument("--est-lines", required=True, help="sum of the Final plan's line ranges, LOW-HIGH")
+    cmd.add_argument("--judgment", type=int, required=True, help="judgment-track findings")
+    cmd.add_argument("--fast", type=int, required=True, help="fast-track findings")
+    cmd.add_argument("--fix-rounds", type=int, required=True)
+    cmd.add_argument("--partial", action="store_true", help="usage coverage is incomplete")
+    cmd.add_argument("--dry-run", action="store_true")
     return p
 
 

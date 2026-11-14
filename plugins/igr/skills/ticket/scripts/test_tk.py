@@ -728,5 +728,110 @@ class LifecycleTests(unittest.TestCase):
                 self.assertEqual(ctx.slug(), "owner/project")
 
 
+def call(ticket, provider, model, context, output, at="2026-01-02T10:30:00+00:00"):
+    return {"type": "call", "ticket": ticket, "provider": provider, "model": model,
+            "context_tokens": context, "output_tokens": output, "timestamp": at}
+
+
+class FakeUsage:
+    def __init__(self, rows):
+        self.rows, self.windows = rows, []
+
+    def collect(self, start=None, end=None):
+        self.windows.append((start, end))
+        return self.rows, {}
+
+
+PRIOR = {"ticket": "TEAM-1", "repo": "repo", "route": "bounded", "intake": "x", "approval": "y",
+         "plan_rows": "4", "est_lines": "100-300", "actual_lines": "+10/-0", "files": "1",
+         "T": "4000000 claude/m=4000000", "steps": "20 claude/m=20", "out": "6000 claude/m=6000",
+         "R": "1", "C": "0", "X": "1", "D": "0", "judgment_findings": "0", "fast_findings": "2",
+         "bot_threads": "1", "fix_rounds": "1", "events": "X: trimmed -> cut question"}
+
+
+class DesignNumbersTests(unittest.TestCase):
+    def design(self, tree, *extra):
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            code = tk.main(["--cwd", str(tree), "design", "TEAM-7", *extra])
+        return code, out.getvalue()
+
+    def test_design_records_fields_and_events_and_keeps_the_band(self):
+        with ticket_setup() as (root, tree):
+            band = tree / "igr" / "state.json"
+            band.parent.mkdir()
+            band.write_text(json.dumps({"ticket": "TEAM-7", "implement": {"status": "done"}}))
+            self.assertEqual(self.design(tree, "--route", "bounded", "--intake", "2026-01-02T10:00:00Z",
+                                         "--approval", "2026-01-02T12:00+02:00", "--rounds", "2")[0], 0)
+            code, line = self.design(tree, "--event", "C", "--cause", "field lost\tin shape",
+                                     "--caught-at", "Before code step 1")
+            self.assertEqual(code, 0)
+            self.assertIn("C=1", line)
+            state = json.loads(band.read_text())
+            self.assertEqual(state["implement"], {"status": "done"})
+            design = state["design"]
+            self.assertEqual((design["route"], design["intake"], design["approval"], design["rounds"]),
+                             ("bounded", "2026-01-02T10:00Z", "2026-01-02T10:00Z", 2))
+            self.assertEqual(design["events"][0]["type"], "C")
+            self.assertEqual(design["events"][0]["cause"], "field lost in shape")
+            self.assertTrue(design["events"][0]["at"].endswith("Z"))
+            self.assertEqual(self.design(tree, "--event", "X", "--cause", "only cause")[0], 2)
+            self.assertEqual(self.design(tree, "--cause", "no event", "--caught-at", "step")[0], 2)
+            self.assertEqual(self.design(tree, "--intake", "2026-01-02T10:00")[0], 2)
+            self.assertEqual(len(json.loads(band.read_text())["design"]["events"]), 1)
+
+    def test_numbers_logs_one_row_compares_same_route_and_refuses_duplicates(self):
+        with ticket_setup() as (root, tree):
+            log = root / "design-numbers.tsv"
+            with log.open("w") as f:
+                writer = csv.DictWriter(f, tk.DESIGN_COLUMNS, delimiter="\t")
+                writer.writeheader()
+                writer.writerow(PRIOR)
+                writer.writerow({**PRIOR, "ticket": "TEAM-2", "route": "trivial"})
+            self.design(tree, "--route", "bounded", "--intake", "2026-01-02T10:00Z",
+                        "--approval", "2026-01-02T12:00Z", "--rounds", "2")
+            self.design(tree, "--event", "X", "--cause", "cut a test", "--caught-at", "cut question")
+            self.design(tree, "--event", "D", "--cause", "unasked guard", "--caught-at", "brief")
+            usage = FakeUsage([call("TEAM-7", "claude", "opus", 1000, 10),
+                               call("TEAM-7", "claude", "opus", 3000, 30),
+                               call("TEAM-7", "codex", "sol", 500, 5),
+                               call("TEAM-8", "claude", "opus", 9999, 99),
+                               {"type": "event", "ticket": "TEAM-7"}])
+            pr = {"additions": 12, "deletions": 40, "changedFiles": 3}
+            command = ["--cwd", str(tree), "numbers", "TEAM-7", "--pr", "5", "--plan-rows", "6",
+                       "--est-lines", "50-150", "--judgment", "2", "--fast", "4", "--fix-rounds", "1"]
+            with patch.dict(os.environ, {"DESIGN_NUMBERS": str(log)}), \
+                    patch.object(tk, "usage_engine", return_value=usage), \
+                    patch.object(tk.Context, "slug", return_value="example/repo"), \
+                    patch.object(tk, "gh", return_value=pr), \
+                    patch.object(tk, "pr_data", return_value={"threads": [{}, {}]}):
+                with patch("sys.stdout", new_callable=io.StringIO) as out:
+                    self.assertEqual(tk.main(command + ["--dry-run"]), 0)
+                self.assertIn("same-route median", out.getvalue())
+                self.assertEqual(len(log.read_text().splitlines()), 3)
+                with patch("sys.stdout", new_callable=io.StringIO):
+                    self.assertEqual(tk.main(command), 0)
+                    self.assertEqual(tk.main(command), 1)
+            with log.open() as f:
+                rows = list(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual(len(rows), 3)
+            row = rows[-1]
+            self.assertEqual(usage.windows[0][0].isoformat(), "2026-01-02T10:00:00+00:00")
+            self.assertEqual(row["T"], "4545 claude/opus=4040 codex/sol=505")
+            self.assertEqual(row["steps"], "3 claude/opus=2 codex/sol=1")
+            self.assertEqual(row["out"], "45 claude/opus=40 codex/sol=5")
+            self.assertEqual((row["repo"], row["actual_lines"], row["files"], row["bot_threads"]),
+                             ("repo", "+12/-40", "3", "2"))
+            self.assertEqual((row["R"], row["C"], row["X"], row["D"]), ("2", "0", "1", "1"))
+            self.assertEqual(row["events"], "X: cut a test -> cut question | D: unasked guard -> brief")
+
+    def test_numbers_needs_the_design_record(self):
+        with ticket_setup() as (root, tree), patch.dict(os.environ, {"DESIGN_NUMBERS": str(root / "log.tsv")}):
+            with patch("sys.stdout", new_callable=io.StringIO):
+                code = tk.main(["--cwd", str(tree), "numbers", "TEAM-7", "--pr", "5", "--plan-rows", "1",
+                                "--est-lines", "1-2", "--judgment", "0", "--fast", "0", "--fix-rounds", "0"])
+            self.assertEqual(code, 2)
+            self.assertFalse((root / "log.tsv").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
