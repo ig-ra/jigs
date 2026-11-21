@@ -7,7 +7,7 @@ const compiled = new Bun.Transpiler({ loader: 'tsx' }).transformSync(source)
   .replace(/^import .* from ["']claude-code["'];?$/m, '')
   .replace('export const register', 'const register')
 
-async function session(cwd: string, files: Map<string, string>, tmp = '/tmp/') {
+async function session(cwd: string, files: Map<string, string>) {
   let value: string | null = null
   let refresh: () => Promise<void>
   const reads: string[] = []
@@ -20,7 +20,6 @@ async function session(cwd: string, files: Map<string, string>, tmp = '/tmp/') {
   register((event: string, ...args: unknown[]) => { handlers[event] = args.at(-1) as Function })
   await handlers['session.start']({
     session: { cwd: async () => cwd },
-    env: { get: async () => tmp },
     fs: { read: async (path: string) => {
       reads.push(path)
       if (!files.has(path)) throw new Error('missing fixture file')
@@ -33,30 +32,27 @@ async function session(cwd: string, files: Map<string, string>, tmp = '/tmp/') {
 
 const tree = '/repo/.worktrees/owner/team-7'
 const local = `${tree}/igr/state.json`
-const legacy = '/tmp/igr-ticket/team-7/state.json'
 
 test('worktree state wins, including from a child directory', async () => {
-  const result = await session(`${tree}/src`, new Map([[local, 'new'], [legacy, 'old']]))
+  const result = await session(`${tree}/src`, new Map([[local, 'new']]))
   expect(result.value()).toBe('new')
   expect(result.reads).toEqual([local])
 })
 
-test('legacy temp state remains visible until the worktree state appears', async () => {
-  const files = new Map([[legacy, 'old']])
+test('state that appears later shows on the next refresh', async () => {
+  const files = new Map<string, string>()
   const result = await session(tree, files)
-  expect(result.value()).toBe('old')
+  expect(result.value()).toBeNull()
   files.set(local, 'new')
   await result.refresh()
   expect(result.value()).toBe('new')
-  expect(result.reads).toEqual([local, legacy, local])
+  expect(result.reads).toEqual([local, local])
 })
 
-test('missing state clears the band, with the empty-TMPDIR fallback', async () => {
-  const result = await session(tree, new Map([[local, 'new']]), '')
-  expect(result.value()).toBe('new')
-  const empty = await session(tree, new Map(), '')
+test('missing state clears the band', async () => {
+  const empty = await session(tree, new Map())
   expect(empty.value()).toBeNull()
-  expect(empty.reads).toEqual([local, legacy])
+  expect(empty.reads).toEqual([local])
 })
 
 test('canonical sessions do not read ticket state', async () => {

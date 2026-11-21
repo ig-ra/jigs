@@ -4,7 +4,6 @@ import type { Register } from 'claude-code'
 import type { TicketBandStatus, TicketBandStep, TicketLoopState } from '../types'
 
 // Ticket state lives in <worktree>/igr/state.json and is deleted with the tree.
-// Read the old temp path only while already-running ticket sessions finish.
 // No file, no band: sessions outside the ticket loop draw nothing.
 const raw = atom({ plugin: 'igr', key: 'ticketBandRaw' } as const, null)
 
@@ -25,15 +24,8 @@ export const register: Register = on => {
       let text: string | null = null
       try {
         const cwd = await $.session.cwd()
-        const tree = cwd.match(/^(.*\/\.worktrees\/[^/]+\/([^/]+))(?:\/.*)?$/)
-        if (tree) {
-          try {
-            text = await $.fs.read(`${tree[1]}/igr/state.json`)
-          } catch {
-            const tmp = ((await $.env.get('TMPDIR')) || '/tmp').replace(/\/+$/, '')
-            text = await $.fs.read(`${tmp}/igr-ticket/${tree[2]}/state.json`)
-          }
-        }
+        const tree = cwd.match(/^(.*\/\.worktrees\/[^/]+\/[^/]+)(?:\/.*)?$/)
+        if (tree) text = await $.fs.read(`${tree[1]}/igr/state.json`)
       } catch {
         text = null
       }

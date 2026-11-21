@@ -23,7 +23,7 @@ Nothing in between unless I am blocked or something is irreversible. Reports fol
 
 **Round trips are the cost.** Each brief → wait → re-read cycle costs a context reload and roughly 15-20 minutes of wall clock (an observed estimate, not a measurement). Merge rounds that do not need to be separate; never drop independent judgment or a reviewer to do it.
 
-**The band.** Both `tk step` and `hooks/ticket-band.tsx` use `<worktree>/igr/state.json`, in `LOCAL`. The hook prefers that file; while existing sessions finish, it reads the old temp path only when the new file is unavailable. New `tk` writes use only the worktree path.
+**The band.** Both `tk step` and `hooks/ticket-band.tsx` use `<worktree>/igr/state.json`, in `LOCAL`.
 
 Use `<skill base directory>/scripts/tk step <KEY> <line> <status>` at every state change. The absolute script path passes the guard. Lines: `implement`, `reviews`, `checks`; statuses: `running` ⏳, `fixing` 🔧, `done` ✅, `todo` ⬜, `fail` ❌. `tk` locks and atomically updates the ignored file, preserves unrelated fields, and stores timer ids in `tk.estimates`. Use `--ticket-url <Linear URL>` for the ticket link and `--pr <number>` for PR number/URL; no hand edits.
 
