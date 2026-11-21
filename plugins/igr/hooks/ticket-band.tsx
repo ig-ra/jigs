@@ -16,7 +16,7 @@ const ICON: Record<TicketBandStatus, string> = { done: '✅', running: '⏳', fi
 const LINES: ReadonlyArray<{ key: 'implement' | 'reviews' | 'checks'; label: string }> = [
   { key: 'implement', label: 'Implement → rebase on main → open PR' },
   { key: 'reviews', label: 'Reviews: simplify + codex + claude → fix → rebase + re-push' },
-  { key: 'checks', label: 'Architect + CI' },
+  { key: 'checks', label: 'Bots + CI' },
 ]
 
 export const register: Register = on => {

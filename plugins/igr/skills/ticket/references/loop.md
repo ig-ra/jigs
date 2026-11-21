@@ -29,7 +29,7 @@ Use `<skill base directory>/scripts/tk step <KEY> <line> <status>` at every stat
 
 - **`implement`** (Implement → rebase on main → open PR): `running` from dispatch; `done` when the PR is open and rebased on latest `BASE`: `<skill base directory>/scripts/tk step <KEY> implement done --pr <PR>`.
 - **`reviews`** (simplify + codex + claude → fix → rebase + re-push): `running` during reviews; `fixing` during pooled fixes; `done` after the push and my four-table refill on it (After code, step 1).
-- **`checks`** (Architect + CI): `running` while waiting; `fixing` during CI/bot fixes; `done` when CI is green and the architect bot approves with every thread answered.
+- **`checks`** (review bots + CI): `running` while waiting; `fixing` during CI/bot fixes; `done` when CI is green and every review bot the repo uses (named in its project memory) approves with every thread answered.
 
 Never add lines or Before-code steps. A new push resets each invalidated line with `tk step ... running`. For the next PR, use separate commands for `implement running`, `reviews todo`, `checks todo`, clearing old notes with `--note ""`; `--pr` overwrites the PR metadata when it opens. `tk` does not reset other lines automatically. Finish sets all lines to `done` with the merge sha as the checks note before removing the worktree and its files. On exit 3, manually update only the intended fields in the ignored worktree file, preserving timer ids.
 
