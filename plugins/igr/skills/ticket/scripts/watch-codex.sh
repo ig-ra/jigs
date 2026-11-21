@@ -6,7 +6,7 @@ NAME=${1:?codex agent name, e.g. codex-<N>}
 WT=${2:?worktree path}
 MAX=${3:-1500}
 ctx_of() { herdr agent read "$NAME" 2>/dev/null | grep -o 'Context [0-9]*% left' | tail -1 | grep -o '[0-9]*'; }
-if [ -d "$WT/src" ] || [ -d "$WT/scripts" ]; then PATHS="src scripts"; else PATHS="."; fi
+PATHS=; for d in src scripts internal; do [ -d "$WT/$d" ] && PATHS="$PATHS $d"; done; PATHS=${PATHS:-.}
 diff_lines() { git -C "$WT" diff --numstat -- $PATHS | awk '{s+=$1+$2} END {print s+0}'; }
 prev_ctx=$(ctx_of)
 prev_head=$(git -C "$WT" rev-parse HEAD)
@@ -38,7 +38,7 @@ while true; do
     stopped_once=
   fi
   if [ "$lines" -gt "$MAX" ]; then
-    echo "GROWTH: uncommitted src+scripts diff ${lines} lines > ${MAX} at $(date +%H:%M)"; exit 0
+    echo "GROWTH: uncommitted source diff ${lines} lines > ${MAX} at $(date +%H:%M)"; exit 0
   fi
   [ -n "$ctx" ] && prev_ctx=$ctx
 done
