@@ -355,12 +355,28 @@ def candidates(root, start=None):
     return sorted(p for p in root.rglob('*.jsonl') if margin is None or p.stat().st_mtime >= margin)
 
 
+def config_roots(env, name, logs):
+    """Every profile's log folder: $env first, then ~/name and ~/name-*. A ticket can switch
+    profile (subscription) midway, so all are read; a session found twice is merged by normalize()."""
+    home = Path.home()
+    dirs = ([Path(os.environ[env]).expanduser()] if os.environ.get(env) else []) + \
+        [home / name] + sorted(home.glob(name + '-*'))
+    found = {}
+    for directory in dirs:
+        root = directory / logs
+        if root.is_dir():
+            found.setdefault(root.resolve(), root)
+    return list(found.values())
+
+
 def collect(start=None, end=None, claude_root=None, codex_root=None, session=None):
-    roots = {'claude': claude_root or Path.home() / '.claude/projects',
-             'codex': codex_root or Path.home() / '.codex/sessions'}
+    roots = [('claude', r) for r in ([claude_root] if claude_root else
+                                     config_roots('CLAUDE_CONFIG_DIR', '.claude', 'projects'))] + \
+            [('codex', r) for r in ([codex_root] if codex_root else
+                                    config_roots('CODEX_HOME', '.codex', 'sessions'))]
     counts = Counter({name: 0 for name in ('malformed', 'duplicate', 'synthetic', 'unassigned')})
     rows = []
-    for provider, root in roots.items():
+    for provider, root in roots:
         if session and session[0] != provider:
             continue
         for path in candidates(root, start):

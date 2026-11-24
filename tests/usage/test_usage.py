@@ -210,6 +210,28 @@ class ReaderTests(unittest.TestCase):
             scoped, _ = usage.collect(claude_root=claude, codex_root=codex, session=('claude', 'main'))
             self.assertIn('child1', [r.get('id') for r in scoped])
 
+    def test_default_roots_read_every_profile_once(self):
+        # A ticket that switched profile midway has sessions in both; the current one ($env) is
+        # not the only one read.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            for logs in ('.claude/projects', '.claude-work/projects', '.codex/sessions'):
+                (home / logs).mkdir(parents=True)
+            (home / '.claude-empty').mkdir()  # A profile without logs is skipped.
+            (home / '.claude/projects/main.jsonl').write_bytes((FIXTURES / 'claude.jsonl').read_bytes())
+            # The same session copied into a second profile is merged, not counted twice.
+            (home / '.claude-work/projects/main.jsonl').write_bytes((FIXTURES / 'claude.jsonl').read_bytes())
+            (home / '.codex/sessions/rollout-codex-main.jsonl').write_bytes((FIXTURES / 'codex.jsonl').read_bytes())
+            env = {'CLAUDE_CONFIG_DIR': str(home / '.claude-work'), 'CODEX_HOME': str(home / '.codex-work') + '/'}
+            with patch.object(usage.Path, 'home', return_value=home), patch.dict(os.environ, env):
+                self.assertEqual(usage.config_roots('CLAUDE_CONFIG_DIR', '.claude', 'projects'),
+                                 [home / '.claude-work/projects', home / '.claude/projects'])
+                rows, _ = usage.collect()
+            single, _ = usage.collect(claude_root=home / '.claude/projects', codex_root=home / '.codex/sessions')
+            calls = lambda rs, p: sorted(r['id'] for r in rs if r['type'] == 'call' and r['provider'] == p)
+            self.assertEqual(calls(rows, 'claude'), calls(single, 'claude'))
+            self.assertTrue(calls(rows, 'codex'))  # Found in ~/.codex although $CODEX_HOME has no logs.
+
     def test_nested_workflow_subagents_link_to_main_and_stay_out_of_main_context(self):
         with tempfile.TemporaryDirectory() as directory:
             child = Path(directory) / 'main/subagents/workflows/wf-example/agent-worker.jsonl'
